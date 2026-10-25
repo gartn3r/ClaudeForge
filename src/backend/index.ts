@@ -71,7 +71,7 @@ export function createBackend(options: BackendOptions): Backend {
   }
 
   const api: BackendApi = {
-    map: createMapService(),
+    map: createMapService(options.env),
     appState: {
       read: () => appState.read(),
       write: writeAppState

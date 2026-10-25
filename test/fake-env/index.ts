@@ -52,6 +52,8 @@ export interface FakeEnvironmentOptions {
   systemLanguages?: string[]
   /** The fake `claude`; `false` leaves Claude Code uninstalled. Defaults to one on PATH. */
   claude?: FakeClaudeOptions | false
+  /** The fake `gh`: signed in (the default), signed out, or `false` for no GitHub CLI at all. */
+  gh?: 'signed-in' | 'signed-out' | false
 }
 
 export interface FakeEnvironment {
@@ -147,15 +149,15 @@ async function seedClaudeHome(
   return { worktrees, liveSessions }
 }
 
-const holdsClaude = (dir: string): boolean =>
-  ['claude.exe', 'claude.cmd', 'claude.bat', 'claude'].some((name) => existsSync(join(dir, name)))
+const holds = (dir: string, tool: FakeTool): boolean =>
+  ['.exe', '.cmd', '.bat', ''].some((extension) => existsSync(join(dir, `${tool}${extension}`)))
 
-/** This machine's PATH without the folders of any real Claude Code, so only the fake one is found. */
+/** This machine's PATH without the folders of any real Claude Code or GitHub CLI, so only the fakes are found. */
 function inheritedPath(): string {
   const path = process.env.PATH ?? process.env.Path ?? ''
   return path
     .split(delimiter)
-    .filter((dir) => dir && !holdsClaude(dir))
+    .filter((dir) => dir && !holds(dir, 'claude') && !holds(dir, 'gh'))
     .join(delimiter)
 }
 
@@ -184,7 +186,11 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
   ) as Record<FixtureProject, string>
   const { worktrees, liveSessions } = await seedClaudeHome(claudeHome, projects)
-  await writeExecutable(join(binDir, 'gh.cmd'), join(BIN_SOURCES, 'fake-gh.mjs'))
+  if (options.gh !== false) {
+    await writeExecutable(join(binDir, 'gh.cmd'), join(BIN_SOURCES, 'fake-gh.mjs'), {
+      FAKE_GH_SIGNED_OUT: options.gh === 'signed-out' ? '1' : '0'
+    })
+  }
 
   const processEnv: Record<string, string> = {
     ...inheritedEnv(),

@@ -39,7 +39,8 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
     }
   }, [project])
   const listing = maps?.project === project ? maps.listing : null
-  const noMap = listing?.tracker.kind === 'local-markdown' && !shownMap(listing)
+  // An unsupported Tracker or one gh cannot read keeps the panel open, to say why it is empty.
+  const noMap = !!listing && listing.tracker.kind !== 'unsupported' && !listing.problem && !shownMap(listing)
   // The panel collapses on its own without a Map; the user's own setting stays as it was.
   const mapLayout = noMap && mapOpenedAnyway !== project ? { ...state.layout.map, collapsed: true } : state.layout.map
   const expandMap = (): void => {

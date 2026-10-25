@@ -1,7 +1,7 @@
 import { Check, ChevronDown, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { MapListing, MapSummary, WayfinderMap } from '../../../shared/api'
+import { Trans, useTranslation } from 'react-i18next'
+import type { MapListing, MapSummary, TrackerProblem, WayfinderMap } from '../../../shared/api'
 import { api } from '../api'
 import { IconButton } from './IconButton'
 import { MapGraph } from './MapGraph'
@@ -9,6 +9,13 @@ import { MapText, itemCount } from './MapText'
 
 /** The Map the panel shows: the most recently updated open one. */
 export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
+
+const PROBLEM_MESSAGES = {
+  'gh-missing': 'map.problem.ghMissing',
+  'gh-signed-out': 'map.problem.ghSignedOut',
+  'no-github-repository': 'map.problem.noGitHubRepository',
+  'gh-failed': 'map.problem.ghFailed'
+} as const satisfies Record<TrackerProblem, string>
 
 /** A load of one Map of one Project, and how it went. */
 type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap } | { error: true })
@@ -49,8 +56,16 @@ export function MapPanel({ project, listing, onCollapse }: MapPanelProps): React
   if (listing?.tracker.kind === 'unsupported') {
     const { name } = listing.tracker
     body = <p className="empty">{name ? t('map.unsupportedNamed', { name }) : t('map.unsupported')}</p>
+  } else if (listing?.problem) {
+    body = (
+      <p className="empty">
+        <Trans i18nKey={PROBLEM_MESSAGES[listing.problem]} components={{ code: <code className="cf-mono" /> }} />
+      </p>
+    )
   } else if (listing && !summary) body = <p className="empty">{t('map.noMap')}</p>
-  else if (result && 'error' in result) body = <p className="empty">{t('map.loadError')}</p>
+  else if (result && 'error' in result) {
+    body = <p className="empty">{t(listing?.tracker.kind === 'github' ? 'map.loadErrorGitHub' : 'map.loadError')}</p>
+  }
   else if (map) body = <MapView map={map} />
 
   return (

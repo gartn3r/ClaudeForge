@@ -91,7 +91,14 @@
     "noMap": "Aucune Carte dans ce Projet",
     "unsupported": "Le Tracker de ce Projet n’est pas encore pris en charge.",
     "unsupportedNamed": "Le Tracker de ce Projet, {{name}}, n’est pas encore pris en charge.",
-    "loadError": "Cette Carte n’a pas pu être lue. Vérifiez son map.md et ses fichiers de Tickets."
+    "loadError": "Cette Carte n’a pas pu être lue. Vérifiez son map.md et ses fichiers de Tickets.",
+    "loadErrorGitHub": "Cette Carte n’a pas pu être lue depuis GitHub. Actualisez pour réessayer.",
+    "problem": {
+      "ghMissing": "GitHub CLI n’est pas installé. Installez-le depuis cli.github.com, puis actualisez.",
+      "ghSignedOut": "GitHub CLI n’est pas connecté. Lancez <code>gh auth login</code>, puis actualisez.",
+      "noGitHubRepository": "GitHub CLI ne trouve aucun dépôt GitHub pour ce Projet. Ajoutez un remote GitHub, puis actualisez.",
+      "ghFailed": "GitHub n’a pas pu être lu par GitHub CLI. Actualisez pour réessayer."
+    }
   },
   "firstRun": {
     "checkAgain": "Vérifier à nouveau",

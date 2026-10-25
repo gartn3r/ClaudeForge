@@ -91,7 +91,14 @@
     "noMap": "No Map in this Project",
     "unsupported": "This Project’s Tracker is not supported yet.",
     "unsupportedNamed": "This Project’s Tracker, {{name}}, is not supported yet.",
-    "loadError": "This Map could not be read. Check its map.md and Ticket files."
+    "loadError": "This Map could not be read. Check its map.md and Ticket files.",
+    "loadErrorGitHub": "This Map could not be read from GitHub. Refresh to try again.",
+    "problem": {
+      "ghMissing": "GitHub CLI is not installed. Install it from cli.github.com, then refresh.",
+      "ghSignedOut": "GitHub CLI is not signed in. Run <code>gh auth login</code>, then refresh.",
+      "noGitHubRepository": "GitHub CLI finds no GitHub repository for this Project. Add a GitHub remote, then refresh.",
+      "ghFailed": "GitHub could not be read through GitHub CLI. Refresh to try again."
+    }
   },
   "firstRun": {
     "checkAgain": "Check again",

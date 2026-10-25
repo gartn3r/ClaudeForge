@@ -5,31 +5,14 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { MapSummary, TicketType } from '../../shared/api'
+import { questionOf, sectionsOf } from './markdown'
+import type { MapRecord, TicketRecord } from './model'
 
 const SCRATCH = '.scratch'
 
 const TICKET_FILE = /^(\d+)-(.+)\.md$/i
 const METADATA_LINE = /^(Type|Status|Blocked by|Parent)\s*:/i
 const TICKET_TYPES: readonly TicketType[] =['research', 'prototype', 'grilling', 'task']
-
-/** A Ticket as its file states it, before anything is derived. */
-export interface TicketRecord {
-  id: string
-  name: string
-  type: TicketType | null
-  open: boolean
-  claimed: boolean
-  assignee: string | null
-  blockedBy: string[]
-  path: string
-  question: string
-  answer: string
-}
-
-export interface MapRecord extends MapSummary {
-  sections: Record<string, string>
-  tickets: TicketRecord[]
-}
 
 /** `week-view` → `Week view`: the name of a file whose title is missing. */
 const nameFromSlug = (slug: string): string => {
@@ -44,37 +27,6 @@ const titleOf = (text: string): string | null => /^\s*#\s+(.+?)\s*$/m.exec(text)
 const fieldOf = (text: string, key: string): string | null =>
   new RegExp(`^${key}\\s*:\\s*(.*?)\\s*$`, 'im').exec(text)?.[1] ?? null
 
-/** Splits a markdown file into its `## Heading` sections, keyed by lower-case heading. */
-function sectionsOf(text: string): Record<string, string> {
-  const sections: Record<string, string> = {}
-  let current: string | null = null
-  const lines: string[] = []
-  const flush = (): void => {
-    if (current !== null) sections[current] = lines.join('\n').replace(/<!--[\s\S]*?-->/g, '').trim()
-    lines.length = 0
-  }
-  for (const line of text.split(/\r?\n/)) {
-    const heading = /^##\s+(.+?)\s*#*\s*$/.exec(line)
-    if (heading) {
-      flush()
-      current = heading[1]!.toLowerCase()
-    } else if (current !== null) lines.push(line)
-  }
-  flush()
-  return sections
-}
-
-/** A Ticket's question: its `## Question` section, else the text under its title and metadata lines. */
-function questionOf(text: string, sections: Record<string, string>): string {
-  if (sections.question !== undefined) return sections.question
-  const body = text.split(/^##\s/m)[0]!
-  return body
-    .split(/\r?\n/)
-    .filter((line) => !/^\s*#\s/.test(line) && !METADATA_LINE.test(line))
-    .join('\n')
-    .trim()
-}
-
 async function readTicket(path: string, number: string, slug: string): Promise<TicketRecord> {
   const text = await readFile(path, 'utf8')
   const sections = sectionsOf(text)
@@ -86,11 +38,12 @@ async function readTicket(path: string, number: string, slug: string): Promise<T
     type: TICKET_TYPES.find((known) => known === type) ?? null,
     open: status !== 'resolved' && status !== 'closed',
     claimed: status === 'claimed',
-    // Local markdown claims name no one.
+    // Local markdown claims name no one: the files, and the claim, are the user's own.
+    claimedByUser: status === 'claimed',
     assignee: null,
     blockedBy: (fieldOf(text, 'Blocked by') ?? '').match(/\d+/g) ?? [],
     path,
-    question: questionOf(text, sections),
+    question: questionOf(text, sections, METADATA_LINE),
     answer: sections.answer ?? ''
   }
 }
