@@ -45,6 +45,81 @@ export interface AppStatePatch {
 export interface SystemInfo {
   /** Interface language, from the Windows display languages. */
   language: Language
+  /** The folder ClaudeForge was started in: the displayed Project until a Session is displayed. */
+  startFolder: string
+}
+
+/** Where a Project keeps its Maps, from its `docs/agents/issue-tracker.md`. */
+export type Tracker =
+  | { kind: 'local-markdown' }
+  /** A declared Tracker ClaudeForge cannot read yet, with its name when the declaration gives one. */
+  | { kind: 'unsupported'; name: string | null }
+
+export interface MapSummary {
+  /** Unique within the Project; for local markdown, the effort's folder name. */
+  id: string
+  name: string
+  /** The Map's file (local markdown) or URL. */
+  path: string
+  /** Last change to the Map or any of its Tickets, in ms since the epoch. */
+  updatedAt: number
+  /** False once every Ticket is closed. */
+  open: boolean
+}
+
+export interface MapListing {
+  tracker: Tracker
+  /** Most recently updated first. */
+  maps: MapSummary[]
+}
+
+export type TicketType = 'research' | 'prototype' | 'grilling' | 'task'
+
+/** A Ticket's derived state, in precedence order: closed, blocked, claimed, Frontier. */
+export type TicketState = 'closed' | 'blocked' | 'claimed' | 'frontier'
+
+export interface Ticket {
+  /** Unique within the Map; for local markdown, the file's number (`03`). */
+  id: string
+  name: string
+  type: TicketType | null
+  open: boolean
+  claimed: boolean
+  /** Who claimed it, when the Tracker names a person. */
+  assignee: string | null
+  /** Ids of the Tickets blocking this one, open or closed. */
+  blockedBy: string[]
+  path: string
+  question: string
+  answer: string
+  state: TicketState
+  /** Frontier, or claimed by the current user. */
+  workable: boolean
+  /** How many of its blockers are still open. */
+  openBlockers: number
+}
+
+/** A "blocked by" relationship: `from` blocks `to`. */
+export interface TicketEdge {
+  from: string
+  to: string
+}
+
+/** A Map in the Tracker-independent model, with its derived display sets. */
+export interface WayfinderMap extends MapSummary {
+  destination: string
+  notes: string
+  decisionsSoFar: string
+  notYetSpecified: string
+  outOfScope: string
+  /** In Map order. */
+  tickets: Ticket[]
+  /** Ids of the closed Tickets, in Map order: the Decided strip. */
+  decided: string[]
+  /** Edges between open Tickets, transitively reduced: what the graph draws. */
+  liveEdges: TicketEdge[]
+  /** Edges touching a closed Ticket, transitively reduced: drawn on demand. */
+  spentEdges: TicketEdge[]
 }
 
 /** Where the first-run screen sends the user to install or update Claude Code. */
@@ -60,6 +135,11 @@ export type ClaudeCodeStatus =
   | { state: 'missing'; lookedIn: string[] }
 
 export interface BackendApi {
+  map: {
+    /** Detects the Project's Tracker and lists its Maps. */
+    list(project: string): Promise<MapListing>
+    load(project: string, mapId: string): Promise<WayfinderMap>
+  }
   appState: {
     read(): Promise<AppState>
     write(patch: AppStatePatch): Promise<AppState>

@@ -30,7 +30,60 @@
     "collapse": "Replier le panneau Carte",
     "expand": "Déplier le panneau Carte",
     "resize": "Redimensionner le panneau Carte",
-    "empty": "Suivez ici la Carte du Projet de la Session affichée."
+    "destination": "Destination",
+    "showAll": "Tout afficher",
+    "showLess": "Réduire",
+    "decided": "Décidés",
+    "showLinks": "Afficher leurs liens",
+    "hideLinks": "Masquer leurs liens",
+    "graph": "Travail ouvert",
+    "allDecided": "Chaque Ticket de cette Carte est décidé.",
+    "zoom": "Zoom",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "fit": "Ajuster la Carte au panneau",
+    "counts": "Décomptes",
+    "count": {
+      "frontier_one": "{{count}} Frontière",
+      "frontier_other": "{{count}} Frontière",
+      "claimed_one": "{{count}} pris",
+      "claimed_other": "{{count}} pris",
+      "blocked_one": "{{count}} bloqué",
+      "blocked_other": "{{count}} bloqués",
+      "closed_one": "{{count}} fermé",
+      "closed_other": "{{count}} fermés"
+    },
+    "state": {
+      "frontier": "Frontière",
+      "claimed": "Pris",
+      "blocked": "Bloqué",
+      "closed": "Fermé",
+      "blockedBy_one": "Bloqué par {{count}} Ticket ouvert",
+      "blockedBy_other": "Bloqué par {{count}} Tickets ouverts"
+    },
+    "tooltip": {
+      "frontier": "{{name}} · sur la Frontière",
+      "claimed": "{{name}} · pris",
+      "blocked": "{{name}} · bloqué par {{blockers}}",
+      "closed": "{{name}} · décidé"
+    },
+    "type": {
+      "research": "recherche",
+      "prototype": "prototype",
+      "grilling": "questionnement",
+      "task": "tâche"
+    },
+    "edge": "{{from}} bloque {{to}}",
+    "section": {
+      "decisionsSoFar": "Décisions prises",
+      "notYetSpecified": "Pas encore précisé",
+      "outOfScope": "Hors du périmètre"
+    },
+    "sectionEmpty": "Rien pour l’instant.",
+    "noMap": "Aucune Carte dans ce Projet",
+    "unsupported": "Le Tracker de ce Projet n’est pas encore pris en charge.",
+    "unsupportedNamed": "Le Tracker de ce Projet, {{name}}, n’est pas encore pris en charge.",
+    "loadError": "Cette Carte n’a pas pu être lue. Vérifiez son map.md et ses fichiers de Tickets."
   },
   "firstRun": {
     "checkAgain": "Vérifier à nouveau",

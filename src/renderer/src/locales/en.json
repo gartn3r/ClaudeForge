@@ -30,7 +30,60 @@
     "collapse": "Collapse the Map panel",
     "expand": "Expand the Map panel",
     "resize": "Resize the Map panel",
-    "empty": "Follow the Map of the displayed Session's Project here."
+    "destination": "Destination",
+    "showAll": "Show all",
+    "showLess": "Show less",
+    "decided": "Decided",
+    "showLinks": "Show their links",
+    "hideLinks": "Hide their links",
+    "graph": "Open work",
+    "allDecided": "Every Ticket of this Map is decided.",
+    "zoom": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit the Map to the panel",
+    "counts": "Counts",
+    "count": {
+      "frontier_one": "{{count}} Frontier",
+      "frontier_other": "{{count}} Frontier",
+      "claimed_one": "{{count}} claimed",
+      "claimed_other": "{{count}} claimed",
+      "blocked_one": "{{count}} blocked",
+      "blocked_other": "{{count}} blocked",
+      "closed_one": "{{count}} closed",
+      "closed_other": "{{count}} closed"
+    },
+    "state": {
+      "frontier": "Frontier",
+      "claimed": "Claimed",
+      "blocked": "Blocked",
+      "closed": "Closed",
+      "blockedBy_one": "Blocked by {{count}} open Ticket",
+      "blockedBy_other": "Blocked by {{count}} open Tickets"
+    },
+    "tooltip": {
+      "frontier": "{{name}} · on the Frontier",
+      "claimed": "{{name}} · claimed",
+      "blocked": "{{name}} · blocked by {{blockers}}",
+      "closed": "{{name}} · decided"
+    },
+    "type": {
+      "research": "research",
+      "prototype": "prototype",
+      "grilling": "grilling",
+      "task": "task"
+    },
+    "edge": "{{from}} blocks {{to}}",
+    "section": {
+      "decisionsSoFar": "Decisions so far",
+      "notYetSpecified": "Not yet specified",
+      "outOfScope": "Out of scope"
+    },
+    "sectionEmpty": "Nothing here yet.",
+    "noMap": "No Map in this Project",
+    "unsupported": "This Project’s Tracker is not supported yet.",
+    "unsupportedNamed": "This Project’s Tracker, {{name}}, is not supported yet.",
+    "loadError": "This Map could not be read. Check its map.md and Ticket files."
   },
   "firstRun": {
     "checkAgain": "Check again",

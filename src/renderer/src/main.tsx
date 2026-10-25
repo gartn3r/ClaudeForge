@@ -24,7 +24,7 @@ async function start(): Promise<void> {
   await initI18n(info.language)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App initialState={state} initialClaudeCode={claudeCode} />
+      <App initialState={state} initialClaudeCode={claudeCode} project={info.startFolder} />
     </StrictMode>
   )
 }
