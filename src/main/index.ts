@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
 import { createBackend, type Dialogs, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
@@ -26,6 +26,13 @@ function claudeHome(): string {
   return process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 }
 
+// Windows shows a notification under the app's AppUserModelID; run from the Electron binary
+// (development, tests), that is the binary's path.
+if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'ClaudeForge' : process.execPath)
+
+/** The notifications on screen, held so that garbage collection does not drop their click handlers. */
+const shownNotifications = new Set<Notification>()
+
 function windowHost(win: BrowserWindow): WindowHost {
   return {
     minimize: () => win.minimize(),
@@ -41,6 +48,21 @@ function windowHost(win: BrowserWindow): WindowHost {
         win.off('maximize', onMaximize)
         win.off('unmaximize', onUnmaximize)
       }
+    },
+    notify: ({ title, body }, onClick) => {
+      if (!Notification.isSupported()) return
+      const notification = new Notification({ title, body })
+      shownNotifications.add(notification)
+      notification.on('close', () => shownNotifications.delete(notification))
+      notification.on('click', () => {
+        shownNotifications.delete(notification)
+        if (win.isDestroyed()) return
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+        onClick()
+      })
+      notification.show()
     }
   }
 }

@@ -292,6 +292,9 @@ body {
   justify-content: space-between;
   gap: var(--space-3);
 }
+.settings__row + .settings__row {
+  margin-top: var(--space-3);
+}
 .settings__hint {
   margin-top: 2px;
   font-size: 12px;

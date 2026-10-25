@@ -62,6 +62,14 @@ describe('app state', () => {
     expect((await start().api.appState.read()).gpuRendering).toBe(false)
   })
 
+  it('notifies the user about Sessions until they turn notifications off, and remembers that across a restart', async () => {
+    expect((await start().api.appState.read()).notifications).toBe(true)
+
+    await start().api.appState.write({ notifications: false })
+
+    expect((await start().api.appState.read()).notifications).toBe(false)
+  })
+
   it('pushes the new state to the interface after every write', async () => {
     const backend = start()
     const pushed: unknown[] = []

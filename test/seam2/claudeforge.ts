@@ -43,3 +43,39 @@ export async function pickFolderInDialogs(app: ElectronApplication, folder: stri
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] })
   }, folder)
 }
+
+/** A Windows notification ClaudeForge raised, as the user reads it. */
+export interface ShownNotification {
+  title: string
+  body: string
+}
+
+/**
+ * Keeps ClaudeForge's Windows notifications off the screen from now on, recording them instead, for
+ * `shownNotifications` to read and `clickNotification` to click.
+ */
+export async function recordNotifications(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ Notification }) => {
+    const shown: Electron.Notification[] = []
+    Object.assign(globalThis, { recordedNotifications: shown })
+    Notification.prototype.show = function (this: Electron.Notification) {
+      shown.push(this)
+    }
+  })
+}
+
+/** The notifications ClaudeForge raised since `recordNotifications`, oldest first. */
+export const shownNotifications = (app: ElectronApplication): Promise<ShownNotification[]> =>
+  app.evaluate(() =>
+    (globalThis as unknown as { recordedNotifications: Electron.Notification[] }).recordedNotifications.map(
+      ({ title, body }) => ({ title, body })
+    )
+  )
+
+/** Clicks a notification ClaudeForge raised, as the user would in the Windows notification center. */
+export async function clickNotification(app: ElectronApplication, index: number): Promise<void> {
+  await app.evaluate((_electron, index) => {
+    const shown = (globalThis as unknown as { recordedNotifications: Electron.Notification[] }).recordedNotifications
+    shown[index]!.emit('click')
+  }, index)
+}

@@ -46,7 +46,9 @@ test('opens a folder, runs Claude Code there and takes what the user types', asy
 
   await expect(terminalOf(window)).toContainText('You wrote: "hello"')
   const runs = await sessionRuns(env)
-  expect(runs.map(({ args, cwd }) => ({ args, cwd }))).toEqual([{ args: [], cwd: env.projects['harbor-api'] }])
+  expect(runs.map(({ args, cwd }) => ({ args, cwd }))).toEqual([
+    { args: ['--session-id', expect.any(String)], cwd: env.projects['harbor-api'] }
+  ])
 })
 
 test('inserts a newline in the prompt on Shift+Enter, and sends it on Enter', async () => {

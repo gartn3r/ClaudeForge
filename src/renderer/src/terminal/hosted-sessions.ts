@@ -30,10 +30,14 @@ const tabOf = (key: string, project: string, terminal: HostedTerminal): HostedTa
   end: terminal.end ?? null
 })
 
+/** Calls back when a tab's Hosted session changes status, with the tab as it now is. */
+export type StatusListener = (tab: HostedTab) => void
+
 /** The Hosted sessions in tab order and the one on show, kept outside React so its terminals outlive any component. */
 export class HostedSessions {
   private state: HostedTabs = { tabs: [], activeKey: null }
   private readonly listeners = new Set<() => void>()
+  private readonly statusListeners = new Set<StatusListener>()
   private nextKey = 1
 
   subscribe = (listener: () => void): (() => void) => {
@@ -43,13 +47,24 @@ export class HostedSessions {
 
   snapshot = (): HostedTabs => this.state
 
+  /** Returns an unsubscribe. */
+  onStatus(listener: StatusListener): () => void {
+    this.statusListeners.add(listener)
+    return () => this.statusListeners.delete(listener)
+  }
+
   /** Starts a Hosted session in a Project, in a new tab on show after the others. */
   start(project: string, gpuRendering: boolean): void {
     const key = String(this.nextKey++)
     const terminal = new HostedTerminal(project, gpuRendering)
-    terminal.onChange(() =>
-      this.update(this.state.tabs.map((tab) => (tab.key === key ? tabOf(key, project, terminal) : tab)))
-    )
+    terminal.onChange(() => {
+      const previous = this.state.tabs.find((tab) => tab.key === key)
+      const changed = tabOf(key, project, terminal)
+      this.update(this.state.tabs.map((tab) => (tab.key === key ? changed : tab)))
+      if (previous && previous.status !== changed.status) {
+        for (const listener of this.statusListeners) listener(changed)
+      }
+    })
     this.update([...this.state.tabs, tabOf(key, project, terminal)], key)
   }
 

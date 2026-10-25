@@ -3,7 +3,14 @@
 // it to IPC (see src/main/ipc.ts).
 
 import { join } from 'node:path'
-import type { AppState, AppStatePatch, BackendApi, ClaudeCodeStatus, EventName } from '../shared/api'
+import type {
+  AppState,
+  AppStatePatch,
+  BackendApi,
+  ClaudeCodeStatus,
+  EventName,
+  WindowNotification
+} from '../shared/api'
 import { AppStateStore } from './app-state'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
@@ -23,6 +30,8 @@ export interface WindowHost {
   isMaximized(): boolean
   /** Calls back whenever the window is maximized or restored; returns an unsubscribe. */
   onMaximizedChange(listener: (maximized: boolean) => void): () => void
+  /** Shows a Windows notification; `onClick` runs once the user clicked it and the window came to the front. */
+  notify(notification: WindowNotification, onClick: () => void): void
 }
 
 export interface BackendOptions {
@@ -99,10 +108,12 @@ export function createBackend(options: BackendOptions): Backend {
 
   const sessionHost = new SessionHost({
     env: options.env,
+    claudeHome: options.claudeHome,
     claudePath,
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
-    onStatus: (id, status) => events.emit('sessionHost.status', { id, status })
+    onStatus: (id, status) => events.emit('sessionHost.status', { id, status }),
+    onTurnEnd: (id, project) => events.emit('sessionHost.turnEnded', { id, project })
   })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {
@@ -164,7 +175,9 @@ export function createBackend(options: BackendOptions): Backend {
       minimize: async () => win?.minimize(),
       toggleMaximize: async () => win?.toggleMaximize(),
       close: async () => win?.close(),
-      isMaximized: async () => win?.isMaximized() ?? false
+      isMaximized: async () => win?.isMaximized() ?? false,
+      notify: async (notification) =>
+        win?.notify(notification, () => events.emit('window.notificationClicked', { tag: notification.tag }))
     }
   }
 

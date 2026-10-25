@@ -12,7 +12,9 @@
   "settings": {
     "label": "Paramètres",
     "gpuRendering": "Rendu GPU",
-    "gpuRenderingHint": "Désactivez-le si le terminal affiche du texte brouillé."
+    "gpuRenderingHint": "Désactivez-le si le terminal affiche du texte brouillé.",
+    "notifications": "Notifications",
+    "notificationsHint": "Quand une Session en arrière-plan vous attend ou a terminé."
   },
   "explorer": {
     "label": "Sessions",
@@ -106,8 +108,13 @@
     "status": {
       "idle": "Prête",
       "working": "Au travail",
+      "waiting": "Vous attend",
       "done": "Terminée",
       "ended": "Arrêtée"
+    },
+    "notification": {
+      "waiting": "Claude vous attend.",
+      "done": "Claude a terminé."
     },
     "stop": {
       "title": "Claude travaille encore dans cette Session. L’arrêter ?",

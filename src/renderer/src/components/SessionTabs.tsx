@@ -1,4 +1,4 @@
-import { Check, Plus, Square, X } from 'lucide-react'
+import { Check, Hand, Plus, Square, X } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HostedTab } from '../terminal/hosted-sessions'
@@ -21,13 +21,17 @@ export const panelId = (key: string): string => `session-panel-${key}`
 /** The last part of a Project's path: a tab's name until Claude Code names its terminal. */
 const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
 
+/** A tab's name: the one Claude Code gave its terminal, else its Project's folder name. */
+export const tabTitle = (tab: HostedTab): string => tab.title ?? folderName(tab.project)
+
 /** What a tab's glyph shows: the Hosted session's status, or that its `claude` has ended. */
 type TabState = HostedTab['status'] | 'ended'
 
-/** Each state's StatusBadge modifier; done shows a check, the others a dot. */
+/** Each state's StatusBadge modifier; waiting shows a hand, done a check, the others a dot (working's pulses). */
 const STATUS_CLASS: Record<TabState, string> = {
   idle: 'cf-status',
   working: 'cf-status cf-status--working',
+  waiting: 'cf-status cf-status--waiting',
   done: 'cf-status cf-status--done',
   ended: 'cf-status cf-status--dormant'
 }
@@ -35,7 +39,13 @@ const STATUS_CLASS: Record<TabState, string> = {
 function StatusGlyph({ state }: { state: TabState }): ReactNode {
   return (
     <span className={STATUS_CLASS[state]}>
-      {state === 'done' ? <Check className="cf-icon cf-icon--sm" aria-hidden="true" /> : <span className="cf-dot" />}
+      {state === 'done' ? (
+        <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
+      ) : state === 'waiting' ? (
+        <Hand className="cf-icon cf-icon--sm" aria-hidden="true" />
+      ) : (
+        <span className="cf-dot" />
+      )}
     </span>
   )
 }
@@ -75,7 +85,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
       <div className="cf-tabs" role="tablist" aria-label={t('titleBar.hostedSessions')}>
         {tabs.map((tab, index) => {
           const active = tab.key === activeKey
-          const title = tab.title ?? folderName(tab.project)
+          const title = tabTitle(tab)
           const state: TabState = tab.end ? 'ended' : tab.status
           const statusLabel = t(`tabs.status.${state}`)
           return (
