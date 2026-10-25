@@ -15,7 +15,15 @@
     "collapse": "Collapse the explorer",
     "expand": "Expand the explorer",
     "resize": "Resize the explorer",
-    "empty": "Find every Session here, grouped by Project."
+    "empty": "Find every Session here, grouped by Project.",
+    "untitled": "New Session",
+    "openElsewhere": "Open elsewhere",
+    "openElsewhereTooltip": "Open elsewhere. It can be resumed here once it ends.",
+    "activity": {
+      "now": "now",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h"
+    }
   },
   "extensions": {
     "heading": "Extensions"

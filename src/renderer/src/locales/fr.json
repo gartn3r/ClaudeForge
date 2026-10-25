@@ -15,7 +15,15 @@
     "collapse": "Replier l'explorateur",
     "expand": "Déplier l'explorateur",
     "resize": "Redimensionner l'explorateur",
-    "empty": "Retrouvez ici chaque Session, groupée par Projet."
+    "empty": "Retrouvez ici chaque Session, groupée par Projet.",
+    "untitled": "Nouvelle Session",
+    "openElsewhere": "Ouverte ailleurs",
+    "openElsewhereTooltip": "Ouverte ailleurs. Elle pourra être reprise ici une fois terminée.",
+    "activity": {
+      "now": "maintenant",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h"
+    }
   },
   "extensions": {
     "heading": "Extensions"

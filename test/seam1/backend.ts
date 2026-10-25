@@ -5,6 +5,7 @@ import type { FakeEnvironment } from '../fake-env'
 export function startBackend(env: FakeEnvironment, window?: WindowHost, dialogs?: Dialogs): Backend {
   return createBackend({
     stateDir: env.userDataDir,
+    claudeHome: env.claudeHome,
     systemLanguages: env.systemLanguages,
     env: env.processEnv,
     window,
