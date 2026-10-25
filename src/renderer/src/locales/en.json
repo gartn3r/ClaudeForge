@@ -1,0 +1,35 @@
+{
+  "app": {
+    "name": "ClaudeForge"
+  },
+  "titleBar": {
+    "hostedSessions": "Hosted sessions",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close window"
+  },
+  "explorer": {
+    "label": "Sessions",
+    "heading": "Sessions",
+    "collapse": "Collapse the explorer",
+    "expand": "Expand the explorer",
+    "resize": "Resize the explorer",
+    "empty": "Your Sessions will be listed here, grouped by Project."
+  },
+  "extensions": {
+    "heading": "Extensions"
+  },
+  "terminal": {
+    "label": "Terminal",
+    "empty": "Start a Session from the explorer to open its terminal here."
+  },
+  "map": {
+    "label": "Map",
+    "heading": "Map",
+    "collapse": "Collapse the Map panel",
+    "expand": "Expand the Map panel",
+    "resize": "Resize the Map panel",
+    "empty": "The Map of the displayed Session's Project will be drawn here."
+  }
+}

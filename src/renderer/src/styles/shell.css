@@ -1,0 +1,226 @@
+/* The window shell: title bar, three columns, side panels, rails and splitters. */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--ground);
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--selection);
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ground);
+}
+
+/* Title bar */
+.titlebar {
+  display: flex;
+  align-items: flex-end;
+  height: var(--size-titlebar);
+  flex: none;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.titlebar button {
+  -webkit-app-region: no-drag;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--size-titlebar);
+  padding: 0 var(--space-3);
+  flex: none;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--brass);
+  box-shadow: 5px 5px 0 -1px var(--route);
+}
+.titlebar .cf-tabs {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+  padding: 0;
+}
+.wincontrols {
+  display: flex;
+  align-self: flex-start;
+  height: var(--size-titlebar);
+  margin-left: auto;
+}
+.wincontrols button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: var(--size-titlebar);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  transition: background 120ms, color 120ms;
+}
+.wincontrols button:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+.wincontrols button.close:hover {
+  background: var(--danger);
+  color: var(--on-brass);
+}
+.wincontrols button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* Columns */
+.columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.side-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  min-height: 0;
+  background: var(--surface);
+}
+.side-panel--left {
+  border-right: 1px solid var(--line);
+}
+.side-panel--right {
+  border-left: 1px solid var(--line);
+}
+.side-panel__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  padding: var(--space-1) 0;
+}
+.rail__end {
+  margin-top: auto;
+}
+
+/* Splitter on a side panel's inner edge */
+.splitter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+.side-panel--left .splitter {
+  right: -4px;
+}
+.side-panel--right .splitter {
+  left: -4px;
+}
+.splitter::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background 120ms;
+}
+.splitter:hover::after,
+.splitter[data-dragging='true']::after {
+  background: var(--line-control);
+}
+.splitter:focus-visible {
+  outline: none;
+}
+.splitter:focus-visible::after {
+  left: 2px;
+  width: 2px;
+  background: var(--focus);
+}
+.shell[data-resizing='true'] {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Explorer */
+.explorer__tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2);
+}
+.extbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 36px;
+  padding: 0 var(--space-3);
+  flex: none;
+  border-top: 1px solid var(--line);
+}
+
+/* Terminal area */
+.terminal-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--terminal-well);
+}
+
+/* Map panel */
+.map-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Empty states */
+.empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  color: var(--text-muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wincontrols button,
+  .splitter::after {
+    transition: none;
+  }
+}
