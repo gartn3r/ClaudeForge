@@ -298,6 +298,13 @@ export interface BackendApi {
     chooseProject(): Promise<string | null>
     /** Starts `claude`, with no extra options, in a Project; its output and exit arrive as events. */
     start(project: string, size: TerminalSize): Promise<HostedSession>
+    /**
+     * Continues a past Session (`claude --resume <id>`) in the folder it ran in; refused for an
+     * unknown Session or one whose `claude` still runs outside ClaudeForge.
+     */
+    resume(sessionId: string, size: TerminalSize): Promise<HostedSession>
+    /** Like resume, but into a new Session (`--fork-session`), leaving the original as it was. */
+    fork(sessionId: string, size: TerminalSize): Promise<HostedSession>
     /** Types into the Hosted session's terminal. */
     write(id: string, data: string): Promise<void>
     resize(id: string, size: TerminalSize): Promise<void>

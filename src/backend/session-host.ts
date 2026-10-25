@@ -72,14 +72,20 @@ export class SessionHost {
 
   constructor(private readonly options: SessionHostOptions) {}
 
-  async start(project: string, { cols, rows }: TerminalSize): Promise<HostedSession> {
+  /** Starts `claude` with the given options in the folder the Session runs in: its Project, or a git worktree of it. */
+  async start(folder: string, { cols, rows }: TerminalSize, args: readonly string[] = []): Promise<HostedSession> {
     const claude = await this.options.claudePath()
     const env = withVariables(this.options.env, HOSTED_ENVIRONMENT)
-    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: project, env, useConptyDll: true }
+    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
     // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
+    // Each option is quoted as is: they are ClaudeForge's own flags and Session ids, never user text.
     const pty = /^\.(cmd|bat)$/i.test(extname(claude))
-      ? spawn(envVar(env, 'COMSPEC') ?? 'cmd.exe', `/d /s /c ""${claude}""`, ptyOptions)
-      : spawn(claude, [], ptyOptions)
+      ? spawn(
+          envVar(env, 'COMSPEC') ?? 'cmd.exe',
+          `/d /s /c ""${claude}"${args.map((arg) => ` "${arg}"`).join('')}"`,
+          ptyOptions
+        )
+      : spawn(claude, [...args], ptyOptions)
 
     const id = randomUUID()
     const session: HostedProcess = { id, pty, status: 'idle', touchedAt: 0, inTurn: false }
