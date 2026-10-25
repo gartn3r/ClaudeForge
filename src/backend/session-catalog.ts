@@ -1,7 +1,7 @@
 import { watch, type FSWatcher, type Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import type { ProjectSessions, SessionSummary } from '../shared/api'
+import type { ProjectSessions, SessionSummary, WayfinderLink } from '../shared/api'
 import { readLiveSessions, type LiveSession } from './live-sessions'
 import { readHistory, type HistorySummary } from './session-history'
 import { placeFolder, type FolderPlace } from './worktree'
@@ -13,6 +13,16 @@ const SETTLE_MS = 150
  * registry entry behind, and no file changes when its process dies.
  */
 const RECHECK_MS = 2_000
+/** How long a resolved `/wayfinder` link holds before its Project's Maps are read again. */
+const LINK_TTL_MS = 30_000
+
+/** Resolves the arguments of a `/wayfinder` invocation against a Project's Maps. */
+export type LinkResolver = (project: string, args: string) => Promise<WayfinderLink | null>
+
+interface CachedLink {
+  at: number
+  link: Promise<WayfinderLink | null>
+}
 
 /** A Session and the path of the Project it belongs to. */
 interface PlacedSession {
@@ -41,6 +51,8 @@ export class SessionCatalog {
   private readonly histories = new Map<string, CachedHistory>()
   /** Which Project each folder belongs to; a folder's git link does not change. */
   private readonly places = new Map<string, Promise<FolderPlace>>()
+  /** Resolved `/wayfinder` links by Project and arguments. */
+  private readonly links = new Map<string, CachedLink>()
 
   private readonly watchers = new Map<string, FSWatcher>()
   private recheck: NodeJS.Timeout | undefined
@@ -53,7 +65,8 @@ export class SessionCatalog {
   /** Calls back with the whole catalog whenever Claude Code's files change it, once watching. */
   constructor(
     private readonly claudeHome: string,
-    private readonly onChange: (projects: ProjectSessions[]) => void
+    private readonly onChange: (projects: ProjectSessions[]) => void,
+    private readonly resolveLink: LinkResolver
   ) {}
 
   /** The catalog as it is now. The first call starts watching Claude Code's files. */
@@ -146,9 +159,21 @@ export class SessionCatalog {
       worktree,
       // A running claude reports activity (a status change) before it reaches the history.
       lastActivity: Math.max(history?.lastActivity ?? 0, live?.updatedAt ?? 0),
-      state: live ? 'external' : 'past'
+      state: live ? 'external' : 'past',
+      wayfinder: history?.wayfinder ? await this.linkOf(project, history.wayfinder) : null
     }
     return { project, session }
+  }
+
+  /** A Session's link, read again once it is older than LINK_TTL_MS, so renamed Maps and Tickets show. */
+  private linkOf(project: string, args: string): Promise<WayfinderLink | null> {
+    const key = JSON.stringify([pathKey(project), args])
+    const cached = this.links.get(key)
+    if (cached && Date.now() - cached.at < LINK_TTL_MS) return cached.link
+    // A Tracker that cannot be read links nothing, until the next try.
+    const link = this.resolveLink(project, args).catch(() => null)
+    this.links.set(key, { at: Date.now(), link })
+    return link
   }
 
   private placeOf(folder: string): Promise<FolderPlace> {
@@ -223,7 +248,8 @@ function mergeHistories(a: HistorySummary | undefined, b: HistorySummary): Histo
     firstMessage: older.firstMessage ?? recent.firstMessage,
     customTitle: recent.customTitle ?? older.customTitle,
     aiTitle: recent.aiTitle ?? older.aiTitle,
-    lastActivity: recent.lastActivity
+    lastActivity: recent.lastActivity,
+    wayfinder: recent.wayfinder ?? older.wayfinder
   }
 }
 

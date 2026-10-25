@@ -420,3 +420,99 @@ body {
 .cf-row__sub .cf-chip {
   height: 18px;
 }
+
+/* Map follows the Session */
+.cf-row[aria-current="true"] {
+  background: var(--surface-overlay);
+}
+.cf-row[aria-current="true"] .cf-row__title {
+  color: var(--text);
+  font-weight: 500;
+}
+.explorer__wayfinder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-selector {
+  position: relative;
+  min-width: 0;
+}
+.map-selector__button {
+  max-width: 100%;
+  gap: 6px;
+  padding: 0 6px;
+  color: var(--text);
+  font: inherit;
+}
+.map-selector__menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: 320px;
+  padding: var(--space-1);
+  background: var(--surface-overlay);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+.map-selector__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-row);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+.map-selector__item:hover,
+.map-selector__item:focus-visible {
+  background: var(--surface-raised);
+}
+.map-selector__item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.map-selector__item[aria-checked="false"] .cf-icon {
+  visibility: hidden;
+}
+.map-selector__item[data-open="false"] span {
+  color: var(--text-muted);
+}
+/* A badge takes the third line of a compact Ticket's name. */
+.map-ticket:has(.cf-ticket__foot) {
+  gap: 2px;
+}
+.map-ticket:has(.cf-ticket__foot) .cf-ticket__name {
+  -webkit-line-clamp: 2;
+}
+.map-ticket .cf-ticket__foot {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+.map-ticket .cf-ticket__session {
+  /* React Flow lets clicks through nodes that are neither selectable nor draggable. */
+  pointer-events: auto;
+  min-width: 0;
+  border: 0;
+  font-family: inherit;
+}
+.map-ticket .cf-ticket__session span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-ticket .cf-ticket__session:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}

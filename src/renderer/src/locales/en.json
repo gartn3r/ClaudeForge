@@ -23,6 +23,10 @@
       "now": "now",
       "minutes": "{{n}} min",
       "hours": "{{n}} h"
+    },
+    "subtitle": {
+      "ticket": "Ticket · {{name}}",
+      "map": "Map · {{name}}"
     }
   },
   "extensions": {
@@ -91,7 +95,10 @@
     "noMap": "No Map in this Project",
     "unsupported": "This Project’s Tracker is not supported yet.",
     "unsupportedNamed": "This Project’s Tracker, {{name}}, is not supported yet.",
-    "loadError": "This Map could not be read. Check its map.md and Ticket files."
+    "loadError": "This Map could not be read. Check its map.md and Ticket files.",
+    "maps": "Maps",
+    "chooseMap": "Show another Map of this Project",
+    "switchToSession": "{{title}}: switch to this Session"
   },
   "firstRun": {
     "checkAgain": "Check again",

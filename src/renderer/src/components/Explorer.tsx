@@ -1,16 +1,21 @@
 import { ExternalLink, Folder, GitBranch, PanelLeftClose, PanelLeftOpen, Puzzle } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import { IconButton } from './IconButton'
 
 interface ExplorerProps {
+  /** The Session catalog; null until it first answers. */
+  projects: ProjectSessions[] | null
+  /** The Session shown in the centre, whose Map the Map panel follows. */
+  displayedSessionId: string | null
+  onDisplaySession(id: string): void
   onCollapse(): void
 }
 
 /** The Session catalog as the backend last pushed it; null until it first answers. */
-function useSessionCatalog(): ProjectSessions[] | null {
+export function useSessionCatalog(): ProjectSessions[] | null {
   const [projects, setProjects] = useState<ProjectSessions[] | null>(null)
   useEffect(() => {
     let active = true
@@ -37,9 +42,8 @@ function useNow(): number {
 }
 
 /** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
-export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
+export function Explorer({ projects, displayedSessionId, onDisplaySession, onCollapse }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
-  const projects = useSessionCatalog()
   const now = useNow()
   return (
     <>
@@ -52,7 +56,13 @@ export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
         {projects && projects.length > 0 && (
           <ul className="explorer__projects">
             {projects.map((project) => (
-              <ProjectGroup key={project.path} project={project} now={now} />
+              <ProjectGroup
+                key={project.path}
+                project={project}
+                now={now}
+                displayedSessionId={displayedSessionId}
+                onDisplaySession={onDisplaySession}
+              />
             ))}
           </ul>
         )}
@@ -62,7 +72,14 @@ export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
   )
 }
 
-function ProjectGroup({ project, now }: { project: ProjectSessions; now: number }): ReactNode {
+interface ProjectGroupProps {
+  project: ProjectSessions
+  now: number
+  displayedSessionId: string | null
+  onDisplaySession(id: string): void
+}
+
+function ProjectGroup({ project, now, displayedSessionId, onDisplaySession }: ProjectGroupProps): ReactNode {
   return (
     <li>
       <h3 className="cf-project" title={project.path}>
@@ -71,25 +88,53 @@ function ProjectGroup({ project, now }: { project: ProjectSessions; now: number 
       </h3>
       <ul className="cf-sessions" aria-label={project.name}>
         {project.sessions.map((session) => (
-          <SessionRow key={session.id} session={session} now={now} />
+          <SessionRow
+            key={session.id}
+            session={session}
+            now={now}
+            displayed={session.id === displayedSessionId}
+            onDisplay={() => onDisplaySession(session.id)}
+          />
         ))}
       </ul>
     </li>
   )
 }
 
-function SessionRow({ session, now }: { session: SessionSummary; now: number }): ReactNode {
+interface SessionRowProps {
+  session: SessionSummary
+  now: number
+  displayed: boolean
+  onDisplay(): void
+}
+
+function SessionRow({ session, now, displayed, onDisplay }: SessionRowProps): ReactNode {
   const { t, i18n } = useTranslation()
   const external = session.state === 'external'
   const title = session.title ?? t('explorer.untitled')
   // Rows never show ids: the tooltip carries the Session id under the title or the External notice.
   const tooltip = `${external ? t('explorer.openElsewhereTooltip') : title}\n${session.id}`
-  const hasSubtitle = external || session.worktree !== null
+  const link = session.wayfinder
+  const hasSubtitle = external || session.worktree !== null || link !== null
+  // An External session runs elsewhere: it cannot be displayed here.
+  const display = external
+    ? {}
+    : {
+        tabIndex: 0,
+        onClick: onDisplay,
+        onKeyDown: (event: KeyboardEvent) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          onDisplay()
+        }
+      }
   return (
     <li
       className={hasSubtitle ? 'cf-row cf-row--two' : 'cf-row'}
       title={tooltip}
       aria-disabled={external || undefined}
+      aria-current={displayed || undefined}
+      {...display}
     >
       {external ? (
         <span className="cf-status cf-status--external">
@@ -105,6 +150,13 @@ function SessionRow({ session, now }: { session: SessionSummary; now: number }):
         {hasSubtitle && (
           <span className="cf-row__sub">
             {external && <span>{t('explorer.openElsewhere')}</span>}
+            {link && (
+              <span className="explorer__wayfinder">
+                {link.ticket
+                  ? t('explorer.subtitle.ticket', { name: link.ticket.name })
+                  : t('explorer.subtitle.map', { name: link.mapName })}
+              </span>
+            )}
             {session.worktree && (
               <span className="cf-chip">
                 <GitBranch className="cf-icon cf-icon--sm" aria-hidden="true" />

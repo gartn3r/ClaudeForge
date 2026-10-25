@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppState, ClaudeCodeStatus, MapListing, PanelId } from '../../shared/api'
 import { api, onEvent } from './api'
-import { Explorer, ExplorerRail } from './components/Explorer'
+import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
 import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
 import { SidePanel } from './components/SidePanel'
@@ -12,11 +12,17 @@ import { TitleBar } from './components/TitleBar'
 interface AppProps {
   initialState: AppState
   initialClaudeCode: ClaudeCodeStatus
-  /** The displayed Project, whose Map the Map panel shows. */
+  /** The folder ClaudeForge started in: the displayed Project until a Session is displayed. */
   project: string
 }
 
-export function App({ initialState, initialClaudeCode, project }: AppProps): ReactNode {
+/** Whether two paths name the same folder; Windows paths ignore case and slash direction. */
+const samePath = (a: string, b: string): boolean => {
+  const key = (path: string): string => path.replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase()
+  return key(a) === key(b)
+}
+
+export function App({ initialState, initialClaudeCode, project: startProject }: AppProps): ReactNode {
   const { t } = useTranslation()
   // App state lives in the backend; the interface shows the last state it pushed.
   const [state, setState] = useState(initialState)
@@ -24,6 +30,15 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
   const [claudeCode, setClaudeCode] = useState(initialClaudeCode)
 
   useEffect(() => onEvent('appState.changed', setState), [])
+
+  // The displayed Session sets the displayed Project, whose Map the Map panel follows.
+  const catalog = useSessionCatalog()
+  const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
+  const displayed = catalog
+    ?.flatMap((group) => group.sessions.map((session) => ({ group, session })))
+    .find(({ session }) => session.id === displayedSessionId)
+  const project = displayed?.group.path ?? startProject
+  const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
     void api.appState.write({ layout: { [panel]: { collapsed } } })
@@ -69,7 +84,12 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
           rail={<ExplorerRail onExpand={collapseHandler('explorer', false)} />}
           onResizingChange={setResizing}
         >
-          <Explorer onCollapse={collapseHandler('explorer', true)} />
+          <Explorer
+            projects={catalog}
+            displayedSessionId={displayedSessionId}
+            onDisplaySession={setDisplayedSessionId}
+            onCollapse={collapseHandler('explorer', true)}
+          />
         </SidePanel>
         <TerminalArea />
         <SidePanel
@@ -81,7 +101,14 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
           rail={<MapRail onExpand={expandMap} />}
           onResizingChange={setResizing}
         >
-          <MapPanel project={project} listing={listing} onCollapse={collapseHandler('map', true)} />
+          <MapPanel
+            project={project}
+            listing={listing}
+            sessions={projectSessions}
+            displayedSession={displayed?.session ?? null}
+            onDisplaySession={setDisplayedSessionId}
+            onCollapse={collapseHandler('map', true)}
+          />
         </SidePanel>
       </div>
     </div>

@@ -23,6 +23,10 @@
       "now": "maintenant",
       "minutes": "{{n}} min",
       "hours": "{{n}} h"
+    },
+    "subtitle": {
+      "ticket": "Ticket · {{name}}",
+      "map": "Carte · {{name}}"
     }
   },
   "extensions": {
@@ -91,7 +95,10 @@
     "noMap": "Aucune Carte dans ce Projet",
     "unsupported": "Le Tracker de ce Projet n’est pas encore pris en charge.",
     "unsupportedNamed": "Le Tracker de ce Projet, {{name}}, n’est pas encore pris en charge.",
-    "loadError": "Cette Carte n’a pas pu être lue. Vérifiez son map.md et ses fichiers de Tickets."
+    "loadError": "Cette Carte n’a pas pu être lue. Vérifiez son map.md et ses fichiers de Tickets.",
+    "maps": "Cartes",
+    "chooseMap": "Afficher une autre Carte de ce Projet",
+    "switchToSession": "{{title}} : afficher cette Session"
   },
   "firstRun": {
     "checkAgain": "Vérifier à nouveau",
