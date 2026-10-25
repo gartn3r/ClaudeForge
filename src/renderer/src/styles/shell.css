@@ -1018,6 +1018,96 @@ dialog.cf-dialog::backdrop {
   margin-top: var(--space-1);
 }
 
+/* Tree view of the Map */
+.cf-panel-head .cf-seg {
+  flex: none;
+}
+.map-tree {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.map-tree__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+.map-tree__switch {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.map-tree__rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px 4px 6px 8px;
+  list-style: none;
+}
+/* Only the twisty and a Parent Ticket's name act; the row itself does not. */
+.map-tree__row {
+  cursor: default;
+}
+.map-tree__row--parent .cf-tree-name {
+  font-weight: 500;
+}
+.map-tree__twisty,
+.map-tree__open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.map-tree__twisty {
+  display: flex;
+  border-radius: var(--radius-sm);
+}
+/* Only the name opens it, so the rest of the row stays clear of the click. */
+.map-tree__row .map-tree__open {
+  flex: 0 1 auto;
+  margin-right: auto;
+  text-align: left;
+}
+.map-tree__open.cf-muted {
+  color: var(--text-muted);
+}
+.map-tree__open:hover {
+  text-decoration: underline;
+}
+.map-tree__twisty:focus-visible,
+.map-tree__open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.map-tree__state {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-faint);
+}
+.map-tree__state--closed {
+  color: var(--done);
+}
+.map-tree__meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+.map-tree__claim {
+  flex: none;
+  font-size: 11px;
+  color: var(--route);
+}
+.map-tree__claim .cf-dot {
+  background: var(--route);
+}
+
 /* Explorer: starting Sessions (the Project's "+", shown on hover and focus) */
 .explorer__projects .cf-project__name {
   margin: 0;
