@@ -79,10 +79,12 @@ export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
     renaming: tidying?.kind === 'rename' ? tidying.session.id : null,
     menuOpen: tidying?.kind === 'menu' ? tidying.session.id : null,
     openMenu: (session, at) => setTidying({ kind: 'menu', session, at }),
-    // The catalog pushes the new title once the backend has stored it.
+    // The catalog pushes the new title once the backend has stored it. An emptied field is sent
+    // too: it gives the Session back Claude Code's name.
     rename: (session, title) => {
       setTidying(null)
-      if (title !== null && title.trim() !== (session.title ?? '')) void api.sessions.rename(session.id, title)
+      const unchanged = title === null || title.trim() === (session.title ?? '')
+      if (!unchanged) void api.sessions.rename(session.id, title)
     }
   }
 
@@ -157,11 +159,14 @@ function ProjectGroup({ project, now, actions }: ProjectGroupProps): ReactNode {
             type="button"
             role="switch"
             aria-checked={showHidden}
+            aria-label={t('explorer.showHiddenIn', { project: project.name })}
             className="cf-toggle"
             onClick={() => setShowHidden(!showHidden)}
           />
-          {t('explorer.showHidden')}
-          <span className="cf-row__meta">{hiddenCount}</span>
+          <span aria-hidden="true">{t('explorer.showHidden')}</span>
+          <span className="cf-row__meta" aria-hidden="true">
+            {hiddenCount}
+          </span>
         </label>
       )}
     </li>
@@ -182,13 +187,12 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
   // Rows never show ids: the tooltip carries the Session id under the title or the External notice.
   const tooltip = `${external ? t('explorer.openElsewhereTooltip') : title}\n${session.id}`
   const hasSubtitle = external || session.worktree !== null
-  const classes = ['cf-row', hasSubtitle && 'cf-row--two', session.hidden && 'cf-row--hidden'].filter(Boolean)
+  const classes = ['cf-row', hasSubtitle && 'cf-row--two', session.hidden && 'explorer__row--hidden'].filter(Boolean)
   return (
     <li
       className={classes.join(' ')}
       title={renaming ? undefined : tooltip}
       aria-disabled={external || undefined}
-      data-hidden={session.hidden || undefined}
       onContextMenu={(event) => {
         if (renaming) return
         event.preventDefault()
@@ -226,7 +230,7 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
       {!renaming && (
         <button
           type="button"
-          className="cf-btn cf-btn--ghost cf-btn--icon cf-row__more"
+          className="cf-btn cf-btn--ghost cf-btn--icon explorer__row-actions"
           aria-label={t('explorer.sessionActions')}
           aria-haspopup="menu"
           aria-expanded={actions.menuOpen === session.id}
@@ -258,7 +262,7 @@ function RenameField({ session, onDone }: { session: SessionSummary; onDone(titl
   }
   return (
     <input
-      className="cf-row__input"
+      className="explorer__rename"
       aria-label={t('explorer.sessionName')}
       defaultValue={session.title ?? ''}
       placeholder={t('explorer.untitled')}

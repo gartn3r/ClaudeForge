@@ -77,6 +77,12 @@ export function createBackend(options: BackendOptions): Backend {
     return state
   }
 
+  /** Stores how the user tidied one Session, then pushes the catalog as it now looks. */
+  const tidySession = async (id: string, preferences: NonNullable<AppStatePatch['sessions']>[string]): Promise<void> => {
+    await writeAppState({ sessions: { [id]: preferences } })
+    await sessions.refresh()
+  }
+
   const api: BackendApi = {
     map: createMapService(),
     appState: {
@@ -85,17 +91,12 @@ export function createBackend(options: BackendOptions): Backend {
     },
     sessions: {
       list: () => sessions.list(),
-      rename: async (id, title) => {
-        await writeAppState({ sessions: { [id]: { title } } })
-        await sessions.refresh()
-      },
-      setHidden: async (id, hidden) => {
-        await writeAppState({ sessions: { [id]: { hidden } } })
-        await sessions.refresh()
-      },
+      rename: (id, title) => tidySession(id, { title }),
+      setHidden: (id, hidden) => tidySession(id, { hidden }),
       delete: async (id) => {
         try {
           const deletion = await sessions.delete(id, options.trashItem)
+          // Forgotten, so a Session restored from the Recycle Bin comes back as Claude Code left it.
           if (deletion.deleted) await writeAppState({ sessions: { [id]: null } })
           return deletion
         } finally {

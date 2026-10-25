@@ -12,6 +12,9 @@ import {
 
 export const STATE_FILE = 'state.json'
 
+/** The longest name the user can give a Session, as long as the titles Claude Code's history yields. */
+export const SESSION_TITLE_MAX_LENGTH = 200
+
 export function defaultAppState(): AppState {
   return {
     version: 1,
@@ -44,7 +47,7 @@ function mergeSession(base: SessionPreferences | undefined, patch: unknown): Ses
   if (typeof patch !== 'object') return base
   const { title, hidden } = patch as Record<string, unknown>
   const next: SessionPreferences = { ...base }
-  if (typeof title === 'string' && title.trim()) next.title = title.trim()
+  if (typeof title === 'string' && title.trim()) next.title = title.trim().slice(0, SESSION_TITLE_MAX_LENGTH)
   else if (title !== undefined) delete next.title
   if (hidden === true) next.hidden = true
   else if (hidden !== undefined) delete next.hidden

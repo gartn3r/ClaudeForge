@@ -71,9 +71,7 @@ export interface FakeEnvironment {
   systemLanguages: string[]
   /** Environment for anything spawned against the fake environment, ClaudeForge included. */
   processEnv: Record<string, string>
-  /** The folder standing in for the Windows Recycle Bin (`CLAUDEFORGE_RECYCLE_BIN`). */
-  recycleBin: string
-  /** Moves a file or folder into the fake Recycle Bin, as Windows would move it into the real one. */
+  /** Moves a file or folder into the fake Recycle Bin (`CLAUDEFORGE_RECYCLE_BIN`), as Windows would into the real one. */
   trashItem(path: string): Promise<void>
   /** The original paths of everything in the fake Recycle Bin, oldest first. */
   recycled(): Promise<string[]>
@@ -237,7 +235,6 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     liveSessions,
     systemLanguages,
     processEnv,
-    recycleBin,
     // ClaudeForge's own stand-in, the one the main process uses when CLAUDEFORGE_RECYCLE_BIN is set.
     trashItem: standInRecycleBin(recycleBin),
     recycled: () => standInContents(recycleBin),

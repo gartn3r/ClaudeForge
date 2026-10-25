@@ -425,7 +425,7 @@ body {
 .explorer__projects .cf-row {
   position: relative;
 }
-.cf-row__more {
+.explorer__row-actions {
   position: absolute;
   top: 2px;
   right: 2px;
@@ -434,17 +434,17 @@ body {
   background: var(--surface-raised);
   opacity: 0;
 }
-.cf-row:hover .cf-row__more,
-.cf-row:focus-within .cf-row__more,
-.cf-row__more[aria-expanded="true"] {
+.cf-row:hover .explorer__row-actions,
+.cf-row:focus-within .explorer__row-actions,
+.explorer__row-actions[aria-expanded="true"] {
   opacity: 1;
 }
-.cf-row--hidden .cf-row__title,
-.cf-row--hidden .cf-row__sub,
-.cf-row--hidden .cf-row__meta {
+.explorer__row--hidden .cf-row__title,
+.explorer__row--hidden .cf-row__sub,
+.explorer__row--hidden .cf-row__meta {
   color: var(--text-faint);
 }
-.cf-row__input {
+.explorer__rename {
   min-width: 0;
   height: 22px;
   margin: 1px 0;
@@ -469,7 +469,7 @@ body {
 .explorer__show-hidden .cf-row__meta {
   margin-left: auto;
 }
-.cf-menu {
+.menu {
   position: fixed;
   z-index: 100;
   display: flex;
@@ -477,7 +477,7 @@ body {
   min-width: 184px;
   padding: var(--space-1);
 }
-.cf-menu__item {
+.menu__item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -491,19 +491,19 @@ body {
   text-align: left;
   cursor: pointer;
 }
-.cf-menu__item:hover:not(:disabled),
-.cf-menu__item:focus-visible {
+.menu__item:hover:not(:disabled),
+.menu__item:focus-visible {
   background: var(--surface-raised);
   outline: none;
 }
-.cf-menu__item--danger {
+.menu__item--danger {
   color: var(--danger);
 }
-.cf-menu__item:disabled {
+.menu__item:disabled {
   color: var(--text-faint);
   cursor: default;
 }
-.cf-menu__separator {
+.menu__separator {
   height: 1px;
   margin: var(--space-1) 0;
   border: 0;

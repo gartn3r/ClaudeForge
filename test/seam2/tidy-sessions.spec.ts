@@ -20,6 +20,8 @@ const explorerOf = (window: Page): Locator => window.getByRole('complementary', 
 const harborSessions = (window: Page): Locator =>
   explorerOf(window).getByRole('list', { name: 'harbor-api' }).getByRole('listitem')
 const row = (window: Page, title: string): Locator => harborSessions(window).filter({ hasText: title })
+/** The design system's text-faint. */
+const FAINT = 'rgb(107, 122, 140)'
 
 test('renames a Session from its menu, and Escape leaves the name as it was', async () => {
   claudeforge = await launchClaudeForge(env)
@@ -48,7 +50,7 @@ test('renames a Session from its menu, and Escape leaves the name as it was', as
 test('hides a Session, shows hidden Sessions again on demand, and unhides one', async () => {
   claudeforge = await launchClaudeForge(env)
   const { window } = claudeforge
-  const showHidden = explorerOf(window).getByRole('switch', { name: 'Show hidden' })
+  const showHidden = explorerOf(window).getByRole('switch', { name: 'Show hidden Sessions of harbor-api' })
   await expect(showHidden).toBeHidden()
 
   await row(window, 'Add an OpenAPI export').click({ button: 'right' })
@@ -61,13 +63,14 @@ test('hides a Session, shows hidden Sessions again on demand, and unhides one', 
   await expect(showHidden).toHaveAttribute('aria-checked', 'true')
   await expect(harborSessions(window)).toHaveCount(3)
   const hidden = row(window, 'Add an OpenAPI export')
-  await expect(hidden).toHaveAttribute('data-hidden', 'true')
+  // Hidden Sessions show in the faint text colour.
+  await expect(hidden.getByText('Add an OpenAPI export')).toHaveCSS('color', FAINT)
 
   await hidden.click({ button: 'right' })
   await window.getByRole('menuitem', { name: 'Unhide' }).click()
 
   await expect(showHidden).toBeHidden()
-  await expect(row(window, 'Add an OpenAPI export')).not.toHaveAttribute('data-hidden')
+  await expect(row(window, 'Add an OpenAPI export').getByText('Add an OpenAPI export')).not.toHaveCSS('color', FAINT)
   await expect(harborSessions(window)).toHaveCount(3)
 })
 

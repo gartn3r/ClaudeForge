@@ -37,9 +37,11 @@ export function Menu({ label, at, items, onClose }: MenuProps): ReactNode {
   }, [at])
 
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus()
+    const menu = ref.current!
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    menu.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus()
     const closeOutside = (event: PointerEvent): void => {
-      if (!ref.current?.contains(event.target as Node)) onClose()
+      if (!menu.contains(event.target as Node)) onClose()
     }
     document.addEventListener('pointerdown', closeOutside, true)
     window.addEventListener('blur', onClose)
@@ -48,6 +50,9 @@ export function Menu({ label, at, items, onClose }: MenuProps): ReactNode {
       document.removeEventListener('pointerdown', closeOutside, true)
       window.removeEventListener('blur', onClose)
       window.removeEventListener('resize', onClose)
+      // Back to the button that opened it, unless an item moved focus on (into a field, a dialog).
+      const focused = document.activeElement
+      if (!focused || focused === document.body || menu.contains(focused)) opener?.focus()
     }
   }, [onClose])
 
@@ -70,18 +75,18 @@ export function Menu({ label, at, items, onClose }: MenuProps): ReactNode {
       ref={ref}
       role="menu"
       aria-label={label}
-      className="cf-popover cf-menu"
+      className="cf-popover menu"
       style={{ left: position.x, top: position.y }}
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
     >
       {items.map((item) => (
         <Fragment key={item.label}>
-          {item.separated && <hr className="cf-menu__separator" />}
+          {item.separated && <hr className="menu__separator" />}
           <button
             type="button"
             role="menuitem"
-            className={item.danger ? 'cf-menu__item cf-menu__item--danger' : 'cf-menu__item'}
+            className={item.danger ? 'menu__item menu__item--danger' : 'menu__item'}
             disabled={item.disabled}
             title={item.disabled ? item.disabledReason : undefined}
             onClick={() => {

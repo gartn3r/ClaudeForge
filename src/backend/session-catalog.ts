@@ -58,7 +58,7 @@ export class SessionCatalog {
   constructor(
     private readonly claudeHome: string,
     private readonly onChange: (projects: ProjectSessions[]) => void,
-    private readonly preferences: () => Promise<Record<string, SessionPreferences>> = async () => ({})
+    private readonly preferences: () => Promise<Record<string, SessionPreferences>>
   ) {}
 
   /** The catalog as it is now. The first call starts watching Claude Code's files. */

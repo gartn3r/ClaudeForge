@@ -65,6 +65,14 @@ describe('tidying the explorer', () => {
     })
   })
 
+  it('keeps a name no longer than the titles Claude Code yields', async () => {
+    const backend = start()
+
+    await backend.api.sessions.rename(OPENAPI_EXPORT, 'x'.repeat(500))
+
+    expect((await sessionOf(backend, OPENAPI_EXPORT))?.title).toHaveLength(200)
+  })
+
   describe('hide', () => {
     it('marks a Session hidden, across a restart, and unhides it', async () => {
       expect((await sessionOf(start(), OPENAPI_EXPORT))?.hidden).toBe(false)
@@ -104,10 +112,8 @@ describe('tidying the explorer', () => {
       expect(await sessionOf(backend, RATE_LIMITER)).toBeDefined()
     })
 
-    it('pushes the catalog without the Session, and forgets how the user tidied it', async () => {
+    it('pushes the catalog without the Session', async () => {
       const backend = start()
-      await backend.api.sessions.rename(OPENAPI_EXPORT, 'OpenAPI, for the partners')
-      await backend.api.sessions.setHidden(OPENAPI_EXPORT, true)
       const pushed: boolean[] = []
       backend.on('sessions.changed', (projects) =>
         pushed.push(projects.some((project) => project.sessions.some((session) => session.id === OPENAPI_EXPORT)))
@@ -116,7 +122,19 @@ describe('tidying the explorer', () => {
       await backend.api.sessions.delete(OPENAPI_EXPORT)
 
       expect(pushed).toEqual([false])
-      expect((await start().api.appState.read()).sessions).toEqual({})
+    })
+
+    it('forgets how the user tidied it, so restored from the Recycle Bin it comes back as Claude Code left it', async () => {
+      const backend = start()
+      await backend.api.sessions.rename(OPENAPI_EXPORT, 'OpenAPI, for the partners')
+      await backend.api.sessions.setHidden(OPENAPI_EXPORT, true)
+      const historyFile = join(historyFolder(env.projects['harbor-api']), `${OPENAPI_EXPORT}.jsonl`)
+      const history = await readFile(historyFile, 'utf8')
+
+      await backend.api.sessions.delete(OPENAPI_EXPORT)
+      await writeFile(historyFile, history)
+
+      expect(await sessionOf(start(), OPENAPI_EXPORT)).toMatchObject({ title: 'Add an OpenAPI export', hidden: false })
     })
 
     it('is refused for an External session, whose history stays where it is', async () => {

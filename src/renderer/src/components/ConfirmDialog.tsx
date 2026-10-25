@@ -10,8 +10,6 @@ interface ConfirmDialogProps {
   /** Named with the same verb as the title. */
   actionLabel: string
   actionIcon?: LucideIcon
-  /** Danger for what cannot be undone from inside ClaudeForge; focus then starts on Cancel. */
-  kind?: 'danger' | 'primary'
   /** Shown under the body when the action failed, leaving the dialog open. */
   error?: string | null
   /** While the action runs, both buttons wait. */
@@ -20,13 +18,15 @@ interface ConfirmDialogProps {
   onCancel(): void
 }
 
-/** Asks before anything that cannot be undone from inside ClaudeForge. Escape cancels. */
+/**
+ * Asks before anything that cannot be undone from inside ClaudeForge, with the action as a danger
+ * button. Focus starts on Cancel; Escape cancels, except while the action runs.
+ */
 export function ConfirmDialog({
   title,
   children,
   actionLabel,
   actionIcon: ActionIcon,
-  kind = 'danger',
   error,
   busy = false,
   onConfirm,
@@ -35,16 +35,15 @@ export function ConfirmDialog({
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
-  const action = useRef<HTMLButtonElement>(null)
   const titleId = useId()
   const bodyId = useId()
 
   useEffect(() => {
     const element = dialog.current!
     element.showModal()
-    ;(kind === 'danger' ? cancel : action).current?.focus()
+    cancel.current?.focus()
     return () => element.close()
-  }, [kind])
+  }, [])
 
   return (
     <dialog
@@ -74,13 +73,7 @@ export function ConfirmDialog({
         <button ref={cancel} type="button" className="cf-btn" disabled={busy} onClick={onCancel}>
           {t('dialog.cancel')}
         </button>
-        <button
-          ref={action}
-          type="button"
-          className={kind === 'danger' ? 'cf-btn cf-btn--danger' : 'cf-btn cf-btn--primary'}
-          disabled={busy}
-          onClick={onConfirm}
-        >
+        <button type="button" className="cf-btn cf-btn--danger" disabled={busy} onClick={onConfirm}>
           {ActionIcon && <ActionIcon className="cf-icon" aria-hidden="true" />}
           {actionLabel}
         </button>

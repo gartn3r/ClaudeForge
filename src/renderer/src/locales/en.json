@@ -30,6 +30,7 @@
     "hide": "Hide",
     "unhide": "Unhide",
     "showHidden": "Show hidden",
+    "showHiddenIn": "Show hidden Sessions of {{project}}",
     "delete": {
       "action": "Move to Recycle Bin",
       "title": "Move this Session to the Recycle Bin?",
