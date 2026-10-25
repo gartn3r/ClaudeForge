@@ -119,6 +119,30 @@ export interface WayfinderMap extends MapSummary {
   spentEdges: TicketEdge[]
 }
 
+/** Where a Session's `claude` process is: none (past) or outside ClaudeForge (External). */
+export type SessionState = 'past' | 'external'
+
+/** One Session, as the explorer lists it. */
+export interface SessionSummary {
+  id: string
+  /** Claude Code's name for the Session, else the start of its first message; null when it has neither yet. */
+  title: string | null
+  /** The folder the Session runs in: its Project, or one of the Project's git worktrees. */
+  cwd: string
+  /** The worktree's name when the Session runs in a git worktree of its Project. */
+  worktree: string | null
+  /** When the Session was last active, in milliseconds since the epoch. */
+  lastActivity: number
+  state: SessionState
+}
+
+/** A Project and its Sessions, the most recently active first. */
+export interface ProjectSessions {
+  path: string
+  name: string
+  sessions: SessionSummary[]
+}
+
 export interface BackendApi {
   map: {
     /** Detects the Project's Tracker and lists its Maps. */
@@ -128,6 +152,10 @@ export interface BackendApi {
   appState: {
     read(): Promise<AppState>
     write(patch: AppStatePatch): Promise<AppState>
+  }
+  sessions: {
+    /** Every Session on the machine, grouped by Project, the most recently active Project first. */
+    list(): Promise<ProjectSessions[]>
   }
   system: {
     info(): Promise<SystemInfo>
@@ -142,6 +170,8 @@ export interface BackendApi {
 
 export interface BackendEvents {
   'appState.changed': AppState
+  /** The whole Session catalog, after Claude Code's files changed it. */
+  'sessions.changed': ProjectSessions[]
   'window.maximizedChanged': { maximized: boolean }
 }
 
@@ -150,6 +180,7 @@ export type EventName = keyof BackendEvents
 // A record, so adding an event to BackendEvents without listing it here fails to compile.
 const EVENTS: Record<EventName, true> = {
   'appState.changed': true,
+  'sessions.changed': true,
   'window.maximizedChanged': true
 }
 

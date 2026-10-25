@@ -1,3 +1,4 @@
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, app, ipcMain } from 'electron'
 import { createBackend, type WindowHost } from '../backend'
@@ -11,6 +12,11 @@ function systemLanguages(): string[] {
   const override = process.env.CLAUDEFORGE_SYSTEM_LANGUAGES
   if (override) return override.split(',').map((tag) => tag.trim())
   return app.getPreferredSystemLanguages()
+}
+
+/** Where Claude Code keeps its history and live-session registry, as Claude Code itself decides. */
+function claudeHome(): string {
+  return process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 }
 
 function windowHost(win: BrowserWindow): WindowHost {
@@ -52,6 +58,7 @@ function createWindow(): void {
 
   const backend = createBackend({
     stateDir: app.getPath('userData'),
+    claudeHome: claudeHome(),
     systemLanguages: systemLanguages(),
     window: windowHost(win)
   })

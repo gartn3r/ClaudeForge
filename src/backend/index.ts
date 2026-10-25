@@ -7,6 +7,7 @@ import { AppStateStore } from './app-state'
 import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
+import { SessionCatalog } from './session-catalog'
 
 /** The window the interface runs in, as the backend sees it. */
 export interface WindowHost {
@@ -21,6 +22,8 @@ export interface WindowHost {
 export interface BackendOptions {
   /** ClaudeForge's own data folder, where app state is kept. */
   stateDir: string
+  /** The Claude Code home (`CLAUDE_CONFIG_DIR`, else `~/.claude`), whose Sessions the catalog lists. */
+  claudeHome: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
   /** The folder ClaudeForge was started in; defaults to the current directory. */
@@ -38,6 +41,7 @@ export interface Backend {
 export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
+  const sessions = new SessionCatalog(options.claudeHome, (projects) => events.emit('sessions.changed', projects))
   const language = resolveLanguage(options.systemLanguages)
   const startFolder = options.startFolder ?? process.cwd()
   const win = options.window
@@ -56,6 +60,9 @@ export function createBackend(options: BackendOptions): Backend {
         return state
       }
     },
+    sessions: {
+      list: () => sessions.list()
+    },
     system: {
       info: async () => ({ language, startFolder })
     },
@@ -72,6 +79,7 @@ export function createBackend(options: BackendOptions): Backend {
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
       unsubscribeWindow?.()
+      sessions.dispose()
       events.clear()
     }
   }
