@@ -189,10 +189,12 @@ function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapVie
     for (const session of sessions) {
       const link = session.wayfinder
       if (link?.mapId !== map.id || !link.ticket) continue
+      // A Session the user hid carries no badge, unless it is the one displayed.
+      if (session.hidden && session.id !== displayedSessionId) continue
       byTicket.set(link.ticket.id, [...(byTicket.get(link.ticket.id) ?? []), session])
     }
     return byTicket
-  }, [sessions, map.id])
+  }, [sessions, map.id, displayedSessionId])
 
   return (
     <>

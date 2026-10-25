@@ -32,6 +32,21 @@
     "subtitle": {
       "ticket": "Ticket · {{name}}",
       "map": "Carte · {{name}}"
+    },
+    "sessionActions": "Actions de la Session",
+    "sessionName": "Nom de la Session",
+    "rename": "Renommer",
+    "hide": "Masquer",
+    "unhide": "Afficher à nouveau",
+    "showHidden": "Afficher les masquées",
+    "showHiddenIn": "Afficher les Sessions masquées de {{project}}",
+    "delete": {
+      "action": "Mettre à la corbeille",
+      "title": "Mettre cette Session à la corbeille ?",
+      "body": "« {{title}} » et son historique quittent ClaudeForge et Claude Code. Vous pouvez les restaurer depuis la corbeille de Windows.",
+      "onlyPast": "Seule une Session terminée peut être mise à la corbeille.",
+      "gone": "Cette Session n’est plus dans l’historique de Claude Code.",
+      "failed": "ClaudeForge n’a pas pu mettre son historique à la corbeille. Fermez ce qui garde ses fichiers ouverts, puis réessayez."
     }
   },
   "extensions": {
@@ -129,5 +144,8 @@
       "choose": "Une version plus récente est installée ailleurs ? Choisissez vous-même <code>claude.exe</code>. ClaudeForge retient son emplacement.",
       "foundAt": "Trouvé dans"
     }
+  },
+  "dialog": {
+    "cancel": "Annuler"
   }
 }

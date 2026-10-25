@@ -29,6 +29,13 @@ export interface PanelLayout {
   collapsed: boolean
 }
 
+/** How the user tidied one Session in ClaudeForge; Claude Code's files never hold it. */
+export interface SessionPreferences {
+  /** The user's name for the Session, shown over Claude Code's. */
+  title?: string
+  hidden?: boolean
+}
+
 export interface AppState {
   version: 1
   layout: Record<PanelId, PanelLayout>
@@ -36,6 +43,8 @@ export interface AppState {
   claudePath: string | null
   /** Whether the terminal renders with WebGL; off falls back to the DOM renderer, for GPUs that garble text. */
   gpuRendering: boolean
+  /** By Session id; a Session the user never tidied has no entry. */
+  sessions: Record<string, SessionPreferences>
 }
 
 /** A partial update of the app state; nested objects merge. */
@@ -43,6 +52,8 @@ export interface AppStatePatch {
   layout?: Partial<Record<PanelId, Partial<PanelLayout>>>
   claudePath?: string | null
   gpuRendering?: boolean
+  /** By Session id: a null field drops that preference, a null entry every one of them. */
+  sessions?: Record<string, { title?: string | null; hidden?: boolean | null } | null>
 }
 
 export interface SystemInfo {
@@ -162,9 +173,16 @@ export interface SessionSummary {
   /** When the Session was last active, in milliseconds since the epoch. */
   lastActivity: number
   state: SessionState
+  /** Hidden by the user: the explorer lists it only when asked to show hidden Sessions. */
+  hidden: boolean
   /** What the Session works on, when its latest `/wayfinder` invocation names one of its Project's Maps. */
   wayfinder: WayfinderLink | null
 }
+
+/** What came of asking to delete a Session: only a past one can be, so nothing running is ever lost. */
+export type SessionDeletion =
+  | { deleted: true }
+  | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' }
 
 /** A Project and its Sessions, the most recently active first. */
 export interface ProjectSessions {
@@ -211,6 +229,12 @@ export interface BackendApi {
   sessions: {
     /** Every Session on the machine, grouped by Project, the most recently active Project first. */
     list(): Promise<ProjectSessions[]>
+    /** Names the Session in ClaudeForge only; an empty title gives it back Claude Code's name. */
+    rename(id: string, title: string): Promise<void>
+    /** Hides the Session from the explorer's list, or shows it again. */
+    setHidden(id: string, hidden: boolean): Promise<void>
+    /** Moves a past Session's history files to the Windows Recycle Bin; refused for any other. */
+    delete(id: string): Promise<SessionDeletion>
   }
   system: {
     info(): Promise<SystemInfo>

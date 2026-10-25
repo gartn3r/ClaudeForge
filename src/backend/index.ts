@@ -9,6 +9,7 @@ import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
 import { resolveWayfinderLink } from './maps/links'
+import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
 
@@ -37,6 +38,8 @@ export interface BackendOptions {
   window?: WindowHost
   /** Native dialogs; absent in Seam 1 tests unless one stands in for the user. */
   dialogs?: Dialogs
+  /** Moves a deleted Session's files to the Windows Recycle Bin. */
+  trashItem: TrashItem
 }
 
 /** The native dialogs the backend asks the user through. */
@@ -60,6 +63,7 @@ export function createBackend(options: BackendOptions): Backend {
   const sessions = new SessionCatalog(
     options.claudeHome,
     (projects) => events.emit('sessions.changed', projects),
+    async () => (await appState.read()).sessions,
     (project, args) => resolveWayfinderLink(maps, project, args)
   )
   const language = resolveLanguage(options.systemLanguages)
@@ -96,6 +100,12 @@ export function createBackend(options: BackendOptions): Backend {
     return state
   }
 
+  /** Stores how the user tidied one Session, then pushes the catalog as it now looks. */
+  const tidySession = async (id: string, preferences: NonNullable<AppStatePatch['sessions']>[string]): Promise<void> => {
+    await writeAppState({ sessions: { [id]: preferences } })
+    await sessions.refresh()
+  }
+
   const api: BackendApi = {
     sessionHost: {
       chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
@@ -110,7 +120,20 @@ export function createBackend(options: BackendOptions): Backend {
       write: writeAppState
     },
     sessions: {
-      list: () => sessions.list()
+      list: () => sessions.list(),
+      rename: (id, title) => tidySession(id, { title }),
+      setHidden: (id, hidden) => tidySession(id, { hidden }),
+      delete: async (id) => {
+        try {
+          const deletion = await sessions.delete(id, options.trashItem)
+          // Forgotten, so a Session restored from the Recycle Bin comes back as Claude Code left it.
+          if (deletion.deleted) await writeAppState({ sessions: { [id]: null } })
+          return deletion
+        } finally {
+          // Even a delete that failed midway (a file held open) may have moved some files.
+          await sessions.refresh()
+        }
+      }
     },
     system: {
       info: async () => ({ language, startFolder })

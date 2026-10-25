@@ -32,6 +32,21 @@
     "subtitle": {
       "ticket": "Ticket · {{name}}",
       "map": "Map · {{name}}"
+    },
+    "sessionActions": "Session actions",
+    "sessionName": "Session name",
+    "rename": "Rename",
+    "hide": "Hide",
+    "unhide": "Unhide",
+    "showHidden": "Show hidden",
+    "showHiddenIn": "Show hidden Sessions of {{project}}",
+    "delete": {
+      "action": "Move to Recycle Bin",
+      "title": "Move this Session to the Recycle Bin?",
+      "body": "\"{{title}}\" and its history leave ClaudeForge and Claude Code. You can restore them from the Windows Recycle Bin.",
+      "onlyPast": "Only a Session that has ended can be moved to the Recycle Bin.",
+      "gone": "This Session is no longer in Claude Code’s history.",
+      "failed": "ClaudeForge could not move its history to the Recycle Bin. Close anything that has its files open, then try again."
     }
   },
   "extensions": {
@@ -129,5 +144,8 @@
       "choose": "Have a newer one somewhere else? Choose <code>claude.exe</code> yourself. ClaudeForge remembers the location.",
       "foundAt": "Found at"
     }
+  },
+  "dialog": {
+    "cancel": "Cancel"
   }
 }
