@@ -34,12 +34,15 @@ export interface AppState {
   layout: Record<PanelId, PanelLayout>
   /** The `claude` the user chose, or null to look for it. */
   claudePath: string | null
+  /** Whether the terminal renders with WebGL; off falls back to the DOM renderer, for GPUs that garble text. */
+  gpuRendering: boolean
 }
 
 /** A partial update of the app state; nested objects merge. */
 export interface AppStatePatch {
   layout?: Partial<Record<PanelId, Partial<PanelLayout>>>
   claudePath?: string | null
+  gpuRendering?: boolean
 }
 
 export interface SystemInfo {
@@ -158,7 +161,32 @@ export interface ProjectSessions {
   sessions: SessionSummary[]
 }
 
+/** A terminal's size in character cells. */
+export interface TerminalSize {
+  cols: number
+  rows: number
+}
+
+/** A Hosted session as the Session host started it. */
+export interface HostedSession {
+  /** ClaudeForge's id for the Hosted session, not Claude Code's session id. */
+  id: string
+  /** The pseudoconsole behind the terminal, as xterm.js's `windowsPty` option takes it; null off Windows. */
+  windowsPty: { backend: 'conpty'; buildNumber: number } | null
+}
+
 export interface BackendApi {
+  sessionHost: {
+    /** Asks the user for a Project folder ("Open folder"); null when they cancel. */
+    chooseProject(): Promise<string | null>
+    /** Starts `claude`, with no extra options, in a Project; its output and exit arrive as events. */
+    start(project: string, size: TerminalSize): Promise<HostedSession>
+    /** Types into the Hosted session's terminal. */
+    write(id: string, data: string): Promise<void>
+    resize(id: string, size: TerminalSize): Promise<void>
+    /** Ends the Hosted session's `claude`; its exit event follows. */
+    stop(id: string): Promise<void>
+  }
   map: {
     /** Detects the Project's Tracker and lists its Maps. */
     list(project: string): Promise<MapListing>
@@ -190,6 +218,10 @@ export interface BackendApi {
 }
 
 export interface BackendEvents {
+  /** What a Hosted session's terminal printed. */
+  'sessionHost.output': { id: string; data: string }
+  /** A Hosted session's `claude` ended. */
+  'sessionHost.exit': { id: string; exitCode: number }
   'appState.changed': AppState
   /** The whole Session catalog, after Claude Code's files changed it. */
   'sessions.changed': ProjectSessions[]
@@ -200,6 +232,8 @@ export type EventName = keyof BackendEvents
 
 // A record, so adding an event to BackendEvents without listing it here fails to compile.
 const EVENTS: Record<EventName, true> = {
+  'sessionHost.output': true,
+  'sessionHost.exit': true,
   'appState.changed': true,
   'sessions.changed': true,
   'window.maximizedChanged': true

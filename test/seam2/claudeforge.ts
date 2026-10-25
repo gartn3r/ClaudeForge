@@ -32,3 +32,10 @@ export async function launchClaudeForge(
   await window.waitForFunction((width) => innerWidth === width, WINDOW_SIZE.width)
   return { app, window, close: () => app.close() }
 }
+
+/** Makes the next folder dialogs answer as if the user picked this folder. */
+export async function pickFolderInDialogs(app: ElectronApplication, folder: string): Promise<void> {
+  await app.evaluate(({ dialog }, folder) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] })
+  }, folder)
+}

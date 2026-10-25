@@ -51,7 +51,7 @@ test('speaks French when Windows is displayed in French', async () => {
   const { window } = claudeforge
 
   await expect(window.locator('html')).toHaveAttribute('lang', 'fr')
-  await expect(window.getByRole('main', { name: 'Terminal' })).toContainText('Démarrez une Session')
+  await expect(window.getByRole('main', { name: 'Terminal' })).toContainText('Ouvrez un dossier')
   await expect(window.getByRole('complementary', { name: 'Carte' })).toBeVisible()
   await expect(window.getByRole('button', { name: "Replier l'explorateur" })).toBeVisible()
   await expect(window.getByRole('button', { name: 'Fermer la fenêtre' })).toBeVisible()
