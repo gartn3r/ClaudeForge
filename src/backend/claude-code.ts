@@ -12,7 +12,7 @@ const VERSION_TIMEOUT_MS = 15_000
 export type Environment = Record<string, string | undefined>
 
 /** Reads an environment variable the way Windows does, whatever its case. */
-function envVar(env: Environment, name: string): string | undefined {
+export function envVar(env: Environment, name: string): string | undefined {
   const key = Object.keys(env).find((candidate) => candidate.toUpperCase() === name)
   return key === undefined ? undefined : env[key]
 }

@@ -18,7 +18,8 @@ export function defaultAppState(): AppState {
       explorer: { width: PANEL_BOUNDS.explorer.default, collapsed: false },
       map: { width: PANEL_BOUNDS.map.default, collapsed: false }
     },
-    claudePath: null
+    claudePath: null,
+    gpuRendering: true
   }
 }
 
@@ -38,7 +39,7 @@ function mergePanel(panel: PanelId, base: PanelLayout, patch: unknown): PanelLay
 
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -50,6 +51,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
     }
   }
   if (typeof claudePath === 'string' || claudePath === null) next = { ...next, claudePath }
+  if (typeof gpuRendering === 'boolean') next = { ...next, gpuRendering }
   return next
 }
 
