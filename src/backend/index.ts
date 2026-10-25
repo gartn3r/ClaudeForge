@@ -4,7 +4,7 @@
 
 import type { AppState, AppStatePatch, BackendApi, ClaudeCodeStatus, EventName } from '../shared/api'
 import { AppStateStore } from './app-state'
-import { locateClaudeCode as locate, type Environment } from './claude-code'
+import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 
@@ -53,8 +53,8 @@ export function createBackend(options: BackendOptions): Backend {
     events.emit('window.maximizedChanged', { maximized })
   )
 
-  const locateClaudeCode = async (): Promise<ClaudeCodeStatus> =>
-    locate({ env: options.env, userPath: (await appState.read()).claudePath })
+  const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> =>
+    locateClaudeCode({ env: options.env, userPath: (await appState.read()).claudePath })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {
     const state = await appState.write(patch)
@@ -71,11 +71,11 @@ export function createBackend(options: BackendOptions): Backend {
       info: async () => ({ language })
     },
     claudeCode: {
-      locate: locateClaudeCode,
+      locate: locateWithChosenPath,
       choose: async () => {
         const path = await options.dialogs?.chooseClaudeExecutable()
         if (path) await writeAppState({ claudePath: path })
-        return locateClaudeCode()
+        return locateWithChosenPath()
       }
     },
     window: {

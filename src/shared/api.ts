@@ -47,6 +47,9 @@ export interface SystemInfo {
   language: Language
 }
 
+/** Where the first-run screen sends the user to install or update Claude Code. */
+export const CLAUDE_CODE_INSTALLATION_GUIDE = 'https://code.claude.com/docs/en/setup'
+
 /** The oldest Claude Code ClaudeForge supports. */
 export const MINIMUM_CLAUDE_CODE_VERSION = '2.1.0'
 

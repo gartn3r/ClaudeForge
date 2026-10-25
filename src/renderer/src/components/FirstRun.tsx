@@ -1,17 +1,15 @@
 import { CircleAlert, CircleArrowUp, RotateCw } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { ClaudeCodeStatus } from '../../../shared/api'
+import { CLAUDE_CODE_INSTALLATION_GUIDE, type ClaudeCodeStatus } from '../../../shared/api'
 import { api } from '../api'
-
-const INSTALLATION_GUIDE = 'https://code.claude.com/docs/en/setup'
 
 /** Markup the translated sentences may use. */
 const RICH_TEXT = {
   code: <code className="cf-mono" />,
   strong: <strong />,
   // Opened in the default browser by the main process.
-  guide: <a href={INSTALLATION_GUIDE} target="_blank" rel="noreferrer" />
+  guide: <a href={CLAUDE_CODE_INSTALLATION_GUIDE} target="_blank" rel="noreferrer" />
 }
 
 /** Radii of the contour lines behind the screen, as in the design. */
@@ -25,6 +23,36 @@ const CONTOURS = [
 ] as const
 
 type Problem = Exclude<ClaudeCodeStatus, { state: 'found' }>
+
+type TFunction = ReturnType<typeof useTranslation>['t']
+
+/** Everything that differs between the missing and the outdated screen. */
+function contentFor(problem: Problem, t: TFunction) {
+  switch (problem.state) {
+    case 'missing':
+      return {
+        status: 'error',
+        icon: CircleAlert,
+        label: t('firstRun.missing.status'),
+        title: t('firstRun.missing.title'),
+        lead: <Trans i18nKey="firstRun.missing.lead" components={RICH_TEXT} />,
+        steps: ['firstRun.missing.install', 'firstRun.missing.checkAgain', 'firstRun.missing.choose'] as const,
+        whereLabel: t('firstRun.missing.lookedIn'),
+        where: problem.lookedIn.join(' · ')
+      }
+    case 'outdated':
+      return {
+        status: 'waiting',
+        icon: CircleArrowUp,
+        label: t('firstRun.outdated.status'),
+        title: t('firstRun.outdated.title', { version: problem.version }),
+        lead: t('firstRun.outdated.lead', { minimumVersion: problem.minimumVersion }),
+        steps: ['firstRun.outdated.update', 'firstRun.outdated.checkAgain', 'firstRun.outdated.choose'] as const,
+        whereLabel: t('firstRun.outdated.foundAt'),
+        where: problem.path
+      }
+  }
+}
 
 interface FirstRunProps {
   problem: Problem
@@ -46,10 +74,8 @@ export function FirstRun({ problem, onStatus }: FirstRunProps): ReactNode {
     }
   }
 
-  const missing = problem.state === 'missing'
-  const steps = missing
-    ? ['firstRun.missing.install', 'firstRun.missing.checkAgain', 'firstRun.missing.choose']
-    : ['firstRun.outdated.update', 'firstRun.outdated.checkAgain', 'firstRun.outdated.choose']
+  const content = contentFor(problem, t)
+  const Icon = content.icon
 
   return (
     <main className="first-run" aria-labelledby="first-run-title">
@@ -60,37 +86,22 @@ export function FirstRun({ problem, onStatus }: FirstRunProps): ReactNode {
       </svg>
       <div className="first-run__content">
         <div className="first-run__intro">
-          {missing ? (
-            <span className="cf-status cf-status--error cf-pill">
-              <CircleAlert className="cf-icon cf-icon--sm" aria-hidden="true" />
-              {t('firstRun.missing.status')}
-            </span>
-          ) : (
-            <span className="cf-status cf-status--waiting cf-pill">
-              <CircleArrowUp className="cf-icon cf-icon--sm" aria-hidden="true" />
-              {t('firstRun.outdated.status')}
-            </span>
-          )}
-          <h1 id="first-run-title">
-            {missing ? t('firstRun.missing.title') : t('firstRun.outdated.title', { version: problem.version })}
-          </h1>
-          <p className="cf-muted">
-            {missing ? (
-              <Trans i18nKey="firstRun.missing.lead" components={RICH_TEXT} />
-            ) : (
-              t('firstRun.outdated.lead', { minimumVersion: problem.minimumVersion })
-            )}
-          </p>
+          <span className={`cf-status cf-status--${content.status} cf-pill`}>
+            <Icon className="cf-icon cf-icon--sm" aria-hidden="true" />
+            {content.label}
+          </span>
+          <h1 id="first-run-title">{content.title}</h1>
+          <p className="cf-muted">{content.lead}</p>
         </div>
 
         <ol className="first-run__steps">
-          {steps.map((key, i) => (
+          {content.steps.map((key, i) => (
             <li key={key}>
               <span className="first-run__step-number" aria-hidden="true">
                 {i + 1}
               </span>
               <span>
-                <Trans i18nKey={key as 'firstRun.missing.install'} components={RICH_TEXT} />
+                <Trans i18nKey={key} components={RICH_TEXT} />
               </span>
             </li>
           ))}
@@ -112,8 +123,8 @@ export function FirstRun({ problem, onStatus }: FirstRunProps): ReactNode {
         </div>
 
         <div className="first-run__where">
-          <span className="cf-eyebrow">{missing ? t('firstRun.missing.lookedIn') : t('firstRun.outdated.foundAt')}</span>
-          <code className="cf-mono cf-muted">{missing ? problem.lookedIn.join(' · ') : problem.path}</code>
+          <span className="cf-eyebrow">{content.whereLabel}</span>
+          <code className="cf-mono cf-muted">{content.where}</code>
         </div>
       </div>
     </main>
