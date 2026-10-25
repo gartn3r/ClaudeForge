@@ -56,6 +56,7 @@ test('runs two Sessions in tabs, and switching between them keeps what each prin
 
   await newSession(window)
   await send(window, 'first')
+  await send(window, '/work 1500')
   await newSession(window)
   await expect(shownTerminal(window)).toContainText('Fake Claude Code')
   await send(window, 'second')
@@ -65,10 +66,13 @@ test('runs two Sessions in tabs, and switching between them keeps what each prin
   const second = window.getByRole('tab', { name: 'second' })
   await expect(second).toHaveAttribute('aria-selected', 'true')
   await expect(shownTerminal(window)).not.toContainText('first')
+  // The first Session finishes its turn in the background.
+  await expect(first).toHaveAccessibleDescription('Done', { timeout: 15_000 })
 
   await first.click()
   await expect(first).toHaveAttribute('aria-selected', 'true')
   await expect(shownTerminal(window)).toContainText('You wrote: "first"')
+  await expect(shownTerminal(window)).toContainText('Done.')
   await expect(shownTerminal(window)).not.toContainText('second')
   await send(window, 'again')
 
@@ -81,30 +85,38 @@ test('runs two Sessions in tabs, and switching between them keeps what each prin
   expect((await sessionRuns()).map(({ cwd }) => cwd)).toEqual([project, project])
 })
 
-test('gives only the terminal on show a WebGL renderer', async () => {
+test('gives only the terminal on show a WebGL renderer, and keeps it through many switches', async () => {
   const window = await launch({ gpuRendering: true })
   const hasWebgl = await window.evaluate(() => document.createElement('canvas').getContext('webgl2') !== null)
   test.skip(!hasWebgl, 'This machine has no WebGL2.')
-  // The canvases holding a WebGL context, in the terminal on show and in the hidden ones.
-  const webglCanvases = () =>
+  // The live WebGL contexts, in the terminal on show and in the hidden ones.
+  const webglContexts = () =>
     window.evaluate(() => {
       // A canvas that holds a WebGL context has no 2D context to give.
       const count = (panels: string): number =>
         [...document.querySelectorAll<HTMLCanvasElement>(`${panels} canvas`)].filter(
-          (canvas) => canvas.getContext('2d') === null
+          (canvas) => canvas.getContext('2d') === null && !canvas.getContext('webgl2')?.isContextLost()
         ).length
       return { onShow: count('[role="tabpanel"]:not([hidden])'), hidden: count('[role="tabpanel"][hidden]') }
     })
+  const show = async (tab: Locator): Promise<void> => {
+    await tab.click()
+    await expect(tab).toHaveAttribute('aria-selected', 'true')
+    await expect.poll(async () => (await webglContexts()).onShow).toBeGreaterThan(0)
+    expect((await webglContexts()).hidden).toBe(0)
+  }
 
   await newSession(window)
   await newSession(window)
-  await expect.poll(webglCanvases).toEqual({ onShow: expect.any(Number), hidden: 0 })
-  expect((await webglCanvases()).onShow).toBeGreaterThan(0)
+  const [first, second] = [window.getByRole('tab').first(), window.getByRole('tab').last()]
+  await show(second)
+  await show(first)
 
-  await window.getByRole('tab').first().click()
-  await expect(window.getByRole('tab').first()).toHaveAttribute('aria-selected', 'true')
-  await expect.poll(async () => (await webglCanvases()).onShow).toBeGreaterThan(0)
-  expect((await webglCanvases()).hidden).toBe(0)
+  // More switches than Chromium keeps WebGL contexts alive for one page.
+  for (let i = 0; i < 10; i++) {
+    await show(second)
+    await show(first)
+  }
 })
 
 /** The names of the processes ClaudeForge's main process started, as Windows lists them. */

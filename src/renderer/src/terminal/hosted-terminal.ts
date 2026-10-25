@@ -53,11 +53,12 @@ export class HostedTerminal {
   private readonly terminal: Terminal
   private readonly fit = new FitAddon()
   private webgl: WebglAddon | undefined
+  /** The canvases the WebGL addon draws on, each holding one WebGL context. */
+  private webglCanvases: HTMLCanvasElement[] = []
   private session: HostedSession | undefined
   /** Events that arrived before the Session host said which Hosted session is this one. */
   private eventsBeforeStart: Array<{ id: string; apply(): void }> = []
   private ended: SessionEnd | undefined
-  private readonly endListeners = new Set<(end: SessionEnd) => void>()
   private readonly changeListeners = new Set<() => void>()
   private currentStatus: HostedSessionStatus = 'idle'
   private currentTitle: string | null = null
@@ -174,13 +175,6 @@ export class HostedTerminal {
     return this.ended
   }
 
-  /** Calls back once the Hosted session has ended, at once if it already has; returns an unsubscribe. */
-  onEnd(listener: (end: SessionEnd) => void): () => void {
-    if (this.ended) listener(this.ended)
-    else this.endListeners.add(listener)
-    return () => this.endListeners.delete(listener)
-  }
-
   /** Calls back whenever its status, title or end changes; returns an unsubscribe. */
   onChange(listener: () => void): () => void {
     this.changeListeners.add(listener)
@@ -238,8 +232,6 @@ export class HostedTerminal {
 
   private finish(end: SessionEnd): void {
     this.ended = end
-    for (const listener of this.endListeners) listener(end)
-    this.endListeners.clear()
     this.changed()
   }
 
@@ -260,8 +252,11 @@ export class HostedTerminal {
       const webgl = new WebglAddon()
       // A lost context (driver reset, too many contexts) falls back to the DOM renderer.
       webgl.onContextLoss(() => this.unloadWebgl())
+      const canvases = (): HTMLCanvasElement[] => [...this.terminal.element!.querySelectorAll('canvas')]
+      const before = new Set(canvases())
       this.terminal.loadAddon(webgl)
       this.webgl = webgl
+      this.webglCanvases = canvases().filter((canvas) => !before.has(canvas))
     } catch {
       // No WebGL2 here: the DOM renderer stays.
     }
@@ -273,7 +268,7 @@ export class HostedTerminal {
     this.webgl = undefined
     // Disposing the addon leaves its WebGL context alive until garbage collection, and past
     // Chromium's cap a live terminal loses its renderer (xterm.js#6068), so let go of it now.
-    for (const canvas of this.terminal.element?.querySelectorAll('canvas') ?? []) {
+    for (const canvas of this.webglCanvases.splice(0)) {
       canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext()
     }
     webgl.dispose()

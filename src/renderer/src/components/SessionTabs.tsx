@@ -8,7 +8,7 @@ interface SessionTabsProps {
   tabs: HostedTab[]
   activeKey: string | null
   onSelect(key: string): void
-  /** Stops the tab's `claude` and drops the tab; asked only once the user agreed when it works. */
+  /** Stops the Hosted session's `claude` and drops its tab; for a working one, only once the user agreed. */
   onClose(key: string): void
   /** Starts a Session in the current Project. */
   onNew(): void
@@ -21,38 +21,26 @@ export const panelId = (key: string): string => `session-panel-${key}`
 /** The last part of a Project's path: a tab's name until Claude Code names its terminal. */
 const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
 
+/** What a tab's glyph shows: the Hosted session's status, or that its `claude` has ended. */
 type TabState = HostedTab['status'] | 'ended'
 
-function StatusGlyph({ state }: { state: TabState }): ReactNode {
-  switch (state) {
-    case 'working':
-      return (
-        <span className="cf-status cf-status--working">
-          <span className="cf-dot" />
-        </span>
-      )
-    case 'done':
-      return (
-        <span className="cf-status cf-status--done">
-          <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
-        </span>
-      )
-    case 'ended':
-      return (
-        <span className="cf-status cf-status--dormant">
-          <span className="cf-dot" />
-        </span>
-      )
-    case 'idle':
-      return (
-        <span className="cf-status">
-          <span className="cf-dot" />
-        </span>
-      )
-  }
+/** Each state's StatusBadge modifier; done shows a check, the others a dot. */
+const STATUS_CLASS: Record<TabState, string> = {
+  idle: 'cf-status',
+  working: 'cf-status cf-status--working',
+  done: 'cf-status cf-status--done',
+  ended: 'cf-status cf-status--dormant'
 }
 
-/** The Hosted session tabs in the title bar, per the TerminalTabs component, and the "+" after them. */
+function StatusGlyph({ state }: { state: TabState }): ReactNode {
+  return (
+    <span className={STATUS_CLASS[state]}>
+      {state === 'done' ? <Check className="cf-icon cf-icon--sm" aria-hidden="true" /> : <span className="cf-dot" />}
+    </span>
+  )
+}
+
+/** The Hosted session tabs in the title bar, per the design system's TerminalTabs, and the "+" after them. */
 export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: SessionTabsProps): ReactNode {
   const { t } = useTranslation()
   // The working Session whose tab the user asked to close.
@@ -89,7 +77,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
           const active = tab.key === activeKey
           const title = tab.title ?? folderName(tab.project)
           const state: TabState = tab.end ? 'ended' : tab.status
-          const word = t(`tabs.status.${state}`)
+          const statusLabel = t(`tabs.status.${state}`)
           return (
             <div
               key={tab.key}
@@ -101,7 +89,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
               aria-labelledby={`${tabId(tab.key)}-title`}
               aria-describedby={`${tabId(tab.key)}-status`}
               tabIndex={active ? 0 : -1}
-              title={`${title} · ${word}`}
+              title={`${title} · ${statusLabel}`}
               onClick={() => onSelect(tab.key)}
               // A middle click closes the tab, as in a browser.
               onAuxClick={(event) => event.button === 1 && close(tab)}
@@ -109,7 +97,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
             >
               <StatusGlyph state={state} />
               <span hidden id={`${tabId(tab.key)}-status`}>
-                {word}
+                {statusLabel}
               </span>
               <span className="cf-tab__title" id={`${tabId(tab.key)}-title`}>
                 {title}

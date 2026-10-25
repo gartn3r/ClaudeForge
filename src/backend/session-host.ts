@@ -26,15 +26,19 @@ function withVariables(env: Environment, variables: Environment): Environment {
 
 /** Output this soon after the user typed or the terminal resized is `claude` redrawing its screen, not working. */
 const REDRAW_MS = 250
-/** How long `claude` must stay quiet after working before its turn counts as done. */
+/** How long `claude` must stay quiet, after the user sent a prompt or after working, before its turn counts as over. */
 const QUIET_MS = 1500
 
 /** One running `claude`, with what its output says it is doing. */
-interface Hosted {
+interface HostedProcess {
+  id: string
   pty: IPty
   status: HostedSessionStatus
-  /** When the user last typed into it or resized it, in ms since the epoch; null before the user first typed. */
-  touchedAt: number | null
+  /** When the user last typed into it or resized it, in ms since the epoch. */
+  touchedAt: number
+  /** Whether the user sent a prompt (Enter) and `claude` has not fallen quiet since: only then can it work. */
+  inTurn: boolean
+  /** Ends the turn once `claude` stays quiet. */
   quietTimer?: ReturnType<typeof setTimeout>
 }
 
@@ -58,12 +62,13 @@ export interface SessionHostOptions {
  * in the one process that hosts the backend.
  *
  * Until Claude Code's own status signals are read, a Hosted session counts as
- * working while `claude` keeps printing on its own after the user sent it
- * something: Claude Code redraws its spinner many times a second through a
- * turn, and prints nothing while it waits at its prompt.
+ * working while `claude` keeps printing on its own after the user sent it a
+ * prompt: Claude Code redraws its spinner many times a second through a turn,
+ * and prints nothing while it waits at its prompt. Typing alone, and the
+ * replies xterm.js sends to the terminal's own queries, start no turn.
  */
 export class SessionHost {
-  private readonly sessions = new Map<string, Hosted>()
+  private readonly sessions = new Map<string, HostedProcess>()
 
   constructor(private readonly options: SessionHostOptions) {}
 
@@ -77,11 +82,11 @@ export class SessionHost {
       : spawn(claude, [], ptyOptions)
 
     const id = randomUUID()
-    const session: Hosted = { pty, status: 'idle', touchedAt: null }
+    const session: HostedProcess = { id, pty, status: 'idle', touchedAt: 0, inTurn: false }
     this.sessions.set(id, session)
     pty.onData((data) => {
       this.options.onOutput(id, data)
-      this.noteOutput(id, session)
+      this.noteOutput(session)
     })
     pty.onExit(({ exitCode }) => {
       clearTimeout(session.quietTimer)
@@ -97,14 +102,18 @@ export class SessionHost {
     const session = this.sessions.get(id)
     if (!session) return
     session.touchedAt = Date.now()
+    // Enter sends the prompt; it is the only way a turn starts.
+    if (data.includes('\r')) {
+      session.inTurn = true
+      this.waitForQuiet(session)
+    }
     session.pty.write(data)
   }
 
   resize(id: string, { cols, rows }: TerminalSize): void {
     const session = this.sessions.get(id)
     if (!session) return
-    // Before the user first typed, a resize is no reason to look for work.
-    if (session.touchedAt !== null) session.touchedAt = Date.now()
+    session.touchedAt = Date.now()
     session.pty.resize(cols, rows)
   }
 
@@ -121,16 +130,24 @@ export class SessionHost {
     this.sessions.clear()
   }
 
-  /** Output `claude` printed on its own, not long after the user typed, means it works until it falls quiet. */
-  private noteOutput(id: string, session: Hosted): void {
-    if (session.touchedAt === null || Date.now() - session.touchedAt < REDRAW_MS) return
-    if (session.status !== 'working') this.setStatus(id, session, 'working')
-    clearTimeout(session.quietTimer)
-    session.quietTimer = setTimeout(() => this.setStatus(id, session, 'done'), QUIET_MS)
+  /** Output `claude` prints on its own in a turn, not just after the user typed, means it works until it falls quiet. */
+  private noteOutput(session: HostedProcess): void {
+    if (!session.inTurn || Date.now() - session.touchedAt < REDRAW_MS) return
+    if (session.status !== 'working') this.setStatus(session, 'working')
+    this.waitForQuiet(session)
   }
 
-  private setStatus(id: string, session: Hosted, status: HostedSessionStatus): void {
+  /** Ends the turn once `claude` stays quiet for a while: done if it worked, as it was if it never did. */
+  private waitForQuiet(session: HostedProcess): void {
+    clearTimeout(session.quietTimer)
+    session.quietTimer = setTimeout(() => {
+      session.inTurn = false
+      if (session.status === 'working') this.setStatus(session, 'done')
+    }, QUIET_MS)
+  }
+
+  private setStatus(session: HostedProcess, status: HostedSessionStatus): void {
     session.status = status
-    this.options.onStatus(id, status)
+    this.options.onStatus(session.id, status)
   }
 }

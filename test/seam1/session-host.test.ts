@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
+import type { HostedSessionStatus } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions, type FixtureProject } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -33,7 +34,7 @@ describe('the Session host', () => {
   /** The exit events of the Hosted sessions, oldest first. */
   let exits: Array<{ id: string; exitCode: number }>
   /** The status events of the Hosted sessions, oldest first. */
-  let statusEvents: Array<{ id: string; status: string }>
+  let statusEvents: Array<{ id: string; status: HostedSessionStatus }>
 
   afterEach(async () => {
     backend?.dispose()
@@ -53,7 +54,7 @@ describe('the Session host', () => {
   }
 
   /** The statuses a Hosted session went through, oldest first. */
-  const statuses = (id: string): string[] => statusEvents.filter((event) => event.id === id).map(({ status }) => status)
+  const statuses = (id: string): HostedSessionStatus[] => statusEvents.filter((event) => event.id === id).map(({ status }) => status)
 
   /** What a Hosted session has printed so far, as plain text. */
   const output = (id: string): string => plain(outputs.get(id) ?? '')
