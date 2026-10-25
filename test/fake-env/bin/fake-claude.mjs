@@ -59,19 +59,51 @@ if (args[0] === 'plugin' && args[1] === 'list' && args.includes('--json')) {
 
 // Interactive: a stand-in for Claude Code's prompt. Like Claude Code it reads its terminal in raw
 // mode, so Enter (\r) submits and Ctrl+J (\n) inserts a newline. It reports its terminal's size at
-// start and on every resize, echoes each submitted prompt, and exits on `/exit`.
+// start and on every resize, echoes each submitted prompt, and exits on `/exit`. Like Claude Code it
+// names its terminal after the first prompt (`✳ <prompt>`). `/work <ms>` stands in for a turn: a
+// spinner redrawn every 100 ms for that long, then `Done.`; any key interrupts it.
 const write = (text) => process.stdout.write(text)
 const size = () => `${process.stdout.columns}x${process.stdout.rows}`
 let prompt = ''
+let named = false
+/** Ends the running `/work` turn, while there is one. */
+let endTurn
+
+const SPINNER = ['·', '✢', '✳', '✶', '✻', '✽']
+
+function work(ms) {
+  let frame = 0
+  const spinner = setInterval(() => write(`\r${SPINNER[frame++ % SPINNER.length]} Working… ${frame}`), 100)
+  const timer = setTimeout(() => endTurn(), ms)
+  endTurn = () => {
+    clearInterval(spinner)
+    clearTimeout(timer)
+    endTurn = undefined
+    write('\r\nDone.\r\n> ')
+  }
+}
+
+function submit() {
+  if (prompt === '/exit') process.exit(0)
+  if (!named && prompt) {
+    named = true
+    write(`\x1b]0;✳ ${prompt}\x07`)
+  }
+  write(`\r\nYou wrote: ${JSON.stringify(prompt)}\r\n`)
+  const ms = /^\/work (\d+)$/.exec(prompt)?.[1]
+  prompt = ''
+  if (ms) work(Number(ms))
+  else write('> ')
+}
 
 process.stdin.setRawMode?.(true)
 process.stdin.setEncoding('utf8')
 process.stdin.on('data', (chunk) => {
   for (const key of chunk) {
-    if (key === '\r') {
-      if (prompt === '/exit') process.exit(0)
-      write(`\r\nYou wrote: ${JSON.stringify(prompt)}\r\n> `)
-      prompt = ''
+    if (endTurn) {
+      endTurn()
+    } else if (key === '\r') {
+      submit()
     } else if (key === '\n') {
       prompt += '\n'
       write('\r\n  ')

@@ -47,11 +47,39 @@ body {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.titlebar .cf-tabs {
+/* Hosted session tabs: the tab strip shrinks its tabs before the "+" leaves the bar. */
+.session-tabs {
+  display: flex;
+  align-items: flex-end;
   flex: 1;
   min-width: 0;
+  height: var(--size-titlebar);
+}
+.titlebar .cf-tabs {
+  min-width: 0;
+  overflow: hidden;
   border-bottom: 0;
   padding: 0;
+}
+.titlebar .cf-tab {
+  flex: 0 1 auto;
+  min-width: 72px;
+  -webkit-app-region: no-drag;
+}
+/* The close button shows on hover and on the active tab; it stays clickable, so a pointer finds it. */
+.cf-tab .cf-btn--icon {
+  flex: none;
+  opacity: 0;
+}
+.cf-tab:hover .cf-btn--icon,
+.cf-tab[aria-selected='true'] .cf-btn--icon,
+.cf-tab .cf-btn--icon:focus-visible {
+  opacity: 1;
+}
+.session-tabs__new {
+  align-self: center;
+  flex: none;
+  margin-left: var(--space-1);
 }
 .wincontrols {
   display: flex;

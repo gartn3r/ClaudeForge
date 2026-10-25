@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 // page.evaluate callbacks run in the window, so this file needs the DOM types.
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFakeEnvironment, type FakeEnvironment, type Invocation } from '../fake-env'
-import { launchClaudeForge, pickFolderInDialogs, type RunningClaudeForge } from './claudeforge'
+import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { launchClaudeForge, pickFolderInDialogs, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -18,10 +18,6 @@ test.afterEach(async () => {
 })
 
 const terminalOf = (window: Page): Locator => window.getByRole('main', { name: 'Terminal' })
-
-/** The runs of `claude` that started a Session, leaving out the version check and the Extension listings. */
-const sessionRuns = async (): Promise<Invocation[]> =>
-  (await env.invocations('claude')).filter(({ args }) => !['--version', 'mcp', 'plugin'].includes(args[0]!))
 
 /** Turns GPU rendering off, so the terminal draws its text into the page, where a test can read it. */
 async function turnOffGpuRendering(window: Page): Promise<void> {
@@ -49,7 +45,7 @@ test('opens a folder, runs Claude Code there and takes what the user types', asy
   await window.keyboard.press('Enter')
 
   await expect(terminalOf(window)).toContainText('You wrote: "hello"')
-  const runs = await sessionRuns()
+  const runs = await sessionRuns(env)
   expect(runs.map(({ args, cwd }) => ({ args, cwd }))).toEqual([{ args: [], cwd: env.projects['harbor-api'] }])
 })
 
@@ -93,7 +89,7 @@ test('draws the terminal with WebGL where the machine has it, and with the DOM r
   const cellsOnCanvas = terminal.locator('canvas')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
   await window.getByRole('button', { name: 'Open folder' }).click()
-  await expect.poll(async () => (await sessionRuns()).length).toBe(1)
+  await expect.poll(async () => (await sessionRuns(env)).length).toBe(1)
 
   const hasWebgl = await window.evaluate(() => document.createElement('canvas').getContext('webgl2') !== null)
   if (hasWebgl) {

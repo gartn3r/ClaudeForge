@@ -1,6 +1,10 @@
 import { resolve } from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
-import type { FakeEnvironment, FixtureProject } from '../fake-env'
+import type { FakeEnvironment, FixtureProject, Invocation } from '../fake-env'
+
+/** The runs of the fake `claude` that started a Session: not the locator's version checks, nor the Extension listings. */
+export const sessionRuns = async (env: FakeEnvironment): Promise<Invocation[]> =>
+  (await env.invocations('claude')).filter(({ args }) => !['--version', 'mcp', 'plugin'].includes(args[0]!))
 
 const MAIN = resolve(__dirname, '../../out/main/index.js')
 

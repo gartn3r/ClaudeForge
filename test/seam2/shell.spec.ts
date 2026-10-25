@@ -22,8 +22,9 @@ test('opens on the title bar and the three columns, with the Extensions bar unde
   const { window } = claudeforge
 
   await expect(window.getByRole('banner')).toContainText('ClaudeForge')
-  await expect(window.getByRole('tablist', { name: 'Hosted sessions' })).toBeVisible()
-  for (const control of ['Minimize', 'Maximize', 'Close window']) {
+  // No Hosted session yet: an empty tab strip, and the "+" that starts one.
+  await expect(window.getByRole('tablist', { name: 'Hosted sessions' })).toBeAttached()
+  for (const control of ['New Session', 'Minimize', 'Maximize', 'Close window']) {
     await expect(window.getByRole('button', { name: control })).toBeVisible()
   }
 

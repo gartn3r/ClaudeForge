@@ -101,7 +101,8 @@ export function createBackend(options: BackendOptions): Backend {
     env: options.env,
     claudePath,
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
-    onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode })
+    onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
+    onStatus: (id, status) => events.emit('sessionHost.status', { id, status })
   })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {

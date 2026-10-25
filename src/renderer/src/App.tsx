@@ -6,9 +6,11 @@ import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer
 import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
 import { SettingsMenu } from './components/SettingsMenu'
+import { SessionTabs } from './components/SessionTabs'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
+import { useHostedSessions } from './terminal/hosted-sessions'
 
 interface AppProps {
   initialState: AppState
@@ -32,14 +34,27 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
 
   useEffect(() => onEvent('appState.changed', setState), [])
 
-  // The displayed Session sets the displayed Project, whose Map the Map panel follows.
+  // The displayed Session sets the displayed Project, whose Map the Map panel follows: the one
+  // clicked in the explorer, else the Hosted session on show.
   const catalog = useSessionCatalog()
+  const hosted = useHostedSessions()
+  const activeTab = hosted.tabs.find((tab) => tab.key === hosted.activeKey)
   const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
   const displayed = catalog
     ?.flatMap((group) => group.sessions.map((session) => ({ group, session })))
     .find(({ session }) => session.id === displayedSessionId)
+  const displayedProject = displayed?.group.path ?? activeTab?.project ?? startProject
   // The start folder keeps its own spelling while the displayed Session runs in it.
-  const project = displayed && !samePath(displayed.group.path, startProject) ? displayed.group.path : startProject
+  const project = samePath(displayedProject, startProject) ? startProject : displayedProject
+
+  const startHostedSession = (folder: string): void => {
+    setDisplayedSessionId(null)
+    hosted.sessions.start(folder, state.gpuRendering)
+  }
+  const selectHostedSession = (key: string): void => {
+    setDisplayedSessionId(null)
+    hosted.sessions.select(key)
+  }
   const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
@@ -74,7 +89,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   if (claudeCode.state !== 'found') {
     return (
       <div className="shell">
-        <TitleBar sessionTabs={false} />
+        <TitleBar />
         <FirstRun problem={claudeCode} onStatus={setClaudeCode} />
       </div>
     )
@@ -82,7 +97,18 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
 
   return (
     <div className="shell" data-resizing={resizing}>
-      <TitleBar settings={<SettingsMenu state={state} />} />
+      <TitleBar
+        tabs={
+          <SessionTabs
+            tabs={hosted.tabs}
+            activeKey={hosted.activeKey}
+            onSelect={selectHostedSession}
+            onClose={(key) => hosted.sessions.close(key)}
+            onNew={() => startHostedSession(project)}
+          />
+        }
+        settings={<SettingsMenu state={state} />}
+      />
       <div className="columns">
         <SidePanel
           id="explorer"
@@ -101,7 +127,12 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             onCollapse={collapseHandler('explorer', true)}
           />
         </SidePanel>
-        <TerminalArea gpuRendering={state.gpuRendering} />
+        <TerminalArea
+          tabs={hosted.tabs}
+          activeKey={hosted.activeKey}
+          gpuRendering={state.gpuRendering}
+          onStart={startHostedSession}
+        />
         <SidePanel
           id="map"
           side="right"
