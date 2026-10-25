@@ -2,10 +2,12 @@
 // Electron import, so Seam 1 tests drive it directly. The main process wires
 // it to IPC (see src/main/ipc.ts).
 
+import { join } from 'node:path'
 import type { AppState, AppStatePatch, BackendApi, ClaudeCodeStatus, EventName } from '../shared/api'
 import { AppStateStore } from './app-state'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
+import { createExtensionService } from './extensions'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
 import { resolveWayfinderLink } from './maps/links'
@@ -81,13 +83,23 @@ export function createBackend(options: BackendOptions): Backend {
     return claudeCode
   }
 
+  /** The `claude` to run; throws when there is none that can run. */
+  const claudePath = async (): Promise<string> => {
+    const status = claudeCode?.state === 'found' ? claudeCode : await locateWithChosenPath()
+    if (status.state !== 'found') throw new Error(`Claude Code cannot run: it is ${status.state}`)
+    return status.path
+  }
+
+  const extensions = createExtensionService({
+    claudeHome: options.claudeHome,
+    env: options.env,
+    claudePath,
+    noProjectFolder: join(options.stateDir, 'no-project')
+  })
+
   const sessionHost = new SessionHost({
     env: options.env,
-    claudePath: async () => {
-      const status = claudeCode?.state === 'found' ? claudeCode : await locateWithChosenPath()
-      if (status.state !== 'found') throw new Error(`Claude Code cannot run: it is ${status.state}`)
-      return status.path
-    },
+    claudePath,
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
     onStatus: (id, status) => events.emit('sessionHost.status', { id, status })
@@ -116,6 +128,7 @@ export function createBackend(options: BackendOptions): Backend {
       stop: async (id) => sessionHost.stop(id)
     },
     map: maps,
+    extensions,
     appState: {
       read: () => appState.read(),
       write: writeAppState

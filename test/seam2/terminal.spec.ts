@@ -2,7 +2,7 @@
 // page.evaluate callbacks run in the window, so this file needs the DOM types.
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
-import { launchClaudeForge, pickFolderInDialogs, type RunningClaudeForge } from './claudeforge'
+import { launchClaudeForge, pickFolderInDialogs, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -45,7 +45,7 @@ test('opens a folder, runs Claude Code there and takes what the user types', asy
   await window.keyboard.press('Enter')
 
   await expect(terminalOf(window)).toContainText('You wrote: "hello"')
-  const runs = (await env.invocations('claude')).filter(({ args }) => args[0] !== '--version')
+  const runs = await sessionRuns(env)
   expect(runs.map(({ args, cwd }) => ({ args, cwd }))).toEqual([{ args: [], cwd: env.projects['harbor-api'] }])
 })
 
@@ -89,7 +89,7 @@ test('draws the terminal with WebGL where the machine has it, and with the DOM r
   const cellsOnCanvas = terminal.locator('canvas')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
   await window.getByRole('button', { name: 'Open folder' }).click()
-  await expect.poll(async () => (await env.invocations('claude')).length).toBeGreaterThan(1)
+  await expect.poll(async () => (await sessionRuns(env)).length).toBe(1)
 
   const hasWebgl = await window.evaluate(() => document.createElement('canvas').getContext('webgl2') !== null)
   if (hasWebgl) {

@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
-import { launchClaudeForge, type RunningClaudeForge } from './claudeforge'
+import { launchClaudeForge, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -34,14 +34,11 @@ async function launch({ gpuRendering = false } = {}): Promise<Page> {
   return window
 }
 
-/** The runs of `claude` other than the locator's version checks. */
-const sessionRuns = async () => (await env.invocations('claude')).filter(({ args }) => args[0] !== '--version')
-
 /** Starts a Session with the title bar's "+" and waits for the fake `claude` to start in it. */
 async function newSession(window: Page): Promise<void> {
-  const runs = (await sessionRuns()).length
+  const runs = (await sessionRuns(env)).length
   await window.getByRole('button', { name: 'New Session' }).click()
-  await expect.poll(async () => (await sessionRuns()).length).toBe(runs + 1)
+  await expect.poll(async () => (await sessionRuns(env)).length).toBe(runs + 1)
 }
 
 /** Types a prompt into the terminal on show and sends it. */
@@ -82,7 +79,7 @@ test('runs two Sessions in tabs, and switching between them keeps what each prin
 
   // Both started in the current Project, and neither was started again.
   const project = env.projects['harbor-api']
-  expect((await sessionRuns()).map(({ cwd }) => cwd)).toEqual([project, project])
+  expect((await sessionRuns(env)).map(({ cwd }) => cwd)).toEqual([project, project])
 })
 
 test('gives only the terminal on show a WebGL renderer, and keeps it through many switches', async () => {

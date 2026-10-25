@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ExtensionsBar } from './ExtensionsMenu'
 import { IconButton } from './IconButton'
 import { Menu, type MenuItem } from './Menu'
 
@@ -25,6 +26,8 @@ interface ExplorerProps {
   /** The Session shown in the centre, whose Map the Map panel follows. */
   displayedSessionId: string | null
   onDisplaySession(id: string): void
+  /** The displayed Project, whose Extensions the Extensions bar counts. */
+  project: string
   onCollapse(): void
 }
 
@@ -76,7 +79,7 @@ interface RowActions {
 }
 
 /** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
-export function Explorer({ projects, displayedSessionId, onDisplaySession, onCollapse }: ExplorerProps): ReactNode {
+export function Explorer({ projects, displayedSessionId, onDisplaySession, project, onCollapse }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
@@ -129,7 +132,7 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, onCol
           </ul>
         )}
       </div>
-      <ExtensionsBar />
+      <ExtensionsBar project={project} />
       {tidying?.kind === 'menu' && (
         <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session)} onClose={closeMenu} />
       )}
@@ -355,15 +358,6 @@ function formatActivity(time: number, now: number, language: string, t: Translat
   if (hours < 24 * 6) return date.toLocaleDateString(language, { weekday: 'short' })
   const sameYear = date.getFullYear() === new Date(now).getFullYear()
   return date.toLocaleDateString(language, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
-}
-
-export function ExtensionsBar(): ReactNode {
-  const { t } = useTranslation()
-  return (
-    <section className="extbar" aria-label={t('extensions.heading')}>
-      <span className="cf-eyebrow">{t('extensions.heading')}</span>
-    </section>
-  )
 }
 
 interface ExplorerRailProps {

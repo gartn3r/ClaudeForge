@@ -1,0 +1,30 @@
+[
+  {
+    "id": "atlas@forge-market",
+    "version": "2.0.0",
+    "scope": "user",
+    "enabled": false,
+    "installPath": "plugins/cache/forge-market/atlas/2.0.0",
+    "installedAt": "2026-09-02T09:12:40.620Z",
+    "lastUpdated": "2026-09-02T09:12:40.620Z"
+  },
+  {
+    "id": "frontend-design@forge-market",
+    "version": "0.4.0",
+    "scope": "project",
+    "enabled": true,
+    "installPath": "plugins/cache/forge-market/frontend-design/0.4.0",
+    "installedAt": "2026-10-06T19:22:01.030Z",
+    "lastUpdated": "2026-10-06T19:22:01.030Z",
+    "projectPath": "recipe-box"
+  },
+  {
+    "id": "kitchen-tools@forge-market",
+    "version": "1.2.0",
+    "scope": "user",
+    "enabled": true,
+    "installPath": "plugins/cache/forge-market/kitchen-tools/1.2.0",
+    "installedAt": "2026-08-23T10:02:40.620Z",
+    "lastUpdated": "2026-10-16T17:18:04.651Z"
+  }
+]

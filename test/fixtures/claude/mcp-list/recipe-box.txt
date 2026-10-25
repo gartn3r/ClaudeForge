@@ -1,0 +1,2 @@
+postgres: npx -y @modelcontextprotocol/server-postgres postgresql://localhost/recipes - ✔ Connected
+playwright: npx -y @playwright/mcp - ✗ Failed to connect

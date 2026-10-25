@@ -242,6 +242,50 @@ export interface HostedSession {
   windowsPty: { backend: 'conpty'; buildNumber: number } | null
 }
 
+export type ExtensionKind = 'skill' | 'subagent' | 'mcp-server' | 'plugin'
+
+/** Where an Extension applies: every Project (the user's, "global"), or the displayed Project only. */
+export type ExtensionScope = 'global' | 'project'
+
+/** An MCP server's health, as `claude mcp list` reports it. */
+export type McpServerStatus =
+  | 'connected'
+  /** Waits for the user to sign in (`/mcp`). */
+  | 'needs-sign-in'
+  /** Would not start or connect, or connected without its tools. */
+  | 'failed'
+  /** A Project's `.mcp.json` server the user has not approved yet. */
+  | 'pending-approval'
+  /** Rejected, or disabled for the Project. */
+  | 'disabled'
+  /** A status ClaudeForge does not know yet; its `detail` gives Claude Code's words. */
+  | 'unknown'
+
+export interface Extension {
+  kind: ExtensionKind
+  name: string
+  scope: ExtensionScope
+  /** The plugin that brings it, else null: it is the user's or the Project's own. */
+  plugin: string | null
+  description: string | null
+  /** MCP servers only. */
+  mcp?: {
+    status: McpServerStatus
+    /** Claude Code's own words for the status, e.g. "Failed to connect". */
+    detail: string
+  }
+  /** Plugins only: false when installed but disabled, so it brings nothing. */
+  enabled?: boolean
+}
+
+/** Every Extension a new Session in a Project gets, global and Project-scoped. */
+export interface ExtensionListing {
+  /** By kind, then name. */
+  extensions: Extension[]
+  /** Set when `claude` could not list MCP servers or plugins; the listing then lacks them. */
+  problem?: 'claude-failed'
+}
+
 /**
  * What a Hosted session's `claude` is doing: idle until the user first sends it something, working
  * while it streams a turn, done once that turn is over.
@@ -264,6 +308,10 @@ export interface BackendApi {
     /** Detects the Project's Tracker and lists its Maps. */
     list(project: string): Promise<MapListing>
     load(project: string, mapId: string): Promise<WayfinderMap>
+  }
+  extensions: {
+    /** Lists the Extensions of a Project, through Claude Code's CLI for MCP servers and plugins. */
+    list(project: string): Promise<ExtensionListing>
   }
   appState: {
     read(): Promise<AppState>

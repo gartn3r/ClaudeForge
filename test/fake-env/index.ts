@@ -216,7 +216,9 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     CLAUDEFORGE_SYSTEM_LANGUAGES: systemLanguages.join(','),
     CLAUDEFORGE_RECYCLE_BIN: recycleBin,
     FAKE_ENV_LOG_DIR: logDir,
-    FAKE_GH_RECORDINGS: join(FIXTURES, 'gh')
+    FAKE_GH_RECORDINGS: join(FIXTURES, 'gh'),
+    FAKE_CLAUDE_RECORDINGS: join(FIXTURES, 'claude'),
+    FAKE_PROJECTS_DIR: projectsDir
   }
 
   let claudePath: string | undefined

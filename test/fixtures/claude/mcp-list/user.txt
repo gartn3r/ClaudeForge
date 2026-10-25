@@ -1,0 +1,3 @@
+github: npx -y @modelcontextprotocol/server-github - ✔ Connected
+claude.ai Supabase: https://mcp.supabase.com/mcp - ! Needs authentication
+plugin:kitchen-tools:pantry: node C:\Users\fixture-user\.claude\plugins\cache\forge-market\kitchen-tools\1.2.0\pantry.mjs - ✔ Connected

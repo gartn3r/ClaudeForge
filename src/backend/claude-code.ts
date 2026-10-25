@@ -53,15 +53,30 @@ function places(env: Environment, userPath: string | null): Place[] {
   ]
 }
 
-/** Runs `claude --version` and returns the version it reports, or nothing when it cannot. */
-async function readVersion(path: string, env: Environment): Promise<string | undefined> {
+export interface RunOptions {
+  env: Environment
+  timeout: number
+  cwd?: string
+}
+
+/**
+ * Runs `claude` with plain arguments (words without spaces or quotes) and returns what it printed;
+ * rejects when it fails, exits non-zero or outlasts the timeout.
+ */
+export async function runClaude(path: string, args: string[], options: RunOptions): Promise<string> {
   // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
   const batch = /^\.(cmd|bat)$/i.test(extname(path))
-  const options = { env, timeout: VERSION_TIMEOUT_MS, windowsHide: true }
+  const settings = { ...options, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }
+  const { stdout } = batch
+    ? await run(`"${path}" ${args.join(' ')}`, { ...settings, shell: true })
+    : await run(path, args, settings)
+  return stdout
+}
+
+/** Runs `claude --version` and returns the version it reports, or nothing when it cannot. */
+async function readVersion(path: string, env: Environment): Promise<string | undefined> {
   try {
-    const { stdout } = batch
-      ? await run(`"${path}" --version`, { ...options, shell: true })
-      : await run(path, ['--version'], options)
+    const stdout = await runClaude(path, ['--version'], { env, timeout: VERSION_TIMEOUT_MS })
     return /\b\d+\.\d+\.\d+\b/.exec(stdout)?.[0]
   } catch {
     return undefined
