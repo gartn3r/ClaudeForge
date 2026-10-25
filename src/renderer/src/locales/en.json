@@ -135,13 +135,17 @@
       "blocked": "Blocked",
       "closed": "Closed",
       "blockedBy_one": "Blocked by {{count}} open Ticket",
-      "blockedBy_other": "Blocked by {{count}} open Tickets"
+      "blockedBy_other": "Blocked by {{count}} open Tickets",
+      "parentWaits": "Blocked: its Parent Ticket waits"
     },
     "tooltip": {
       "frontier": "{{name}} · on the Frontier",
       "claimed": "{{name}} · claimed",
       "blocked": "{{name}} · blocked by {{blockers}}",
-      "closed": "{{name}} · decided"
+      "closed": "{{name}} · decided",
+      "parent_one": "{{name}} · {{count}} Sub-ticket. Open it to see it.",
+      "parent_other": "{{name}} · {{count}} Sub-tickets. Open it to see them.",
+      "parentWaits": "{{name}} · blocked: its Parent Ticket waits"
     },
     "type": {
       "research": "research",
@@ -169,7 +173,20 @@
     },
     "maps": "Maps",
     "chooseMap": "Show another Map of this Project",
-    "switchToSession": "{{title}}: switch to this Session"
+    "switchToSession": "{{title}}: switch to this Session",
+    "question": "Question",
+    "crumbs": "Where you are in the Map",
+    "back": "Back to {{name}}",
+    "open": "Open {{name}}",
+    "subTickets_one": "{{count}} sub",
+    "subTickets_other": "{{count}} sub",
+    "rollup": {
+      "frontier": "<b>{{count}}</b> Frontier",
+      "claimed": "{{count}} claimed",
+      "closed": "{{closed}}/{{total}} closed",
+      "waitsFor": "Waits for {{blockers}}",
+      "parentWaits": "Its Parent Ticket waits"
+    }
   },
   "firstRun": {
     "checkAgain": "Check again",

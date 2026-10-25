@@ -103,8 +103,22 @@ export interface MapListing {
 
 export type TicketType = 'research' | 'prototype' | 'grilling' | 'task'
 
-/** A Ticket's derived state, in precedence order: closed, blocked, claimed, Frontier. */
-export type TicketState = 'closed' | 'blocked' | 'claimed' | 'frontier'
+/**
+ * A Ticket's derived state, in precedence order: closed, blocked (by its own open blockers or an
+ * ancestor's), parent (open Sub-tickets: never on the Frontier, ADR 0004), claimed, Frontier.
+ */
+export type TicketState = 'closed' | 'blocked' | 'parent' | 'claimed' | 'frontier'
+
+/** What lies beneath a Parent Ticket, at every depth. */
+export interface TicketRollup {
+  /** Its own Sub-tickets, one level down. */
+  subTickets: number
+  /** Every Ticket beneath it. */
+  total: number
+  closed: number
+  claimed: number
+  frontier: number
+}
 
 export interface Ticket {
   /**
@@ -123,11 +137,17 @@ export interface Ticket {
   path: string
   question: string
   answer: string
+  /** The id of the Ticket it is a Sub-ticket of; null for a Ticket of the Map itself. */
+  parent: string | null
   state: TicketState
   /** Frontier, or claimed by the current user. */
   workable: boolean
   /** How many of its blockers are still open. */
   openBlockers: number
+  /** An ancestor has an open blocker, which blocks this Ticket too ("parent waits"). */
+  parentWaits: boolean
+  /** Present on a Parent Ticket: one with open Sub-tickets. */
+  rollup: TicketRollup | null
 }
 
 /** A "blocked by" relationship: `from` blocks `to`. */
@@ -143,13 +163,13 @@ export interface WayfinderMap extends MapSummary {
   decisionsSoFar: string
   notYetSpecified: string
   outOfScope: string
-  /** In Map order. */
+  /** Every Ticket at every level, in Map order; each names its parent. */
   tickets: Ticket[]
-  /** Ids of the closed Tickets, in Map order: the Decided strip. */
+  /** Ids of the closed Tickets, in Map order: the Decided strip of their level. */
   decided: string[]
-  /** Edges between open Tickets, transitively reduced: what the graph draws. */
+  /** Edges between open Tickets of one level, transitively reduced: what the graph draws. */
   liveEdges: TicketEdge[]
-  /** Edges touching a closed Ticket, transitively reduced: drawn on demand. */
+  /** Edges of one level touching a closed Ticket, transitively reduced: drawn on demand. */
   spentEdges: TicketEdge[]
 }
 

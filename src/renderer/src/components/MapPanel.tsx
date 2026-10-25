@@ -1,10 +1,10 @@
-import { Check, ChevronDown, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { MapListing, MapSummary, SessionSummary, TrackerProblem, WayfinderMap } from '../../../shared/api'
+import type { MapListing, MapSummary, SessionSummary, Ticket, TrackerProblem, WayfinderMap } from '../../../shared/api'
 import { api } from '../api'
 import { IconButton } from './IconButton'
-import { MapGraph } from './MapGraph'
+import { MapGraph, Rollup, openBlockerNames } from './MapGraph'
 import { MapText, itemCount } from './MapText'
 
 /** The Map the panel shows when no Session names one: the most recently updated open one. */
@@ -56,6 +56,8 @@ export function MapPanel({
       listing.maps.find((map) => map.id === linkedId) ??
       shownMap(listing))
   const [loaded, setLoaded] = useState<Loaded | null>(null)
+  // The Parent Ticket the user opened holds while the panel shows the same Map of the same Project.
+  const [opened, setOpened] = useState<{ mapKey: string; ticketId: string } | null>(null)
 
   // A new listing reloads the Map only when it names another one or a newer version.
   const mapId = summary?.id
@@ -75,6 +77,12 @@ export function MapPanel({
   // Only the load of the Map shown now counts, never a previous Project's or Map's.
   const result = loaded?.project === project && loaded.mapId === mapId ? loaded : null
   const map = result && 'map' in result ? result.map : null
+  const mapKey = `${project}
+${mapId ?? ''}`
+  // Once its Sub-tickets are gone, an opened Ticket gives way to the Map's own level.
+  const level =
+    (opened?.mapKey === mapKey && map?.tickets.find((ticket) => ticket.id === opened.ticketId && ticket.rollup)) || null
+  const openLevel = (ticketId: string | null): void => setOpened(ticketId === null ? null : { mapKey, ticketId })
 
   let body: ReactNode = null
   if (listing?.tracker.kind === 'unsupported') {
@@ -93,6 +101,8 @@ export function MapPanel({
     body = (
       <MapView
         map={map}
+        level={level}
+        onOpen={openLevel}
         sessions={sessions}
         displayedSessionId={displayedSession?.id ?? null}
         onDisplaySession={onDisplaySession}
@@ -104,7 +114,8 @@ export function MapPanel({
     <>
       <div className="cf-panel-head">
         <span className="cf-eyebrow">{t('map.heading')}</span>
-        {map && listing && (
+        {map && level && <LevelCrumbs map={map} level={level} onOpen={openLevel} />}
+        {map && listing && !level && (
           <h2 className="map-name">
             <MapSelector
               maps={listing.maps}
@@ -187,17 +198,63 @@ function MapSelector({ maps, shown, onChoose }: MapSelectorProps): ReactNode {
   )
 }
 
+interface LevelCrumbsProps {
+  map: WayfinderMap
+  level: Ticket
+  /** Opens a Parent Ticket, or the Map's own level with null. */
+  onOpen(ticketId: string | null): void
+}
+
+/** Inside a Parent Ticket: a back button to the level above and a breadcrumb from the Map down. */
+function LevelCrumbs({ map, level, onOpen }: LevelCrumbsProps): ReactNode {
+  const { t } = useTranslation()
+  const ancestors: Ticket[] = []
+  for (let at = level.parent; at !== null; ) {
+    const ticket = map.tickets.find((each) => each.id === at)
+    if (!ticket) break
+    ancestors.unshift(ticket)
+    at = ticket.parent
+  }
+  const above = ancestors.at(-1)
+  return (
+    <>
+      <IconButton
+        icon={ChevronLeft}
+        label={t('map.back', { name: above?.name ?? map.name })}
+        onClick={() => onOpen(above?.id ?? null)}
+      />
+      <nav className="cf-crumbs map-crumbs" aria-label={t('map.crumbs')}>
+        {[{ id: null, name: map.name }, ...ancestors].map(({ id, name }) => (
+          <span key={id ?? ''} className="map-crumbs__step">
+            <button type="button" title={name} onClick={() => onOpen(id)}>
+              {name}
+            </button>
+            <ChevronRight className="cf-icon cf-icon--sm" aria-hidden="true" />
+          </span>
+        ))}
+        <span aria-current="page" title={level.name}>
+          {level.name}
+        </span>
+      </nav>
+    </>
+  )
+}
+
 interface MapViewProps {
   map: WayfinderMap
+  /** The opened Parent Ticket, whose Sub-tickets the panel shows; null for the Map's own level. */
+  level: Ticket | null
+  onOpen(ticketId: string): void
   sessions: SessionSummary[]
   displayedSessionId: string | null
   onDisplaySession(id: string): void
 }
 
-function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
+function MapView({ map, level, onOpen, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
   const { t } = useTranslation()
   const [showDecided, setShowDecided] = useState(false)
-  const decided = map.tickets.filter((ticket) => map.decided.includes(ticket.id))
+  const levelId = level?.id ?? null
+  const decided = map.tickets.filter((ticket) => ticket.parent === levelId && map.decided.includes(ticket.id))
   const ticketSessions = useMemo(() => {
     const byTicket = new Map<string, SessionSummary[]>()
     for (const session of sessions) {
@@ -212,7 +269,13 @@ function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapVie
 
   return (
     <>
-      <Destination text={map.destination} />
+      {level ? (
+        <Lead key={level.id} label={t('map.question')} text={level.question}>
+          <Rollup ticket={level} blockers={openBlockerNames(map, level)} />
+        </Lead>
+      ) : (
+        <Lead key="" label={t('map.destination')} text={map.destination} />
+      )}
       <div className="cf-map map-area">
         <svg className="cf-map__contours" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
           {[70, 150, 230, 310, 390, 470, 550].map((y, i) => (
@@ -252,24 +315,38 @@ function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapVie
         )}
         <MapGraph
           map={map}
+          level={levelId}
           showDecided={showDecided}
           ticketSessions={ticketSessions}
           displayedSessionId={displayedSessionId}
           onDisplaySession={onDisplaySession}
+          onOpen={onOpen}
         />
       </div>
-      <div className="map-sections">
-        <MapSection id="decisions" title={t('map.section.decisionsSoFar')} markdown={map.decisionsSoFar} />
-        <MapSection id="fog" title={t('map.section.notYetSpecified')} markdown={map.notYetSpecified} />
-        <MapSection id="scope" title={t('map.section.outOfScope')} markdown={map.outOfScope} />
-      </div>
+      {!level && (
+        <div className="map-sections">
+          <MapSection id="decisions" title={t('map.section.decisionsSoFar')} markdown={map.decisionsSoFar} />
+          <MapSection id="fog" title={t('map.section.notYetSpecified')} markdown={map.notYetSpecified} />
+          <MapSection id="scope" title={t('map.section.outOfScope')} markdown={map.outOfScope} />
+        </div>
+      )}
     </>
   )
 }
 
-/** The Destination, clamped to three lines with "Show all" when it is longer. */
-function Destination({ text }: { text: string }): ReactNode {
+interface LeadProps {
+  label: string
+  text: string
+  children?: ReactNode
+}
+
+/**
+ * What the shown level leads to: the Map's Destination, or an opened Parent Ticket's question.
+ * The text is clamped to three lines with "Show all" when it is longer.
+ */
+function Lead({ label, text, children }: LeadProps): ReactNode {
   const { t } = useTranslation()
+  const labelId = useId()
   const ref = useRef<HTMLSpanElement>(null)
   const [expanded, setExpanded] = useState(false)
   const [overflowing, setOverflowing] = useState(false)
@@ -280,9 +357,9 @@ function Destination({ text }: { text: string }): ReactNode {
   }, [text, expanded])
 
   return (
-    <section className="cf-destination" aria-labelledby="map-destination-label">
-      <span className="cf-eyebrow" id="map-destination-label">
-        {t('map.destination')}
+    <section className="cf-destination" aria-labelledby={labelId}>
+      <span className="cf-eyebrow" id={labelId}>
+        {label}
       </span>
       <span ref={ref} className="map-destination__text" data-expanded={expanded}>
         {text}
@@ -292,6 +369,7 @@ function Destination({ text }: { text: string }): ReactNode {
           {expanded ? t('map.showLess') : t('map.showAll')}
         </button>
       )}
+      {children}
     </section>
   )
 }
