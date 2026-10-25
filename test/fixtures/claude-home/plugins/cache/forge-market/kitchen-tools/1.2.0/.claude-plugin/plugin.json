@@ -1,5 +1,7 @@
 {
   "name": "kitchen-tools",
   "version": "1.2.0",
-  "description": "Skills and agents for cooking apps."
+  "description": "Skills and agents for cooking apps.",
+  "skills": "./extra-skills",
+  "agents": ["./crew/line-cook.md"]
 }

@@ -1,4 +1,4 @@
-import { Bot, Check, CircleAlert, CirclePause, CircleSlash, Plug, Puzzle, Sparkles, type LucideIcon } from 'lucide-react'
+import { Bot, Check, CircleAlert, CircleHelp, CirclePause, CircleSlash, Plug, Puzzle, Sparkles, type LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -8,8 +8,10 @@ import { api } from '../api'
 /** The Extensions of a Project: undefined while they are read, 'failed' when they could not be. */
 type Loaded = ExtensionListing | 'failed' | undefined
 
-function useExtensions(project: string): Loaded {
+/** The Project's Extensions, read again on `refresh()`; the last ones read show meanwhile. */
+function useExtensions(project: string): { listing: Loaded; refresh(): void } {
   const [loaded, setLoaded] = useState<{ project: string; listing: ExtensionListing | 'failed' } | null>(null)
+  const [round, setRound] = useState(0)
   useEffect(() => {
     let current = true
     api.extensions.list(project).then(
@@ -19,8 +21,9 @@ function useExtensions(project: string): Loaded {
     return () => {
       current = false
     }
-  }, [project])
-  return loaded?.project === project ? loaded.listing : undefined
+  }, [project, round])
+  const refresh = useCallback(() => setRound((previous) => previous + 1), [])
+  return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
 const ICONS: Record<ExtensionKind, LucideIcon> = { skill: Sparkles, subagent: Bot, 'mcp-server': Plug, plugin: Puzzle }
@@ -37,13 +40,25 @@ const KEYS = {
   plugin: 'plugin'
 } as const satisfies Record<ExtensionKind, string>
 
+interface StatusLook {
+  /** Under `extensions.status`. */
+  key: string
+  icon: LucideIcon
+  tone: string
+  /** Brings nothing until the user acts: the bar flags it. */
+  failing: boolean
+  /** What the row says under the server's name: Claude Code's words, or how to sign in. */
+  hint: 'detail' | 'signIn' | null
+}
+
 const STATUS = {
-  connected: { key: 'connected', icon: Check, tone: 'cf-status--done' },
-  'needs-sign-in': { key: 'needsSignIn', icon: CircleAlert, tone: 'cf-status--error' },
-  failed: { key: 'failed', icon: CircleAlert, tone: 'cf-status--error' },
-  'pending-approval': { key: 'pendingApproval', icon: CirclePause, tone: 'cf-status--waiting' },
-  disabled: { key: 'disabled', icon: CircleSlash, tone: '' }
-} as const satisfies Record<McpServerStatus, { key: string; icon: LucideIcon; tone: string }>
+  connected: { key: 'connected', icon: Check, tone: 'cf-status--done', failing: false, hint: null },
+  'needs-sign-in': { key: 'needsSignIn', icon: CircleAlert, tone: 'cf-status--error', failing: true, hint: 'signIn' },
+  failed: { key: 'failed', icon: CircleAlert, tone: 'cf-status--error', failing: true, hint: 'detail' },
+  'pending-approval': { key: 'pendingApproval', icon: CirclePause, tone: 'cf-status--waiting', failing: false, hint: null },
+  disabled: { key: 'disabled', icon: CircleSlash, tone: '', failing: false, hint: null },
+  unknown: { key: 'unknown', icon: CircleHelp, tone: '', failing: false, hint: 'detail' }
+} as const satisfies Record<McpServerStatus, StatusLook>
 
 const GAP = 8
 
@@ -60,8 +75,7 @@ function placeAbove(bar: HTMLElement): CSSProperties {
 }
 
 /** An MCP server that brings nothing until the user acts: it failed, or waits for sign-in. */
-const failing = (extension: Extension): boolean =>
-  extension.mcp?.status === 'failed' || extension.mcp?.status === 'needs-sign-in'
+const failing = (extension: Extension): boolean => !!extension.mcp && STATUS[extension.mcp.status].failing
 
 /** The last segment of a Project's path, as the explorer names it. */
 const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
@@ -74,15 +88,21 @@ interface ExtensionsBarProps {
 /** Docked under the explorer: one count per kind of Extension, opening the Extensions menu. */
 export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
   const { t } = useTranslation()
-  const listing = useExtensions(project)
+  const { listing, refresh } = useExtensions(project)
   /** Where the open menu sits; null while it is closed. */
-  const [open, setOpen] = useState<CSSProperties | null>(null)
+  const [placement, setPlacement] = useState<CSSProperties | null>(null)
   const button = useRef<HTMLButtonElement>(null)
   const extensions = typeof listing === 'object' ? listing.extensions : null
   const close = useCallback((refocus: boolean) => {
-    setOpen(null)
+    setPlacement(null)
     if (refocus) button.current?.focus()
   }, [])
+  // Opening the menu checks the MCP servers again.
+  const toggle = (bar: HTMLElement): void => {
+    if (placement) return close(false)
+    setPlacement(placeAbove(bar))
+    refresh()
+  }
 
   const counts = BAR_ORDER.map((kind) => {
     const ofKind = extensions?.filter((extension) => extension.kind === kind) ?? []
@@ -101,14 +121,14 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
         ref={button}
         className="extbar__button"
         aria-haspopup="dialog"
-        aria-expanded={open !== null}
+        aria-expanded={placement !== null}
         aria-busy={listing === undefined}
         aria-label={
           extensions
             ? t('extensions.summary', { counts: counts.map(({ label }) => label).join(', ') })
             : t('extensions.heading')
         }
-        onClick={(event) => setOpen(open ? null : placeAbove(event.currentTarget))}
+        onClick={(event) => toggle(event.currentTarget)}
       >
         <span className="cf-eyebrow">{t('extensions.heading')}</span>
         {extensions &&
@@ -122,7 +142,9 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
             )
           })}
       </button>
-      {open && <ExtensionsPopover project={project} listing={listing} place={open} anchor={button} onClose={close} />}
+      {placement && (
+        <ExtensionsPopover project={project} listing={listing} placement={placement} anchor={button} onClose={close} />
+      )}
     </section>
   )
 }
@@ -130,7 +152,7 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
 interface ExtensionsPopoverProps {
   project: string
   listing: Loaded
-  place: CSSProperties
+  placement: CSSProperties
   /** The bar's button, which toggles the menu itself. */
   anchor: RefObject<HTMLButtonElement | null>
   /** Closes the menu; `refocus` gives the focus back to the bar. */
@@ -138,7 +160,7 @@ interface ExtensionsPopoverProps {
 }
 
 /** The Extensions menu: every Extension of one scope, grouped by kind, read-only. */
-function ExtensionsPopover({ project, listing, place, anchor, onClose }: ExtensionsPopoverProps): ReactNode {
+function ExtensionsPopover({ project, listing, placement, anchor, onClose }: ExtensionsPopoverProps): ReactNode {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const [scope, setScope] = useState<ExtensionScope>('project')
@@ -166,7 +188,7 @@ function ExtensionsPopover({ project, listing, place, anchor, onClose }: Extensi
   const projectName = folderName(project)
 
   return createPortal(
-    <div ref={ref} className="cf-popover extmenu" role="dialog" aria-label={t('extensions.heading')} style={place}>
+    <div ref={ref} className="cf-popover extmenu" role="dialog" aria-label={t('extensions.heading')} style={placement}>
       <div className="extmenu__head">
         <span className="cf-eyebrow">{t('extensions.heading')}</span>
         <div className="cf-seg" role="group" aria-label={t('extensions.scope')}>
@@ -219,17 +241,12 @@ function ExtensionsPopover({ project, listing, place, anchor, onClose }: Extensi
 function ExtensionRow({ extension }: { extension: Extension }): ReactNode {
   const { t } = useTranslation()
   const Icon = ICONS[extension.kind]
-  const status = extension.mcp && STATUS[extension.mcp.status]
+  const { mcp } = extension
+  const status = mcp && STATUS[mcp.status]
   const StatusIcon = status?.icon
-  const off = extension.enabled === false || extension.mcp?.status === 'disabled'
-  const sub =
-    extension.enabled === false
-      ? t('extensions.pluginDisabled')
-      : extension.mcp?.status === 'failed'
-        ? extension.mcp.detail
-        : extension.mcp?.status === 'needs-sign-in'
-          ? t('extensions.signInHint')
-          : null
+  const off = extension.enabled === false || mcp?.status === 'disabled'
+  const hints = { detail: mcp?.detail, signIn: t('extensions.signInHint') }
+  const sub = extension.enabled === false ? t('extensions.pluginDisabled') : status?.hint ? hints[status.hint] : null
   const origin = extension.plugin ?? t(`extensions.origin.${extension.scope}`)
   return (
     <li className={`cf-row${sub ? ' cf-row--two' : ''}`} title={extension.description ?? undefined}>

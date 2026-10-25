@@ -1,5 +1,6 @@
 // The fake `claude`: records how it was called and answers like Claude Code.
-// Later tickets grow it into a scriptable TUI stub (status signals, mcp/plugin subcommands).
+// It answers `mcp list` and `plugin list --json` from test/fixtures/claude; later tickets grow it into
+// a scriptable TUI stub (status signals, the other mcp/plugin subcommands).
 import { readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { record } from './record.mjs'
@@ -24,10 +25,16 @@ const recording = (...path) => {
 }
 
 // `claude mcp list`: the user's servers, then those of the Project named like the current folder.
+// As in Claude Code, a Project's server replaces the user's server of the same name.
 if (args[0] === 'mcp' && args[1] === 'list') {
-  const lines = recording('mcp-list', 'user.txt') + recording('mcp-list', `${basename(process.cwd())}.txt`)
+  const servers = new Map()
+  for (const file of ['user.txt', `${basename(process.cwd())}.txt`]) {
+    for (const line of recording('mcp-list', file).split('\n').filter(Boolean)) servers.set(line.split(': ')[0], line)
+  }
   process.stdout.write(
-    lines ? `Checking MCP server health…\n\n${lines}` : 'No MCP servers configured. Use `claude mcp add` to add a server.\n'
+    servers.size > 0
+      ? `Checking MCP server health…\n\n${[...servers.values()].join('\n')}\n`
+      : 'No MCP servers configured. Use `claude mcp add` to add a server.\n'
   )
   process.exit(0)
 }

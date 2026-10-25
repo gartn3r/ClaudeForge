@@ -83,7 +83,8 @@
       "needsSignIn": "Needs sign-in",
       "failed": "Failed",
       "pendingApproval": "Pending approval",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "unknown": "Other status"
     },
     "signInHint": "Sign in with /mcp in a Session",
     "pluginDisabled": "Disabled",

@@ -238,6 +238,8 @@ export type McpServerStatus =
   | 'pending-approval'
   /** Rejected, or disabled for the Project. */
   | 'disabled'
+  /** A status ClaudeForge does not know yet; its `detail` gives Claude Code's words. */
+  | 'unknown'
 
 export interface Extension {
   kind: ExtensionKind

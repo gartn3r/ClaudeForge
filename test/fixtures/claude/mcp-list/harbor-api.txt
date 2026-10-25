@@ -1,2 +1,4 @@
 sentry: https://mcp.sentry.dev/mcp (HTTP) - ⏸ Pending approval (run `claude` to approve)
 tracing: node tools/tracing-mcp.mjs - ! Connected · tools fetch failed
+github: npx -y @modelcontextprotocol/server-github --host git.harbor.example - ✔ Connected
+metrics: node tools/metrics-mcp.mjs - … Warming up

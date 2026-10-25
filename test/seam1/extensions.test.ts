@@ -115,6 +115,22 @@ describe('Extension service', () => {
       )
     })
 
+    it('takes a Project server named like one of the user’s, but run differently, as the Project’s own', async () => {
+      const servers = await listed(env.projects['harbor-api'], 'mcp-server')
+
+      expect(servers.filter(({ name }) => name === 'github')).toEqual([
+        expect.objectContaining({ scope: 'project', plugin: null })
+      ])
+    })
+
+    it('reports a status it does not know in Claude Code’s words, without counting the server as failing', async () => {
+      const servers = await listed(env.projects['harbor-api'], 'mcp-server')
+
+      expect(servers).toContainEqual(
+        expect.objectContaining({ name: 'metrics', mcp: { status: 'unknown', detail: 'Warming up' } })
+      )
+    })
+
     it('lists no Project server in a Project without any', async () => {
       const servers = await listed(env.projects.dotfiles, 'mcp-server')
 
@@ -167,6 +183,20 @@ describe('Extension service', () => {
       expect(extensions).toContainEqual(
         expect.objectContaining({ kind: 'skill', name: 'ui-polish', scope: 'project', plugin: 'frontend-design' })
       )
+    })
+
+    it('also lists the skills and subagents a plugin’s manifest places in folders of its own', async () => {
+      const kitchenTools = (await backend.api.extensions.list(env.projects['recipe-box'])).extensions
+        .filter(({ plugin }) => plugin === 'kitchen-tools')
+        .map(({ kind, name }) => `${kind} ${name}`)
+
+      expect(kitchenTools).toEqual([
+        'skill menu-copy',
+        'skill plating',
+        'subagent line-cook',
+        'subagent sous-chef',
+        'mcp-server pantry'
+      ])
     })
 
     it('leaves out what a disabled plugin would bring', async () => {

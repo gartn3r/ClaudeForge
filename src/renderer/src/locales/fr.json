@@ -83,7 +83,8 @@
       "needsSignIn": "Connexion requise",
       "failed": "En échec",
       "pendingApproval": "En attente d’approbation",
-      "disabled": "Désactivé"
+      "disabled": "Désactivé",
+      "unknown": "Autre statut"
     },
     "signInHint": "Connectez-vous avec /mcp dans une Session",
     "pluginDisabled": "Désactivé",
