@@ -4,7 +4,7 @@ import { basename, join, resolve } from 'node:path'
 import type { ProjectSessions, SessionSummary } from '../shared/api'
 import { readLiveSessions, type LiveSession } from './live-sessions'
 import { readHistory, type HistorySummary } from './session-history'
-import { projectOf, type ProjectOf } from './worktree'
+import { placeFolder, type FolderPlace } from './worktree'
 
 /** How long to let a burst of file changes settle before re-reading. */
 const SETTLE_MS = 150
@@ -13,6 +13,12 @@ const SETTLE_MS = 150
  * registry entry behind, and no file changes when its process dies.
  */
 const RECHECK_MS = 2_000
+
+/** A Session and the path of the Project it belongs to. */
+interface PlacedSession {
+  project: string
+  session: SessionSummary
+}
 
 interface CachedHistory {
   size: number
@@ -34,13 +40,14 @@ const pathKey = (path: string): string => {
 export class SessionCatalog {
   private readonly histories = new Map<string, CachedHistory>()
   /** Which Project each folder belongs to; a folder's git link does not change. */
-  private readonly projects = new Map<string, Promise<ProjectOf>>()
+  private readonly places = new Map<string, Promise<FolderPlace>>()
 
   private readonly watchers = new Map<string, FSWatcher>()
   private recheck: NodeJS.Timeout | undefined
   private settle: NodeJS.Timeout | undefined
   private reading: Promise<ProjectSessions[]> | undefined
-  private last: string | undefined
+  /** The catalog last returned or pushed, as JSON, so only real changes are pushed. */
+  private lastSeen: string | undefined
   private disposed = false
 
   /** Calls back with the whole catalog whenever Claude Code's files change it, once watching. */
@@ -53,10 +60,10 @@ export class SessionCatalog {
   async list(): Promise<ProjectSessions[]> {
     if (!this.recheck && !this.disposed) {
       this.watch()
-      this.recheck = setInterval(() => this.changed(), RECHECK_MS)
+      this.recheck = setInterval(() => this.refresh(), RECHECK_MS)
     }
     const projects = await this.read()
-    this.last = JSON.stringify(projects)
+    this.lastSeen = JSON.stringify(projects)
     return projects
   }
 
@@ -87,17 +94,17 @@ export class SessionCatalog {
 
   private settleThenRead(): void {
     clearTimeout(this.settle)
-    this.settle = setTimeout(() => this.changed(), SETTLE_MS)
+    this.settle = setTimeout(() => this.refresh(), SETTLE_MS)
   }
 
   /** Reads the catalog again and pushes it if it differs from the last one seen. */
-  private changed(): void {
+  private refresh(): void {
     this.watch()
     void this.read()
       .then((projects) => {
         const text = JSON.stringify(projects)
-        if (this.disposed || text === this.last) return
-        this.last = text
+        if (this.disposed || text === this.lastSeen) return
+        this.lastSeen = text
         this.onChange(projects)
       })
       // A read that failed midway (a folder vanished) is retried at the next recheck.
@@ -119,38 +126,39 @@ export class SessionCatalog {
     return group(placed.filter((entry) => entry !== null))
   }
 
-  /** One Session and the Project it belongs to, or null when it is not a conversation to list. */
+  /** One Session and the Project it belongs to, or null when there is no Session to list. */
   private async place(
     id: string,
     history: HistorySummary | undefined,
     live: LiveSession | undefined
-  ): Promise<{ project: string; session: SessionSummary } | null> {
+  ): Promise<PlacedSession | null> {
     // The running process knows the Session's name first: it writes the history afterwards.
     const title = live?.name ?? history?.customTitle ?? history?.aiTitle ?? history?.firstMessage ?? null
     const cwd = history?.cwd ?? live?.cwd
-    // A finished history with nothing typed in it is not a conversation.
+    // A finished history with nothing typed in it holds no Session worth listing.
     if (!cwd || (!live && title === null)) return null
-    const { project, worktree } = await this.projectOf(cwd)
+    const { project, worktree } = await this.placeOf(cwd)
     // Nothing runs in ClaudeForge yet, so every running Session is External.
     const session: SessionSummary = {
       id,
       title,
       cwd,
       worktree,
-      lastActivity: history?.lastActivity ?? live?.updatedAt ?? 0,
+      // A running claude reports activity (a status change) before it reaches the history.
+      lastActivity: Math.max(history?.lastActivity ?? 0, live?.updatedAt ?? 0),
       state: live ? 'external' : 'past'
     }
     return { project, session }
   }
 
-  private projectOf(folder: string): Promise<ProjectOf> {
+  private placeOf(folder: string): Promise<FolderPlace> {
     const key = pathKey(folder)
-    let project = this.projects.get(key)
-    if (!project) {
-      project = projectOf(folder)
-      this.projects.set(key, project)
+    let place = this.places.get(key)
+    if (!place) {
+      place = placeFolder(folder)
+      this.places.set(key, place)
     }
-    return project
+    return place
   }
 
   /** Every history file's summary by Session id, re-reading only the files that changed. */
@@ -166,7 +174,7 @@ export class SessionCatalog {
         if (!summary) continue
         seen.add(file)
         const id = basename(name, '.jsonl')
-        byId.set(id, newest(byId.get(id), summary))
+        byId.set(id, mergeHistories(byId.get(id), summary))
       }
     }
     for (const file of this.histories.keys()) if (!seen.has(file)) this.histories.delete(file)
@@ -207,7 +215,7 @@ async function entriesOf(dir: string): Promise<string[]> {
  * A Session moved between folders (into a worktree, say) has a history file in each:
  * the most recently active one describes it, the other fills in what it lacks.
  */
-function newest(a: HistorySummary | undefined, b: HistorySummary): HistorySummary {
+function mergeHistories(a: HistorySummary | undefined, b: HistorySummary): HistorySummary {
   if (!a) return b
   const [recent, older] = (a.lastActivity ?? 0) >= (b.lastActivity ?? 0) ? [a, b] : [b, a]
   return {
@@ -219,7 +227,7 @@ function newest(a: HistorySummary | undefined, b: HistorySummary): HistorySummar
   }
 }
 
-function group(placed: { project: string; session: SessionSummary }[]): ProjectSessions[] {
+function group(placed: PlacedSession[]): ProjectSessions[] {
   const projects = new Map<string, ProjectSessions>()
   for (const { project: path, session } of placed) {
     const key = pathKey(path)

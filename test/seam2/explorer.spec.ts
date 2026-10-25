@@ -1,5 +1,4 @@
 import { rm } from 'node:fs/promises'
-import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { launchClaudeForge, type RunningClaudeForge } from './claudeforge'
@@ -59,8 +58,8 @@ test('updates the explorer by itself when a Session starts and when an External 
   await expect(explorer.getByRole('heading')).toHaveText(['dotfiles', 'harbor-api', 'recipe-box'])
   await expect(explorer.getByRole('list', { name: 'dotfiles' })).toHaveText(/Sync my dotfiles/)
 
-  // The fixture's External session runs under this test's process id; its claude exits.
-  await rm(join(env.claudeHome, 'sessions', `${process.pid}.json`))
+  // The External session's claude exits, removing its registry entry.
+  await rm(env.liveSessions['harbor-api/rate-limiter']!)
 
   const rateLimiter = explorer.getByRole('list', { name: 'harbor-api' }).getByRole('listitem').first()
   await expect(rateLimiter).not.toHaveAttribute('aria-disabled', 'true')

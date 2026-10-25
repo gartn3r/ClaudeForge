@@ -89,8 +89,8 @@ async function readTail(file: string, summary: HistorySummary): Promise<void> {
     const { size } = await handle.stat()
     start = Math.max(0, size - TAIL_BYTES)
     const buffer = Buffer.alloc(size - start)
-    await handle.read(buffer, 0, buffer.length, start)
-    text = buffer.toString('utf8')
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, start)
+    text = buffer.subarray(0, bytesRead).toString('utf8')
   } finally {
     await handle.close()
   }

@@ -28,8 +28,9 @@ export interface LiveSessionEntry {
   sessionId: string
   cwd: string
   name?: string
-  status?: string
   updatedAt?: number
+  /** The process's creation time as a Windows FILETIME, as Claude Code records it. */
+  procStart?: string
 }
 
 export interface FakeEnvironmentOptions {
@@ -46,6 +47,8 @@ export interface FakeEnvironment {
   projects: Record<FixtureProject, string>
   /** Git worktrees of the fixture Projects, by `<project>@<worktree>`. */
   worktrees: Record<string, string>
+  /** The live-session registry entries seeded from fixtures, by `<folder>/<name>` (`harbor-api/rate-limiter`). */
+  liveSessions: Record<string, string>
   systemLanguages: string[]
   /** Environment for anything spawned against the fake environment, ClaudeForge included. */
   processEnv: Record<string, string>
@@ -92,9 +95,10 @@ async function createWorktree(project: string, name: string): Promise<string> {
 async function seedClaudeHome(
   claudeHome: string,
   projects: Record<FixtureProject, string>
-): Promise<Record<string, string>> {
+): Promise<{ worktrees: Record<string, string>; liveSessions: Record<string, string> }> {
   const source = join(FIXTURES, 'claude-home')
   const worktrees: Record<string, string> = {}
+  const liveSessions: Record<string, string> = {}
   await cp(source, claudeHome, { recursive: true, filter: (from) => !from.startsWith(join(source, 'sessions')) })
   await mkdir(join(claudeHome, 'sessions'), { recursive: true })
   for (const folder of await readdir(join(source, 'sessions'))) {
@@ -111,13 +115,15 @@ async function seedClaudeHome(
       if (file.endsWith('.live.json')) {
         const entry = filled.replace('__LIVE_PID__', String(process.pid)).replace('__DEAD_PID__', String(deadPid()))
         const { pid } = JSON.parse(entry) as { pid: number }
-        await writeFile(join(claudeHome, 'sessions', `${pid}.json`), entry)
+        const registered = join(claudeHome, 'sessions', `${pid}.json`)
+        await writeFile(registered, entry)
+        liveSessions[`${folder}/${file.slice(0, -'.live.json'.length)}`] = registered
       } else {
         await writeFile(join(target, file), filled)
       }
     }
   }
-  return worktrees
+  return { worktrees, liveSessions }
 }
 
 function inheritedEnv(): Record<string, string> {
@@ -144,7 +150,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   const projects = Object.fromEntries(
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
   ) as Record<FixtureProject, string>
-  const worktrees = await seedClaudeHome(claudeHome, projects)
+  const { worktrees, liveSessions } = await seedClaudeHome(claudeHome, projects)
   await writeExecutable(binDir, 'claude', join(BIN_SOURCES, 'fake-claude.mjs'))
   await writeExecutable(binDir, 'gh', join(BIN_SOURCES, 'fake-gh.mjs'))
 
@@ -166,6 +172,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     userDataDir,
     projects,
     worktrees,
+    liveSessions,
     systemLanguages,
     processEnv,
     async writeHistory(cwd, sessionId, entries) {

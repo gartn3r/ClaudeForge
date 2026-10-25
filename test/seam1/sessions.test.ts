@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { appendFile, rm } from 'node:fs/promises'
+import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
@@ -153,6 +153,60 @@ describe('the Session catalog', () => {
     expect(harbor!.sessions.find((session) => session.id === 'c3d2a8f1-1b7e-4c59-9e64-7f0a1d2b3c4d')).toMatchObject({
       title: 'Audit log cursors',
       state: 'external'
+    })
+  })
+
+  it.runIf(process.platform === 'win32')(
+    'sees through a registry entry whose process id Windows has given to another program',
+    async () => {
+      const other = runningProcess()
+      await env.writeLiveSession({
+        pid: other.pid!,
+        sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11',
+        cwd: env.projects['harbor-api'],
+        // The crashed claude started long before the program now holding its id.
+        procStart: '134370000000000000'
+      })
+      backend = startBackend(env)
+
+      const [harbor] = await backend.api.sessions.list()
+
+      expect(harbor!.sessions.find((session) => session.title === 'Add an OpenAPI export')!.state).toBe('past')
+    }
+  )
+
+  it('keeps a Session run in a git submodule as a Project of its own', async () => {
+    const submodule = join(env.projects.dotfiles, 'vendor', 'prompt')
+    await mkdir(join(env.projects.dotfiles, '.git', 'modules', 'prompt'), { recursive: true })
+    await mkdir(submodule, { recursive: true })
+    await writeFile(join(submodule, '.git'), 'gitdir: ../../.git/modules/prompt\n')
+    await env.writeHistory(submodule, '5c6d7e8f-90a1-4b2c-93d4-e5f6a7b8c9d0', [
+      { type: 'user', cwd: submodule, timestamp: '2026-10-21T08:00:00.000Z', message: { role: 'user', content: 'Update the prompt theme' } }
+    ])
+    backend = startBackend(env)
+
+    const projects = await backend.api.sessions.list()
+
+    expect(projects.find((project) => project.path === submodule)?.sessions).toMatchObject([
+      { title: 'Update the prompt theme', worktree: null }
+    ])
+  })
+
+  it('ranks a live Session by its latest activity, whether in its history or reported by its claude', async () => {
+    const claude = runningProcess()
+    await env.writeLiveSession({
+      pid: claude.pid!,
+      sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11',
+      cwd: env.projects['harbor-api'],
+      updatedAt: Date.parse('2026-10-25T11:30:00.000Z')
+    })
+    backend = startBackend(env)
+
+    const [harbor] = await backend.api.sessions.list()
+
+    expect(harbor!.sessions[0]).toMatchObject({
+      title: 'Add an OpenAPI export',
+      lastActivity: Date.parse('2026-10-25T11:30:00.000Z')
     })
   })
 
