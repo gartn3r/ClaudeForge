@@ -32,11 +32,14 @@ export interface PanelLayout {
 export interface AppState {
   version: 1
   layout: Record<PanelId, PanelLayout>
+  /** The `claude` the user chose, or null to look for it. */
+  claudePath: string | null
 }
 
 /** A partial update of the app state; nested objects merge. */
 export interface AppStatePatch {
   layout?: Partial<Record<PanelId, Partial<PanelLayout>>>
+  claudePath?: string | null
 }
 
 export interface SystemInfo {
@@ -119,6 +122,18 @@ export interface WayfinderMap extends MapSummary {
   spentEdges: TicketEdge[]
 }
 
+/** Where the first-run screen sends the user to install or update Claude Code. */
+export const CLAUDE_CODE_INSTALLATION_GUIDE = 'https://code.claude.com/docs/en/setup'
+
+/** The oldest Claude Code ClaudeForge supports. */
+export const MINIMUM_CLAUDE_CODE_VERSION = '2.1.0'
+
+/** The `claude` ClaudeForge runs, or why there is none it can run. */
+export type ClaudeCodeStatus =
+  | { state: 'found'; path: string; version: string }
+  | { state: 'outdated'; path: string; version: string; minimumVersion: string }
+  | { state: 'missing'; lookedIn: string[] }
+
 /** Where a Session's `claude` process is: none (past) or outside ClaudeForge (External). */
 export type SessionState = 'past' | 'external'
 
@@ -159,6 +174,12 @@ export interface BackendApi {
   }
   system: {
     info(): Promise<SystemInfo>
+  }
+  claudeCode: {
+    /** Looks for `claude` (at the path the user chose, then on PATH) and checks its version. */
+    locate(): Promise<ClaudeCodeStatus>
+    /** Lets the user pick `claude.exe` in a file dialog, remembers it in app state, then locates again. */
+    choose(): Promise<ClaudeCodeStatus>
   }
   window: {
     minimize(): Promise<void>

@@ -92,5 +92,27 @@
     "unsupported": "This Project’s Tracker is not supported yet.",
     "unsupportedNamed": "This Project’s Tracker, {{name}}, is not supported yet.",
     "loadError": "This Map could not be read. Check its map.md and Ticket files."
+  },
+  "firstRun": {
+    "checkAgain": "Check again",
+    "choose": "Choose claude.exe…",
+    "missing": {
+      "status": "Not found",
+      "title": "Claude Code was not found",
+      "lead": "ClaudeForge runs the Claude Code you already have installed. It looked for <code>claude</code> on your PATH and did not find it.",
+      "install": "Install Claude Code by following the <guide>installation guide</guide>.",
+      "checkAgain": "Come back and select <strong>Check again</strong>. You sign in to Claude inside ClaudeForge's terminal, the first time a Session starts.",
+      "choose": "Installed it somewhere else? Choose <code>claude.exe</code> yourself. ClaudeForge remembers the location.",
+      "lookedIn": "Looked in"
+    },
+    "outdated": {
+      "status": "Update needed",
+      "title": "Claude Code {{version}} is too old",
+      "lead": "ClaudeForge needs Claude Code {{minimumVersion}} or later, so that every feature behaves as it should.",
+      "update": "Update it by running <code>claude update</code> in a terminal, or by following the <guide>installation guide</guide>.",
+      "checkAgain": "Come back and select <strong>Check again</strong>.",
+      "choose": "Have a newer one somewhere else? Choose <code>claude.exe</code> yourself. ClaudeForge remembers the location.",
+      "foundAt": "Found at"
+    }
   }
 }

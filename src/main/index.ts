@@ -1,7 +1,8 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { BrowserWindow, app, ipcMain } from 'electron'
-import { createBackend, type WindowHost } from '../backend'
+import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
+import { createBackend, type Dialogs, type WindowHost } from '../backend'
+import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
 
 // Test and development overrides. The fake environment sets both, so Seam 2
@@ -38,6 +39,18 @@ function windowHost(win: BrowserWindow): WindowHost {
   }
 }
 
+function dialogs(win: BrowserWindow): Dialogs {
+  return {
+    chooseClaudeExecutable: async () => {
+      const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+        properties: ['openFile'],
+        filters: [{ name: 'Claude Code', extensions: ['exe', 'cmd'] }]
+      })
+      return canceled ? undefined : filePaths[0]
+    }
+  }
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
@@ -60,7 +73,9 @@ function createWindow(): void {
     stateDir: app.getPath('userData'),
     claudeHome: claudeHome(),
     systemLanguages: systemLanguages(),
-    window: windowHost(win)
+    env: process.env,
+    window: windowHost(win),
+    dialogs: dialogs(win)
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {
@@ -68,8 +83,13 @@ function createWindow(): void {
     backend.dispose()
   })
 
-  // The interface never navigates or opens windows of its own.
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // The interface never navigates or opens windows of its own; the links it may
+  // show open in the default browser.
+  const externalLinks = new Set([CLAUDE_CODE_INSTALLATION_GUIDE])
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (externalLinks.has(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
   win.webContents.on('will-navigate', (event) => event.preventDefault())
 
   win.once('ready-to-show', () => win.show())

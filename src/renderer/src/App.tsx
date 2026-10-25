@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppState, MapListing, PanelId } from '../../shared/api'
+import type { AppState, ClaudeCodeStatus, MapListing, PanelId } from '../../shared/api'
 import { api, onEvent } from './api'
 import { Explorer, ExplorerRail } from './components/Explorer'
+import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
@@ -10,15 +11,17 @@ import { TitleBar } from './components/TitleBar'
 
 interface AppProps {
   initialState: AppState
+  initialClaudeCode: ClaudeCodeStatus
   /** The displayed Project, whose Map the Map panel shows. */
   project: string
 }
 
-export function App({ initialState, project }: AppProps): ReactNode {
+export function App({ initialState, initialClaudeCode, project }: AppProps): ReactNode {
   const { t } = useTranslation()
   // App state lives in the backend; the interface shows the last state it pushed.
   const [state, setState] = useState(initialState)
   const [resizing, setResizing] = useState(false)
+  const [claudeCode, setClaudeCode] = useState(initialClaudeCode)
 
   useEffect(() => onEvent('appState.changed', setState), [])
 
@@ -42,6 +45,15 @@ export function App({ initialState, project }: AppProps): ReactNode {
   const expandMap = (): void => {
     setMapOpenedAnyway(project)
     if (state.layout.map.collapsed) collapseHandler('map', false)()
+  }
+
+  if (claudeCode.state !== 'found') {
+    return (
+      <div className="shell">
+        <TitleBar sessionTabs={false} />
+        <FirstRun problem={claudeCode} onStatus={setClaudeCode} />
+      </div>
+    )
   }
 
   return (

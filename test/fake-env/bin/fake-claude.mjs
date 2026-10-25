@@ -2,13 +2,13 @@
 // Later tickets grow it into a scriptable TUI stub (status signals, mcp/plugin subcommands).
 import { record } from './record.mjs'
 
-export const FAKE_CLAUDE_VERSION = '2.1.300'
-
+// The fake environment's shim always sets the version to report (see FAKE_CLAUDE_VERSION in test/fake-env).
+const version = process.env.FAKE_CLAUDE_VERSION
 const args = process.argv.slice(2)
 record('claude', args)
 
 if (args[0] === '--version' || args[0] === '-v') {
-  process.stdout.write(`${FAKE_CLAUDE_VERSION} (Claude Code)\n`)
+  process.stdout.write(`${version} (Claude Code)\n`)
   process.exit(0)
 }
 
