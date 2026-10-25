@@ -50,7 +50,47 @@
     }
   },
   "extensions": {
-    "heading": "Extensions"
+    "heading": "Extensions",
+    "summary": "Extensions : {{counts}}",
+    "loading": "Lecture des Extensions…",
+    "count": {
+      "skill_one": "{{count}} skill",
+      "skill_other": "{{count}} skills",
+      "subagent_one": "{{count}} sous-agent",
+      "subagent_other": "{{count}} sous-agents",
+      "mcpServer_one": "{{count}} serveur MCP",
+      "mcpServer_other": "{{count}} serveurs MCP",
+      "plugin_one": "{{count}} plugin",
+      "plugin_other": "{{count}} plugins",
+      "failing_one": "({{count}} en échec)",
+      "failing_other": "({{count}} en échec)"
+    },
+    "scope": "Portée",
+    "global": "Globales",
+    "thisProject": "Ce Projet · {{project}}",
+    "group": {
+      "mcpServer": "Serveurs MCP",
+      "skill": "Skills",
+      "subagent": "Sous-agents",
+      "plugin": "Plugins"
+    },
+    "origin": {
+      "global": "Global",
+      "project": "Projet"
+    },
+    "status": {
+      "connected": "Connecté",
+      "needsSignIn": "Connexion requise",
+      "failed": "En échec",
+      "pendingApproval": "En attente d’approbation",
+      "disabled": "Désactivé"
+    },
+    "signInHint": "Connectez-vous avec /mcp dans une Session",
+    "pluginDisabled": "Désactivé",
+    "emptyProject": "{{project}} n’a aucune Extension qui lui soit propre.",
+    "emptyGlobal": "Aucune Extension globale.",
+    "claudeFailed": "Claude Code n’a pas pu lister les serveurs MCP et les plugins.",
+    "loadFailed": "Les Extensions n’ont pas pu être lues."
   },
   "terminal": {
     "label": "Terminal",

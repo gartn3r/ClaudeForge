@@ -97,6 +97,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             projects={catalog}
             displayedSessionId={displayedSessionId}
             onDisplaySession={setDisplayedSessionId}
+            project={project}
             onCollapse={collapseHandler('explorer', true)}
           />
         </SidePanel>
