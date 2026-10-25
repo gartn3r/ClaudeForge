@@ -101,6 +101,9 @@ body {
   min-height: 0;
   background: var(--surface);
 }
+.side-panel[data-collapsed='true'] {
+  flex-shrink: 0;
+}
 .side-panel--left {
   border-right: 1px solid var(--line);
 }

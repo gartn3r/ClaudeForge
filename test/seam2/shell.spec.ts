@@ -87,6 +87,11 @@ async function dragEdge(window: Page, name: string, dx: number): Promise<void> {
   await window.mouse.up()
 }
 
+/** The width the user set for a panel, as its resize edge reports it (the panel gives way in a narrow window). */
+const setWidthOf = async (window: Page, resizeName: string): Promise<number> =>
+  Number(await window.getByRole('separator', { name: resizeName }).getAttribute('aria-valuenow'))
+
+/** The width a panel takes on screen. */
 const widthOf = async (window: Page, name: string): Promise<number> =>
   (await window.getByRole('complementary', { name }).boundingBox())!.width
 
@@ -95,10 +100,10 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   let { window } = claudeforge
 
   await dragEdge(window, 'Resize the explorer', 100)
-  await expect.poll(() => widthOf(window, 'Sessions')).toBe(364)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
 
   await dragEdge(window, 'Resize the Map panel', -1000)
-  await expect.poll(() => widthOf(window, 'Map')).toBe(720)
+  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
 
   await window.getByRole('button', { name: 'Collapse the Map panel' }).click()
   await expect.poll(() => widthOf(window, 'Map')).toBe(40)
@@ -107,16 +112,16 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   claudeforge = await launchClaudeForge(env)
   window = claudeforge.window
 
-  await expect.poll(() => widthOf(window, 'Sessions')).toBe(364)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
   await expect.poll(() => widthOf(window, 'Map')).toBe(40)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
-  await expect.poll(() => widthOf(window, 'Map')).toBe(720)
+  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
 
   await window.getByRole('button', { name: 'Collapse the explorer' }).click()
   await expect.poll(() => widthOf(window, 'Sessions')).toBe(40)
   await window.getByRole('button', { name: 'Expand the explorer' }).click()
-  await expect.poll(() => widthOf(window, 'Sessions')).toBe(364)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
 })
 
 test('keeps both panels and the terminal inside a window at its minimum size', async () => {
