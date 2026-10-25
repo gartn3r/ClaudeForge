@@ -263,6 +263,20 @@
       "closed": "{{closed}}/{{total}} closed",
       "waitsFor": "Waits for {{blockers}}",
       "parentWaits": "Its Parent Ticket waits"
+    },
+    "view": "View",
+    "views": {
+      "graph": "Graph",
+      "tree": "Tree"
+    },
+    "tree": {
+      "label": "Tickets",
+      "hideClosed": "Hide closed",
+      "hideClosedTickets": "Hide closed Tickets",
+      "subTickets": "Sub-tickets of {{name}}",
+      "after": "after {{blockers}}",
+      "parentWaits": "parent waits",
+      "you": "you"
     }
   },
   "firstRun": {

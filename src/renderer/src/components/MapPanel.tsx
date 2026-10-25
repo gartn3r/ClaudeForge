@@ -1,11 +1,21 @@
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { MapListing, MapSummary, SessionSummary, Ticket, TrackerProblem, WayfinderMap } from '../../../shared/api'
+import type {
+  MapListing,
+  MapPanelView,
+  MapSummary,
+  ProjectMapPreferences,
+  SessionSummary,
+  Ticket,
+  TrackerProblem,
+  WayfinderMap
+} from '../../../shared/api'
 import { api } from '../api'
 import { IconButton } from './IconButton'
 import { MapGraph, Rollup, openBlockerNames } from './MapGraph'
 import { MapText, itemCount } from './MapText'
+import { MapTree } from './MapTree'
 
 /** The Map the panel shows when no Session names one: the most recently updated open one. */
 export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
@@ -16,6 +26,9 @@ const PROBLEM_MESSAGES = {
   'no-github-repository': 'map.problem.noGitHubRepository',
   'gh-failed': 'map.problem.ghFailed'
 } as const satisfies Record<TrackerProblem, string>
+
+/** How the panel shows one Map, as the user changed it. */
+type MapDisplay = { view: MapPanelView; hideClosed: boolean; folded: string[] }
 
 /** A load of one Map of one Project, and how it went. */
 type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap } | { error: true })
@@ -28,6 +41,8 @@ interface MapPanelProps {
   sessions: SessionSummary[]
   /** The Session shown in the centre, whose Map the panel follows; null when none is. */
   displayedSession: SessionSummary | null
+  /** How the user last looked at each of the Project's Maps. */
+  preferences: ProjectMapPreferences
   onDisplaySession(id: string): void
   onCollapse(): void
 }
@@ -41,6 +56,7 @@ export function MapPanel({
   listing,
   sessions,
   displayedSession,
+  preferences,
   onDisplaySession,
   onCollapse
 }: MapPanelProps): ReactNode {
@@ -84,6 +100,30 @@ ${mapId ?? ''}`
     (opened?.mapKey === mapKey && map?.tickets.find((ticket) => ticket.id === opened.ticketId && ticket.rollup)) || null
   const openLevel = (ticketId: string | null): void => setOpened(ticketId === null ? null : { mapKey, ticketId })
 
+  // The user's changes show at once; app state keeps them for the next time the Map is shown.
+  const [changed, setChanged] = useState<{ mapKey: string; display: Partial<MapDisplay> } | null>(null)
+  const stored = (mapId ? preferences[mapId] : undefined) ?? {}
+  const { view, hideClosed, folded }: MapDisplay = {
+    view: stored.view ?? 'graph',
+    hideClosed: !!stored.hideClosed,
+    folded: stored.folded ?? [],
+    ...(changed?.mapKey === mapKey ? changed.display : {})
+  }
+  const changeShown = (change: Partial<MapDisplay>): void => {
+    if (!mapId) return
+    setChanged({ mapKey, display: { ...(changed?.mapKey === mapKey ? changed.display : {}), ...change } })
+    void api.appState.write({ maps: { [project]: { [mapId]: change } } })
+  }
+  // Folding forgets the Tickets the Map no longer has.
+  const fold = (ticketId: string, fold: boolean): void => {
+    const kept = folded.filter((id) => id !== ticketId && map?.tickets.some((ticket) => ticket.id === id))
+    changeShown({ folded: fold ? [...kept, ticketId] : kept })
+  }
+  const openInGraph = (ticketId: string): void => {
+    openLevel(ticketId)
+    changeShown({ view: 'graph' })
+  }
+
   let body: ReactNode = null
   if (listing?.tracker.kind === 'unsupported') {
     const { name } = listing.tracker
@@ -101,8 +141,20 @@ ${mapId ?? ''}`
     body = (
       <MapView
         map={map}
-        level={level}
+        level={view === 'graph' ? level : null}
         onOpen={openLevel}
+        tree={
+          view === 'tree' && (
+            <MapTree
+              map={map}
+              hideClosed={hideClosed}
+              onHideClosed={(hideClosed) => changeShown({ hideClosed })}
+              folded={folded}
+              onFold={fold}
+              onOpen={openInGraph}
+            />
+          )
+        }
         sessions={sessions}
         displayedSessionId={displayedSession?.id ?? null}
         onDisplaySession={onDisplaySession}
@@ -114,8 +166,8 @@ ${mapId ?? ''}`
     <>
       <div className="cf-panel-head">
         <span className="cf-eyebrow">{t('map.heading')}</span>
-        {map && level && <LevelCrumbs map={map} level={level} onOpen={openLevel} />}
-        {map && listing && !level && (
+        {map && view === 'graph' && level && <LevelCrumbs map={map} level={level} onOpen={openLevel} />}
+        {map && listing && (view === 'tree' || !level) && (
           <h2 className="map-name">
             <MapSelector
               maps={listing.maps}
@@ -123,6 +175,15 @@ ${mapId ?? ''}`
               onChoose={(mapId) => setChosen({ followKey, mapId })}
             />
           </h2>
+        )}
+        {map && (
+          <div className="cf-seg" role="group" aria-label={t('map.view')}>
+            {(['graph', 'tree'] as const).map((each) => (
+              <button key={each} type="button" aria-pressed={view === each} onClick={() => changeShown({ view: each })}>
+                {t(`map.views.${each}`)}
+              </button>
+            ))}
+          </div>
         )}
         <IconButton icon={PanelRightClose} label={t('map.collapse')} onClick={onCollapse} />
       </div>
@@ -245,12 +306,14 @@ interface MapViewProps {
   /** The opened Parent Ticket, whose Sub-tickets the panel shows; null for the Map's own level. */
   level: Ticket | null
   onOpen(ticketId: string): void
+  /** The Tree view, shown in place of the graph; false for the graph. */
+  tree: ReactNode
   sessions: SessionSummary[]
   displayedSessionId: string | null
   onDisplaySession(id: string): void
 }
 
-function MapView({ map, level, onOpen, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
+function MapView({ map, level, onOpen, tree, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
   const { t } = useTranslation()
   const [showDecided, setShowDecided] = useState(false)
   const levelId = level?.id ?? null
@@ -276,53 +339,55 @@ function MapView({ map, level, onOpen, sessions, displayedSessionId, onDisplaySe
       ) : (
         <Lead key="" label={t('map.destination')} text={map.destination} />
       )}
-      <div className="cf-map map-area">
-        <svg className="cf-map__contours" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
-          {[70, 150, 230, 310, 390, 470, 550].map((y, i) => (
-            <path key={y} d={`M-20 ${y} C ${80 + i * 10} ${y - 40}, ${180 + i * 10} ${y + 50}, 420 ${y - 20}`} />
-          ))}
-        </svg>
-        {decided.length > 0 && (
-          <div className="map-decided">
-            <div className="map-decided__head">
-              <span className="cf-eyebrow" id="map-decided-label">
-                {t('map.decided')}
-              </span>
-              <span className="cf-chip cf-chip--outline">{decided.length}</span>
-              <button
-                type="button"
-                className="cf-btn cf-btn--ghost map-link-button"
-                aria-pressed={showDecided}
-                onClick={() => setShowDecided(!showDecided)}
-              >
-                {showDecided ? t('map.hideLinks') : t('map.showLinks')}
-              </button>
-            </div>
-            <ul className="cf-decided" aria-labelledby="map-decided-label">
-              {decided.map((ticket) => (
-                <li
-                  key={ticket.id}
-                  className="cf-chip"
-                  title={ticket.name}
-                  aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
+      {tree || (
+        <div className="cf-map map-area">
+          <svg className="cf-map__contours" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
+            {[70, 150, 230, 310, 390, 470, 550].map((y, i) => (
+              <path key={y} d={`M-20 ${y} C ${80 + i * 10} ${y - 40}, ${180 + i * 10} ${y + 50}, 420 ${y - 20}`} />
+            ))}
+          </svg>
+          {decided.length > 0 && (
+            <div className="map-decided">
+              <div className="map-decided__head">
+                <span className="cf-eyebrow" id="map-decided-label">
+                  {t('map.decided')}
+                </span>
+                <span className="cf-chip cf-chip--outline">{decided.length}</span>
+                <button
+                  type="button"
+                  className="cf-btn cf-btn--ghost map-link-button"
+                  aria-pressed={showDecided}
+                  onClick={() => setShowDecided(!showDecided)}
                 >
-                  <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
-                  <span>{ticket.name}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <MapGraph
-          map={map}
-          level={levelId}
-          showDecided={showDecided}
-          ticketSessions={ticketSessions}
-          displayedSessionId={displayedSessionId}
-          onDisplaySession={onDisplaySession}
-          onOpen={onOpen}
-        />
-      </div>
+                  {showDecided ? t('map.hideLinks') : t('map.showLinks')}
+                </button>
+              </div>
+              <ul className="cf-decided" aria-labelledby="map-decided-label">
+                {decided.map((ticket) => (
+                  <li
+                    key={ticket.id}
+                    className="cf-chip"
+                    title={ticket.name}
+                    aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
+                  >
+                    <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
+                    <span>{ticket.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <MapGraph
+            map={map}
+            level={levelId}
+            showDecided={showDecided}
+            ticketSessions={ticketSessions}
+            displayedSessionId={displayedSessionId}
+            onDisplaySession={onDisplaySession}
+            onOpen={onOpen}
+          />
+        </div>
+      )}
       {!level && (
         <div className="map-sections">
           <MapSection id="decisions" title={t('map.section.decisionsSoFar')} markdown={map.decisionsSoFar} />

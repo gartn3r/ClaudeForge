@@ -22,9 +22,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { SessionSummary, Ticket, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
+import type { SessionSummary, Ticket, TicketRollup, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
 import { TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
 import { IconButton } from './IconButton'
+
+type TFunction = ReturnType<typeof useTranslation>['t']
 
 const TYPE_ICONS: Record<TicketType, typeof Search> = {
   research: Search,
@@ -63,7 +65,7 @@ type TicketCardData = {
 type TicketCardNode = Node<TicketCardData, 'ticket'>
 
 /** Blocked by an ancestor's open blocker alone ("parent waits"). */
-const waitsOnlyForParent = (ticket: Ticket): boolean =>
+export const waitsOnlyForParent = (ticket: Ticket): boolean =>
   ticket.state === 'blocked' && ticket.parentWaits && ticket.openBlockers === 0
 
 /** The state glyph, with the open-blocker count when several open Tickets block it. */
@@ -89,7 +91,6 @@ export function Rollup({ ticket, blockers }: { ticket: Ticket; blockers: string[
   const { t } = useTranslation()
   const rollup = ticket.rollup
   if (!rollup) return null
-  const share = (count: number): string => `${(100 * count) / rollup.total}%`
   let line: ReactNode
   if (waitsOnlyForParent(ticket)) line = t('map.rollup.parentWaits')
   else if (ticket.state === 'blocked') line = t('map.rollup.waitsFor', { blockers: blockers.join(', ') })
@@ -104,14 +105,29 @@ export function Rollup({ ticket, blockers }: { ticket: Ticket; blockers: string[
   }
   return (
     <>
-      <span className="cf-rollup" aria-hidden="true">
-        <i className="r-closed" style={{ width: share(rollup.closed) }} />
-        <i className="r-claimed" style={{ width: share(rollup.claimed) }} />
-        <i className="r-front" style={{ width: share(rollup.frontier) }} />
-      </span>
+      <RollupBar rollup={rollup} />
       <span className="cf-rollup-text">{line}</span>
     </>
   )
+}
+
+/** The bar of a Parent Ticket's closed, claimed and Frontier descendants. */
+export function RollupBar({ rollup }: { rollup: TicketRollup }): ReactNode {
+  const share = (count: number): string => `${(100 * count) / rollup.total}%`
+  return (
+    <span className="cf-rollup" aria-hidden="true">
+      <i className="r-closed" style={{ width: share(rollup.closed) }} />
+      <i className="r-claimed" style={{ width: share(rollup.claimed) }} />
+      <i className="r-front" style={{ width: share(rollup.frontier) }} />
+    </span>
+  )
+}
+
+/** A Ticket's tooltip: its full name and state, with what blocks it or how many Sub-tickets it holds. */
+export function ticketTooltip(t: TFunction, ticket: Ticket, blockers: string[]): string {
+  if (waitsOnlyForParent(ticket)) return t('map.tooltip.parentWaits', { name: ticket.name })
+  if (ticket.state === 'blocked') return t('map.tooltip.blocked', { name: ticket.name, blockers: blockers.join(', ') })
+  return t(`map.tooltip.${ticket.state}`, { name: ticket.name, count: ticket.rollup?.subTickets })
 }
 
 /**
@@ -124,9 +140,7 @@ function TicketCard({
   const { t } = useTranslation()
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
   const { rollup } = ticket
-  let tooltip = t(`map.tooltip.${ticket.state}`, { name: ticket.name, count: rollup?.subTickets })
-  if (waitsOnlyForParent(ticket)) tooltip = t('map.tooltip.parentWaits', { name: ticket.name })
-  else if (ticket.state === 'blocked') tooltip = t('map.tooltip.blocked', { name: ticket.name, blockers: blockers.join(', ') })
+  const tooltip = ticketTooltip(t, ticket, blockers)
   const classes = ['cf-ticket', 'cf-ticket--compact', `cf-ticket--${ticket.state}`, 'map-ticket']
   if (rollup) classes.push('cf-ticket--parent')
   if (current) classes.push('cf-ticket--current')

@@ -154,6 +154,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             listing={listing}
             sessions={projectSessions}
             displayedSession={displayed?.session ?? null}
+            preferences={state.maps[project] ?? {}}
             onDisplaySession={setDisplayedSessionId}
             onCollapse={collapseHandler('map', true)}
           />
