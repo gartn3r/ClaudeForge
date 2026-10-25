@@ -6,6 +6,7 @@ import type { BackendApi, EventName } from '../shared/api'
 import { AppStateStore } from './app-state'
 import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
+import { createMapService } from './maps'
 
 /** The window the interface runs in, as the backend sees it. */
 export interface WindowHost {
@@ -22,6 +23,8 @@ export interface BackendOptions {
   stateDir: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
+  /** The folder ClaudeForge was started in; defaults to the current directory. */
+  startFolder?: string
   /** Absent when no window exists (Seam 1 tests); window calls then do nothing. */
   window?: WindowHost
 }
@@ -36,6 +39,7 @@ export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
   const language = resolveLanguage(options.systemLanguages)
+  const startFolder = options.startFolder ?? process.cwd()
   const win = options.window
 
   const unsubscribeWindow = win?.onMaximizedChange((maximized) =>
@@ -43,6 +47,7 @@ export function createBackend(options: BackendOptions): Backend {
   )
 
   const api: BackendApi = {
+    map: createMapService(),
     appState: {
       read: () => appState.read(),
       write: async (patch) => {
@@ -52,7 +57,7 @@ export function createBackend(options: BackendOptions): Backend {
       }
     },
     system: {
-      info: async () => ({ language })
+      info: async () => ({ language, startFolder })
     },
     window: {
       minimize: async () => win?.minimize(),

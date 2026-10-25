@@ -202,9 +202,167 @@ body {
 
 /* Map panel */
 .map-panel__body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+.map-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 auto 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.map-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-link-button {
+  height: 20px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+.cf-destination {
+  flex: none;
+}
+.cf-destination .map-link-button {
+  align-self: flex-start;
+  margin-left: -4px;
+  color: var(--route);
+}
+.map-destination__text[data-expanded='false'] {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.map-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 220px;
+}
+.map-decided {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-3) 0;
+}
+.map-decided__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.map-decided__head .cf-chip {
+  height: 18px;
+  font-size: 11px;
+}
+.map-decided__head .map-link-button {
+  margin-left: auto;
+}
+.map-decided .cf-decided {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.map-graph {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.map-graph .react-flow {
+  background: transparent;
+}
+.map-graph .react-flow__attribution {
+  background: transparent;
+  font-size: 10px;
+}
+.map-graph .react-flow__attribution a {
+  color: var(--text-faint);
+}
+.map-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.map-ticket {
+  height: 100%;
+}
+.map-zoom {
+  position: absolute;
+  left: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+}
+.map-counts {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 5;
+  margin: 0;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.map-sections {
+  flex: none;
+  max-height: 45%;
   overflow: auto;
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--line);
+}
+.map-section-head {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+.map-section-head:hover {
+  color: var(--text);
+}
+.map-section-head:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.map-section-head .cf-chip {
+  margin-left: auto;
+}
+.map-section {
+  padding: 0 var(--space-3) var(--space-2) var(--space-6);
+}
+.map-text p {
+  margin: 0 0 6px;
+}
+.map-text ul {
+  margin: 0 0 6px;
+  padding-left: var(--space-4);
+}
+.map-text li + li {
+  margin-top: 4px;
+}
+.map-text strong {
+  font-weight: 500;
+}
+.map-text code {
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 /* Empty states */

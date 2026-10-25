@@ -19,7 +19,7 @@ async function start(): Promise<void> {
   await initI18n(info.language)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App initialState={state} />
+      <App initialState={state} project={info.startFolder} />
     </StrictMode>
   )
 }
