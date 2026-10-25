@@ -1,18 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createBackend, type Backend } from '../../src/backend'
+import type { Backend } from '../../src/backend'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { startBackend } from './backend'
 
 describe('app state', () => {
   let env: FakeEnvironment
   const backends: Backend[] = []
 
-  /** Starts ClaudeForge's backend on the fake environment, as the main process does. */
   const start = (): Backend => {
-    const backend = createBackend({
-      stateDir: env.userDataDir,
-      systemLanguages: env.systemLanguages,
-      appVersion: '0.0.0-test'
-    })
+    const backend = startBackend(env)
     backends.push(backend)
     return backend
   }

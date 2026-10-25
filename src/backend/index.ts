@@ -13,7 +13,7 @@ export interface WindowHost {
   toggleMaximize(): void
   close(): void
   isMaximized(): boolean
-  /** Calls back whenever the window is maximised or restored; returns an unsubscribe. */
+  /** Calls back whenever the window is maximized or restored; returns an unsubscribe. */
   onMaximizedChange(listener: (maximized: boolean) => void): () => void
 }
 
@@ -22,7 +22,6 @@ export interface BackendOptions {
   stateDir: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
-  appVersion: string
   /** Absent when no window exists (Seam 1 tests); window calls then do nothing. */
   window?: WindowHost
 }
@@ -53,7 +52,7 @@ export function createBackend(options: BackendOptions): Backend {
       }
     },
     system: {
-      info: async () => ({ language, appVersion: options.appVersion })
+      info: async () => ({ language })
     },
     window: {
       minimize: async () => win?.minimize(),

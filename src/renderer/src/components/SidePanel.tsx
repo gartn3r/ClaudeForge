@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { PANEL_BOUNDS, RAIL_WIDTH, type PanelId, type PanelLayout } from '../../../shared/api'
+import { PANEL_BOUNDS, RAIL_WIDTH, clampPanelWidth, type PanelId, type PanelLayout } from '../../../shared/api'
 import { api } from '../api'
 
 const KEY_STEP = 16
@@ -28,11 +28,15 @@ export function SidePanel(props: SidePanelProps): ReactNode {
   const { min, max } = PANEL_BOUNDS[id]
   const [liveWidth, setLiveWidth] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
-  const drag =useRef<{ x: number; width: number } | null>(null)
+  const drag = useRef<{ x: number; width: number } | null>(null)
   const direction = side === 'left' ? 1 : -1
 
-  const clamp = (width: number): number => Math.round(Math.min(max, Math.max(min, width)))
+  const clamp = (width: number): number => clampPanelWidth(id, width)
   const current = liveWidth ?? layout.width
+
+  /** The width the drag gives at this pointer position. */
+  const widthAt = (event: PointerEvent<HTMLDivElement>, start: { x: number; width: number }): number =>
+    clamp(start.width + (event.clientX - start.x) * direction)
 
   const commit = (width: number): void => {
     setLiveWidth(width)
@@ -50,12 +54,12 @@ export function SidePanel(props: SidePanelProps): ReactNode {
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>): void => {
     if (!drag.current) return
-    setLiveWidth(clamp(drag.current.width + (event.clientX - drag.current.x) * direction))
+    setLiveWidth(widthAt(event, drag.current))
   }
 
   const endDrag = (event: PointerEvent<HTMLDivElement>): void => {
     if (!drag.current) return
-    const width = clamp(drag.current.width + (event.clientX - drag.current.x) * direction)
+    const width = widthAt(event, drag.current)
     drag.current = null
     setDragging(false)
     onResizingChange(false)

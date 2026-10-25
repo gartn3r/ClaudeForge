@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { createBackend, type Backend, type WindowHost } from '../../src/backend'
+import type { Backend, WindowHost } from '../../src/backend'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { startBackend } from './backend'
 
 /** Stands in for the Electron window, the boundary the backend does not own. */
 function fakeWindow(): WindowHost & { closed: boolean } {
@@ -33,9 +34,9 @@ describe('window controls', () => {
     await env.dispose()
   })
 
-  it('maximise and restore the window and push each change to the interface', async () => {
+  it('maximize and restore the window and push each change to the interface', async () => {
     env = await createFakeEnvironment()
-    backend = createBackend({ stateDir: env.userDataDir, systemLanguages: [], appVersion: '0', window: fakeWindow() })
+    backend = startBackend(env, fakeWindow())
     const pushed: boolean[] = []
     backend.on('window.maximizedChanged', ({ maximized }) => pushed.push(maximized))
 
@@ -49,7 +50,7 @@ describe('window controls', () => {
   it('close the window', async () => {
     env = await createFakeEnvironment()
     const win = fakeWindow()
-    backend = createBackend({ stateDir: env.userDataDir, systemLanguages: [], appVersion: '0', window: win })
+    backend = startBackend(env, win)
 
     await backend.api.window.close()
 

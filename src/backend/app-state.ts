@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   PANEL_BOUNDS,
+  clampPanelWidth,
   type AppState,
   type AppStatePatch,
   type PanelId,
@@ -22,8 +23,7 @@ export function defaultAppState(): AppState {
 
 function clampWidth(panel: PanelId, value: unknown, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
-  const { min, max } = PANEL_BOUNDS[panel]
-  return Math.round(Math.min(max, Math.max(min, value)))
+  return clampPanelWidth(panel, value)
 }
 
 function mergePanel(panel: PanelId, base: PanelLayout, patch: unknown): PanelLayout {

@@ -118,3 +118,18 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   await window.getByRole('button', { name: 'Expand the explorer' }).click()
   await expect.poll(() => widthOf(window, 'Sessions')).toBe(364)
 })
+
+test('keeps both panels and the terminal inside a window at its minimum size', async () => {
+  claudeforge = await launchClaudeForge(env)
+  const { app, window } = claudeforge
+  await dragEdge(window, 'Resize the explorer', 1000)
+  await dragEdge(window, 'Resize the Map panel', -1000)
+
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(960, 600))
+
+  await expect.poll(() => window.evaluate(() => innerWidth)).toBe(960)
+  const terminal = (await window.getByRole('main').boundingBox())!
+  const collapseMap = (await window.getByRole('button', { name: 'Collapse the Map panel' }).boundingBox())!
+  expect(terminal.width).toBeGreaterThanOrEqual(320)
+  expect(collapseMap.x + collapseMap.width).toBeLessThanOrEqual(960)
+})

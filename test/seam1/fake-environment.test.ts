@@ -4,7 +4,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { createFakeEnvironment, encodeProjectPath, type FakeEnvironment } from '../fake-env'
 
 const run = promisify(exec)
 
@@ -59,7 +59,7 @@ describe('the fake environment', () => {
   it('keeps a Claude Code home with a past Session for a fixture Project', async () => {
     env = await createFakeEnvironment()
 
-    const folder = join(env.claudeHome, 'projects', env.projects['harbor-api'].replace(/[^a-zA-Z0-9]/g, '-'))
+    const folder = join(env.claudeHome, 'projects', encodeProjectPath(env.projects['harbor-api']))
     const [file] = await readdir(folder)
     const first = JSON.parse((await readFile(join(folder, file!), 'utf8')).split('\n')[0]!)
 

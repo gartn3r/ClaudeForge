@@ -18,10 +18,7 @@ export function TitleBar(): ReactNode {
 
   return (
     <header className="titlebar">
-      <div className="brand">
-        <span className="brand-mark" aria-hidden="true" />
-        <span>{t('app.name')}</span>
-      </div>
+      <div className="brand">{t('app.name')}</div>
       <div className="cf-tabs" role="tablist" aria-label={t('titleBar.hostedSessions')} />
       <div className="wincontrols">
         <button
@@ -38,7 +35,7 @@ export function TitleBar(): ReactNode {
           title={maximizeLabel}
           onClick={() => void api.window.toggleMaximize()}
         >
-          <MaximizeIcon className="cf-icon cf-icon--sm" aria-hidden="true" />
+          <MaximizeIcon className="cf-icon" aria-hidden="true" />
         </button>
         <button
           type="button"

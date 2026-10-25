@@ -15,7 +15,7 @@
     "collapse": "Replier l'explorateur",
     "expand": "Déplier l'explorateur",
     "resize": "Redimensionner l'explorateur",
-    "empty": "Vos Sessions seront listées ici, groupées par Projet."
+    "empty": "Retrouvez ici chaque Session, groupée par Projet."
   },
   "extensions": {
     "heading": "Extensions"
@@ -30,6 +30,6 @@
     "collapse": "Replier le panneau Carte",
     "expand": "Déplier le panneau Carte",
     "resize": "Redimensionner le panneau Carte",
-    "empty": "La Carte du Projet de la Session affichée sera dessinée ici."
+    "empty": "Suivez ici la Carte du Projet de la Session affichée."
   }
 }

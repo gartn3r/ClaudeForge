@@ -53,7 +53,6 @@ function createWindow(): void {
   const backend = createBackend({
     stateDir: app.getPath('userData'),
     systemLanguages: systemLanguages(),
-    appVersion: app.getVersion(),
     window: windowHost(win)
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
@@ -72,13 +71,6 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
-void app.whenReady().then(() => {
-  createWindow()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+void app.whenReady().then(createWindow)
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on('window-all-closed', () => app.quit())

@@ -47,13 +47,6 @@ body {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.brand-mark {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  background: var(--brass);
-  box-shadow: 5px 5px 0 -1px var(--route);
-}
 .titlebar .cf-tabs {
   flex: 1;
   min-width: 0;
@@ -83,8 +76,9 @@ body {
 }
 .wincontrols button.close:hover {
   background: var(--danger);
-  color: var(--on-brass);
+  color: var(--ground);
 }
+/* Inset: the controls sit flush against the window edge, where an outer ring would be clipped. */
 .wincontrols button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
@@ -97,11 +91,13 @@ body {
   min-height: 0;
 }
 
+/* Side panels keep their set width, but give way before the terminal does in a narrow window. */
 .side-panel {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   min-height: 0;
   background: var(--surface);
 }
@@ -116,6 +112,7 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .rail {
@@ -160,6 +157,7 @@ body {
 .splitter[data-dragging='true']::after {
   background: var(--line-control);
 }
+/* The splitter is a 7px strip; its focus ring is the 2px focus line along the edge it moves. */
 .splitter:focus-visible {
   outline: none;
 }
@@ -195,7 +193,7 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 0;
+  min-width: 320px;
   background: var(--terminal-well);
 }
 

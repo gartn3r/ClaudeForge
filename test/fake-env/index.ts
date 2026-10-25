@@ -2,7 +2,7 @@
 // holding a Claude Code home, fixture Projects, ClaudeForge's data folder and
 // fake `claude` and `gh` executables first on PATH.
 
-import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp,mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 
@@ -44,12 +44,9 @@ export interface FakeEnvironment {
 /** Claude Code names a Project's history folder after its path, every other character a dash. */
 export const encodeProjectPath = (path: string): string => path.replace(/[^a-zA-Z0-9]/g, '-')
 
+/** A Windows shim that runs a fake executable's script with this Node. */
 async function writeExecutable(binDir: string, tool: FakeTool, script: string): Promise<void> {
-  const node = process.execPath
-  await writeFile(join(binDir, `${tool}.cmd`), `@echo off\r\n"${node}" "${script}" %*\r\n`)
-  const posix = join(binDir, tool)
-  await writeFile(posix, `#!/bin/sh\nexec "${node}" "${script}" "$@"\n`)
-  await chmod(posix, 0o755)
+  await writeFile(join(binDir, `${tool}.cmd`), `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`)
 }
 
 async function seedClaudeHome(claudeHome: string, projects: Record<FixtureProject, string>): Promise<void> {

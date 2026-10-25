@@ -15,7 +15,7 @@
     "collapse": "Collapse the explorer",
     "expand": "Expand the explorer",
     "resize": "Resize the explorer",
-    "empty": "Your Sessions will be listed here, grouped by Project."
+    "empty": "Find every Session here, grouped by Project."
   },
   "extensions": {
     "heading": "Extensions"
@@ -30,6 +30,6 @@
     "collapse": "Collapse the Map panel",
     "expand": "Expand the Map panel",
     "resize": "Resize the Map panel",
-    "empty": "The Map of the displayed Session's Project will be drawn here."
+    "empty": "Follow the Map of the displayed Session's Project here."
   }
 }

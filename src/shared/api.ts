@@ -18,6 +18,12 @@ export const RAIL_WIDTH = 40
 
 export type PanelId = keyof typeof PANEL_BOUNDS
 
+/** Holds a panel width within its bounds, in whole pixels. */
+export function clampPanelWidth(panel: PanelId, width: number): number {
+  const { min, max } = PANEL_BOUNDS[panel]
+  return Math.round(Math.min(max, Math.max(min, width)))
+}
+
 export interface PanelLayout {
   width: number
   collapsed: boolean
@@ -36,7 +42,6 @@ export interface AppStatePatch {
 export interface SystemInfo {
   /** Interface language, from the Windows display languages. */
   language: Language
-  appVersion: string
 }
 
 export interface BackendApi {
@@ -60,7 +65,6 @@ export interface BackendEvents {
   'window.maximizedChanged': { maximized: boolean }
 }
 
-export type ServiceName = keyof BackendApi
 export type EventName = keyof BackendEvents
 
 // A record, so adding an event to BackendEvents without listing it here fails to compile.

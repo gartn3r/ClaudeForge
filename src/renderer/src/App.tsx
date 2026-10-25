@@ -20,7 +20,7 @@ export function App({ initialState }: AppProps): ReactNode {
 
   useEffect(() => onEvent('appState.changed', setState), [])
 
-  const setCollapsed = (panel: PanelId, collapsed: boolean) => () =>
+  const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
     void api.appState.write({ layout: { [panel]: { collapsed } } })
 
   return (
@@ -33,10 +33,10 @@ export function App({ initialState }: AppProps): ReactNode {
           layout={state.layout.explorer}
           label={t('explorer.label')}
           resizeLabel={t('explorer.resize')}
-          rail={<ExplorerRail onExpand={setCollapsed('explorer', false)} />}
+          rail={<ExplorerRail onExpand={collapseHandler('explorer', false)} />}
           onResizingChange={setResizing}
         >
-          <Explorer onCollapse={setCollapsed('explorer', true)} />
+          <Explorer onCollapse={collapseHandler('explorer', true)} />
         </SidePanel>
         <TerminalArea />
         <SidePanel
@@ -45,10 +45,10 @@ export function App({ initialState }: AppProps): ReactNode {
           layout={state.layout.map}
           label={t('map.label')}
           resizeLabel={t('map.resize')}
-          rail={<MapRail onExpand={setCollapsed('map', false)} />}
+          rail={<MapRail onExpand={collapseHandler('map', false)} />}
           onResizingChange={setResizing}
         >
-          <MapPanel onCollapse={setCollapsed('map', true)} />
+          <MapPanel onCollapse={collapseHandler('map', true)} />
         </SidePanel>
       </div>
     </div>

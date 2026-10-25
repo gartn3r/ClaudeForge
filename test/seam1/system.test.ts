@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { createBackend, type Backend } from '../../src/backend'
+import type { Backend } from '../../src/backend'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { startBackend } from './backend'
 
 describe('interface language', () => {
   let env: FakeEnvironment | undefined
@@ -13,7 +14,7 @@ describe('interface language', () => {
 
   const languageFor = async (systemLanguages: string[]): Promise<string> => {
     env = await createFakeEnvironment({ systemLanguages })
-    backend = createBackend({ stateDir: env.userDataDir, systemLanguages: env.systemLanguages, appVersion: '0.0.0-test' })
+    backend = startBackend(env)
     return (await backend.api.system.info()).language
   }
 
