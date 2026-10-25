@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react'
 import type { HostedSessionStatus } from '../../../shared/api'
-import { HostedTerminal, type SessionEnd } from './hosted-terminal'
+import { HostedTerminal, type SessionEnd, type SessionLaunch } from './hosted-terminal'
 
 /** One Hosted session's tab, as the title bar and the terminal area show it. */
 export interface HostedTab {
@@ -43,10 +43,10 @@ export class HostedSessions {
 
   snapshot = (): HostedTabs => this.state
 
-  /** Starts a Hosted session in a Project, in a new tab on show after the others. */
-  start(project: string, gpuRendering: boolean): void {
+  /** Starts a Hosted session in a Project, new or from one of its past Sessions, in a new tab on show after the others. */
+  start(project: string, gpuRendering: boolean, launch?: SessionLaunch): void {
     const key = String(this.nextKey++)
-    const terminal = new HostedTerminal(project, gpuRendering)
+    const terminal = new HostedTerminal(project, gpuRendering, launch)
     terminal.onChange(() =>
       this.update(this.state.tabs.map((tab) => (tab.key === key ? tabOf(key, project, terminal) : tab)))
     )

@@ -2,7 +2,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import type { HostedSession, HostedSessionStatus } from '../../../shared/api'
+import type { HostedSession, HostedSessionStatus, TerminalSize } from '../../../shared/api'
 import { api, onEvent } from '../api'
 
 /** How long the terminal's area must keep its size before the terminal refits, so a drag resizes `claude` once. */
@@ -10,6 +10,9 @@ const REFIT_DELAY_MS = 50
 
 /** How a Hosted session ended: `claude`'s exit code, or null when it could not start. */
 export type SessionEnd = { exitCode: number | null }
+
+/** How a Hosted session's `claude` starts: a new Session in its Project, or from a past Session. */
+export type SessionLaunch = { kind: 'new' } | { kind: 'resume' | 'fork'; sessionId: string }
 
 /** Claude Code puts a spinner or status glyph before the name it gives its terminal. */
 const STATUS_GLYPH = /^\p{So}\s+/u
@@ -72,7 +75,8 @@ export class HostedTerminal {
 
   constructor(
     private readonly project: string,
-    private gpuRendering: boolean
+    private gpuRendering: boolean,
+    private readonly launch: SessionLaunch = { kind: 'new' }
   ) {
     this.terminal = new Terminal({
       // The mono-terminal text style.
@@ -202,7 +206,7 @@ export class HostedTerminal {
     this.fit.fit()
     const { cols, rows } = this.terminal
     try {
-      this.session = await api.sessionHost.start(this.project, { cols, rows })
+      this.session = await this.startClaude({ cols, rows })
     } catch {
       this.eventsBeforeStart = []
       this.finish({ exitCode: null })
@@ -218,6 +222,18 @@ export class HostedTerminal {
     }
     for (const event of this.eventsBeforeStart.splice(0)) if (event.id === id) event.apply()
     if (this.visible) this.terminal.focus()
+  }
+
+  private startClaude(size: TerminalSize): Promise<HostedSession> {
+    const launch = this.launch
+    switch (launch.kind) {
+      case 'new':
+        return api.sessionHost.start(this.project, size)
+      case 'resume':
+        return api.sessionHost.resume(launch.sessionId, size)
+      case 'fork':
+        return api.sessionHost.fork(launch.sessionId, size)
+    }
   }
 
   /** Applies a Session host event if it is this Hosted session's, holding it back until `claude` has started. */
