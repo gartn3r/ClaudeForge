@@ -4,14 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { api, onEvent } from '../api'
 
 interface TitleBarProps {
-  /** Whether to show the Hosted session tabs; the first-run screen has none. */
-  sessionTabs?: boolean
+  /** The Hosted session tabs; the first-run screen has none. */
+  tabs?: ReactNode
   /** The settings menu, beside the window controls. */
   settings?: ReactNode
 }
 
 /** The custom title bar of the frameless window: name, Hosted session tabs, window controls. */
-export function TitleBar({ sessionTabs = true, settings }: TitleBarProps): ReactNode {
+export function TitleBar({ tabs, settings }: TitleBarProps): ReactNode {
   const { t } = useTranslation()
   const [maximized, setMaximized] = useState(false)
 
@@ -26,7 +26,7 @@ export function TitleBar({ sessionTabs = true, settings }: TitleBarProps): React
   return (
     <header className="titlebar">
       <div className="brand">{t('app.name')}</div>
-      {sessionTabs && <div className="cf-tabs" role="tablist" aria-label={t('titleBar.hostedSessions')} />}
+      {tabs}
       {settings}
       <div className="wincontrols">
         <button

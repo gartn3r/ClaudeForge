@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
+import type { HostedSessionStatus } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions, type FixtureProject } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -32,6 +33,8 @@ describe('the Session host', () => {
   let outputs: Map<string, string>
   /** The exit events of the Hosted sessions, oldest first. */
   let exits: Array<{ id: string; exitCode: number }>
+  /** The status events of the Hosted sessions, oldest first. */
+  let statusEvents: Array<{ id: string; status: HostedSessionStatus }>
 
   afterEach(async () => {
     backend?.dispose()
@@ -45,8 +48,13 @@ describe('the Session host', () => {
     exits = []
     backend.on('sessionHost.output', ({ id, data }) => outputs.set(id, (outputs.get(id) ?? '') + data))
     backend.on('sessionHost.exit', (exit) => exits.push(exit))
+    statusEvents = []
+    backend.on('sessionHost.status', (event) => statusEvents.push(event))
     return backend
   }
+
+  /** The statuses a Hosted session went through, oldest first. */
+  const statuses = (id: string): HostedSessionStatus[] => statusEvents.filter((event) => event.id === id).map(({ status }) => status)
 
   /** What a Hosted session has printed so far, as plain text. */
   const output = (id: string): string => plain(outputs.get(id) ?? '')
@@ -149,6 +157,31 @@ describe('the Session host', () => {
     await api.sessionHost.write(id, '/exit\r')
 
     await vi.waitFor(() => expect(exits).toEqual([{ id, exitCode: 0 }]), { timeout: 15_000 })
+  })
+
+  it('reports a Hosted session working while claude answers the user, and done once it falls quiet', async () => {
+    const { api } = await start()
+    const working = await startSession('recipe-box')
+    const other = await startSession('harbor-api')
+
+    await api.sessionHost.write(working, '/work 1000\r')
+
+    await vi.waitFor(() => expect(statuses(working)).toEqual(['working', 'done']), { timeout: 15_000 })
+    expect(statuses(other)).toEqual([])
+  })
+
+  it("does not count claude echoing the user's typing as work", async () => {
+    const { api } = await start()
+    const id = await startSession()
+
+    await api.sessionHost.write(id, 'hello')
+    await waitForText(id, '> hello')
+    await api.sessionHost.write(id, '\r')
+    await waitForText(id, 'You wrote: "hello"')
+    // Longer than a Session must stay quiet before it counts as done.
+    await new Promise((resolve) => setTimeout(resolve, 2_500))
+
+    expect(statuses(id)).toEqual([])
   })
 
   it('stops a Hosted session, and reports that its claude ended', async () => {
