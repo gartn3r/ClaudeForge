@@ -33,11 +33,15 @@ The single issue (or `map.md` file) that charts one Wayfinder effort toward its 
 _Avoid_: plan, tree, roadmap
 
 **Ticket**:
-A child issue of a Map holding one question whose resolution is a decision; it is open, claimed, blocked or closed.
+A child issue of a Map, or of another Ticket, holding one question whose resolution is a decision; it is open, claimed, blocked or closed.
 _Avoid_: task (a Ticket type), node, branch
 
+**Sub-ticket**:
+A Ticket whose parent is another Ticket rather than the Map. A Ticket with open Sub-tickets is a **Parent Ticket**; a block on a Parent Ticket also blocks every Ticket beneath it.
+_Avoid_: child task, subtask, nested issue
+
 **Frontier**:
-The open, unblocked, unclaimed Tickets of a Map: what can be worked now.
+The open, unclaimed Tickets with no open blocker on themselves or any ancestor and no open Sub-tickets: what can be worked now.
 
 **Tracker**:
 Where a project keeps its Maps and Tickets, as declared in its `docs/agents/issue-tracker.md` (GitHub Issues or local markdown under `.scratch/`).
