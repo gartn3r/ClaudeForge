@@ -2,7 +2,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import type { HostedSession } from '../../../shared/api'
+import type { HostedSession, HostedSessionStatus } from '../../../shared/api'
 import { api, onEvent } from '../api'
 
 /** How long the terminal's area must keep its size before the terminal refits, so a drag resizes `claude` once. */
@@ -10,6 +10,9 @@ const REFIT_DELAY_MS = 50
 
 /** How a Hosted session ended: `claude`'s exit code, or null when it could not start. */
 export type SessionEnd = { exitCode: number | null }
+
+/** Claude Code puts a spinner or status glyph before the name it gives its terminal. */
+const STATUS_GLYPH = /^\p{So}\s+/u
 
 const token = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim()
 
@@ -43,7 +46,8 @@ function terminalTheme(): ITheme {
 /**
  * One Hosted session's terminal: xterm.js wired to its `claude` through the
  * Session host. It lives outside React, so a component re-mounting (as React's
- * strict mode does) never starts `claude` twice.
+ * strict mode does) never starts `claude` twice, and a hidden terminal keeps
+ * its `claude` and its scrollback.
  */
 export class HostedTerminal {
   private readonly terminal: Terminal
@@ -52,8 +56,13 @@ export class HostedTerminal {
   private session: HostedSession | undefined
   /** Events that arrived before the Session host said which Hosted session is this one. */
   private eventsBeforeStart: Array<{ id: string; apply(): void }> = []
-  private end: SessionEnd | undefined
+  private ended: SessionEnd | undefined
   private readonly endListeners = new Set<(end: SessionEnd) => void>()
+  private readonly changeListeners = new Set<() => void>()
+  private currentStatus: HostedSessionStatus = 'idle'
+  private currentTitle: string | null = null
+  /** Whether the terminal is on show; only then does it hold a WebGL context, as Chromium caps them. */
+  private visible = true
   private readonly unsubscribers: Array<() => void>
   private container: HTMLElement | undefined
   private opened = false
@@ -90,10 +99,20 @@ export class HostedTerminal {
     this.terminal.onResize(({ cols, rows }) => {
       if (this.session) void api.sessionHost.resize(this.session.id, { cols, rows })
     })
+    this.terminal.onTitleChange((title) => {
+      this.currentTitle = title.replace(STATUS_GLYPH, '').trim() || null
+      this.changed()
+    })
 
     this.unsubscribers = [
       onEvent('sessionHost.output', ({ id, data }) => this.handleEvent(id, () => this.terminal.write(data))),
-      onEvent('sessionHost.exit', ({ id, exitCode }) => this.handleEvent(id, () => this.finish({ exitCode })))
+      onEvent('sessionHost.exit', ({ id, exitCode }) => this.handleEvent(id, () => this.finish({ exitCode }))),
+      onEvent('sessionHost.status', ({ id, status }) =>
+        this.handleEvent(id, () => {
+          this.currentStatus = status
+          this.changed()
+        })
+      )
     ]
   }
 
@@ -109,6 +128,7 @@ export class HostedTerminal {
       void this.open()
     }
     const observer = new ResizeObserver(() => {
+      if (!this.visible) return
       clearTimeout(this.refitTimer)
       this.refitTimer = setTimeout(() => this.fit.fit(), REFIT_DELAY_MS)
     })
@@ -122,24 +142,59 @@ export class HostedTerminal {
   /** Switches between the WebGL renderer and the DOM renderer. */
   setGpuRendering(on: boolean): void {
     this.gpuRendering = on
-    if (!this.terminal.element) return
-    if (on) this.loadWebgl()
-    else this.unloadWebgl()
+    this.updateRenderer()
+  }
+
+  /** Shows the terminal, refitted and focused, or hides it; a hidden one gives up its WebGL context. */
+  setVisible(visible: boolean): void {
+    this.visible = visible
+    this.updateRenderer()
+    if (visible && this.terminal.element) {
+      this.fit.fit()
+      this.terminal.focus()
+    }
+  }
+
+  focus(): void {
+    this.terminal.focus()
+  }
+
+  /** What `claude` is doing, as the Session host last said. */
+  get status(): HostedSessionStatus {
+    return this.currentStatus
+  }
+
+  /** The name Claude Code gave its terminal, without its status glyph; null until it gives one. */
+  get title(): string | null {
+    return this.currentTitle
+  }
+
+  /** How the Hosted session ended; undefined while it runs. */
+  get end(): SessionEnd | undefined {
+    return this.ended
   }
 
   /** Calls back once the Hosted session has ended, at once if it already has; returns an unsubscribe. */
   onEnd(listener: (end: SessionEnd) => void): () => void {
-    if (this.end) listener(this.end)
+    if (this.ended) listener(this.ended)
     else this.endListeners.add(listener)
     return () => this.endListeners.delete(listener)
+  }
+
+  /** Calls back whenever its status, title or end changes; returns an unsubscribe. */
+  onChange(listener: () => void): () => void {
+    this.changeListeners.add(listener)
+    return () => this.changeListeners.delete(listener)
   }
 
   /** Stops `claude` if it still runs, and lets go of the terminal. */
   dispose(): void {
     this.disposed = true
     for (const unsubscribe of this.unsubscribers) unsubscribe()
-    if (this.session && !this.end) void api.sessionHost.stop(this.session.id)
+    if (this.session && !this.ended) void api.sessionHost.stop(this.session.id)
     clearTimeout(this.refitTimer)
+    this.changeListeners.clear()
+    this.unloadWebgl()
     this.terminal.dispose()
   }
 
@@ -149,7 +204,7 @@ export class HostedTerminal {
     await Promise.all([document.fonts.load(`400 13px ${font}`), document.fonts.load(`600 13px ${font}`)])
     if (this.disposed) return
     this.terminal.open(this.container!)
-    if (this.gpuRendering) this.loadWebgl()
+    this.updateRenderer()
     this.fit.fit()
     const { cols, rows } = this.terminal
     try {
@@ -168,7 +223,7 @@ export class HostedTerminal {
       void api.sessionHost.resize(id, { cols: this.terminal.cols, rows: this.terminal.rows })
     }
     for (const event of this.eventsBeforeStart.splice(0)) if (event.id === id) event.apply()
-    this.terminal.focus()
+    if (this.visible) this.terminal.focus()
   }
 
   /** Applies a Session host event if it is this Hosted session's, holding it back until `claude` has started. */
@@ -178,13 +233,25 @@ export class HostedTerminal {
   }
 
   private write(data: string): void {
-    if (this.session && !this.end) void api.sessionHost.write(this.session.id, data)
+    if (this.session && !this.ended) void api.sessionHost.write(this.session.id, data)
   }
 
   private finish(end: SessionEnd): void {
-    this.end = end
+    this.ended = end
     for (const listener of this.endListeners) listener(end)
     this.endListeners.clear()
+    this.changed()
+  }
+
+  private changed(): void {
+    for (const listener of this.changeListeners) listener()
+  }
+
+  /** WebGL while the terminal is on show and GPU rendering is on, else the DOM renderer. */
+  private updateRenderer(): void {
+    if (!this.terminal.element) return
+    if (this.visible && this.gpuRendering) this.loadWebgl()
+    else this.unloadWebgl()
   }
 
   private loadWebgl(): void {
@@ -201,7 +268,14 @@ export class HostedTerminal {
   }
 
   private unloadWebgl(): void {
-    this.webgl?.dispose()
+    const webgl = this.webgl
+    if (!webgl) return
     this.webgl = undefined
+    // Disposing the addon leaves its WebGL context alive until garbage collection, and past
+    // Chromium's cap a live terminal loses its renderer (xterm.js#6068), so let go of it now.
+    for (const canvas of this.terminal.element?.querySelectorAll('canvas') ?? []) {
+      canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext()
+    }
+    webgl.dispose()
   }
 }

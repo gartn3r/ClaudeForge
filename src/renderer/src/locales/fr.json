@@ -59,6 +59,21 @@
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
     "failed": "Claude Code n'a pas pu démarrer dans ce dossier."
   },
+  "tabs": {
+    "newSession": "Nouvelle Session",
+    "close": "Fermer",
+    "status": {
+      "idle": "Prête",
+      "working": "Au travail",
+      "done": "Terminée",
+      "ended": "Arrêtée"
+    },
+    "stop": {
+      "title": "Claude travaille encore dans cette Session. L’arrêter ?",
+      "body": "Son processus claude s’arrête et l’onglet se ferme. La conversation jusqu’ici reste dans l’historique de Claude Code.",
+      "action": "L’arrêter"
+    }
+  },
   "map": {
     "label": "Carte",
     "heading": "Carte",

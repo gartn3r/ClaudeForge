@@ -222,6 +222,12 @@ export interface HostedSession {
   windowsPty: { backend: 'conpty'; buildNumber: number } | null
 }
 
+/**
+ * What a Hosted session's `claude` is doing: idle until the user first sends it something, working
+ * while it streams a turn, done once that turn is over.
+ */
+export type HostedSessionStatus = 'idle' | 'working' | 'done'
+
 export interface BackendApi {
   sessionHost: {
     /** Asks the user for a Project folder ("Open folder"); null when they cancel. */
@@ -275,6 +281,8 @@ export interface BackendEvents {
   'sessionHost.output': { id: string; data: string }
   /** A Hosted session's `claude` ended. */
   'sessionHost.exit': { id: string; exitCode: number }
+  /** A Hosted session's status changed; every Hosted session starts idle. */
+  'sessionHost.status': { id: string; status: HostedSessionStatus }
   'appState.changed': AppState
   /** The whole Session catalog, after Claude Code's files changed it. */
   'sessions.changed': ProjectSessions[]
@@ -287,6 +295,7 @@ export type EventName = keyof BackendEvents
 const EVENTS: Record<EventName, true> = {
   'sessionHost.output': true,
   'sessionHost.exit': true,
+  'sessionHost.status': true,
   'appState.changed': true,
   'sessions.changed': true,
   'window.maximizedChanged': true
