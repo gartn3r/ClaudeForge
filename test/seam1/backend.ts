@@ -9,6 +9,7 @@ export function startBackend(env: FakeEnvironment, window?: WindowHost, dialogs?
     systemLanguages: env.systemLanguages,
     env: env.processEnv,
     window,
-    dialogs
+    dialogs,
+    trashItem: env.trashItem
   })
 }

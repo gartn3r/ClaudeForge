@@ -2,12 +2,18 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { createBackend, type Dialogs, type WindowHost } from '../backend'
+import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
 
-// Test and development overrides. The fake environment sets both, so Seam 2
-// runs against a temporary data folder and a fixed language.
+// Test and development overrides. The fake environment sets them all, so Seam 2
+// runs against a temporary data folder, a fixed language and a stand-in Recycle Bin.
 if (process.env.CLAUDEFORGE_USER_DATA) app.setPath('userData', process.env.CLAUDEFORGE_USER_DATA)
+
+function trashItem(): TrashItem {
+  const override = process.env.CLAUDEFORGE_RECYCLE_BIN
+  return override ? standInRecycleBin(override) : (path) => shell.trashItem(path)
+}
 
 function systemLanguages(): string[] {
   const override = process.env.CLAUDEFORGE_SYSTEM_LANGUAGES
@@ -75,7 +81,8 @@ function createWindow(): void {
     systemLanguages: systemLanguages(),
     env: process.env,
     window: windowHost(win),
-    dialogs: dialogs(win)
+    dialogs: dialogs(win),
+    trashItem: trashItem()
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {

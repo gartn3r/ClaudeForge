@@ -8,6 +8,7 @@ import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
+import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 
 /** The window the interface runs in, as the backend sees it. */
@@ -35,6 +36,8 @@ export interface BackendOptions {
   window?: WindowHost
   /** Native dialogs; absent in Seam 1 tests unless one stands in for the user. */
   dialogs?: Dialogs
+  /** Moves a deleted Session's files to the Windows Recycle Bin. */
+  trashItem: TrashItem
 }
 
 /** The native dialogs the backend asks the user through. */
@@ -52,7 +55,11 @@ export interface Backend {
 export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
-  const sessions = new SessionCatalog(options.claudeHome, (projects) => events.emit('sessions.changed', projects))
+  const sessions = new SessionCatalog(
+    options.claudeHome,
+    (projects) => events.emit('sessions.changed', projects),
+    async () => (await appState.read()).sessions
+  )
   const language = resolveLanguage(options.systemLanguages)
   const startFolder = options.startFolder ?? process.cwd()
   const win = options.window
@@ -77,7 +84,25 @@ export function createBackend(options: BackendOptions): Backend {
       write: writeAppState
     },
     sessions: {
-      list: () => sessions.list()
+      list: () => sessions.list(),
+      rename: async (id, title) => {
+        await writeAppState({ sessions: { [id]: { title } } })
+        await sessions.refresh()
+      },
+      setHidden: async (id, hidden) => {
+        await writeAppState({ sessions: { [id]: { hidden } } })
+        await sessions.refresh()
+      },
+      delete: async (id) => {
+        try {
+          const deletion = await sessions.delete(id, options.trashItem)
+          if (deletion.deleted) await writeAppState({ sessions: { [id]: null } })
+          return deletion
+        } finally {
+          // Even a delete that failed midway (a file held open) may have moved some files.
+          await sessions.refresh()
+        }
+      }
     },
     system: {
       info: async () => ({ language, startFolder })
