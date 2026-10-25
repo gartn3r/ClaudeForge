@@ -1,0 +1,35 @@
+{
+  "app": {
+    "name": "ClaudeForge"
+  },
+  "titleBar": {
+    "hostedSessions": "Sessions hébergées",
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "restore": "Restaurer",
+    "close": "Fermer la fenêtre"
+  },
+  "explorer": {
+    "label": "Sessions",
+    "heading": "Sessions",
+    "collapse": "Replier l'explorateur",
+    "expand": "Déplier l'explorateur",
+    "resize": "Redimensionner l'explorateur",
+    "empty": "Retrouvez ici chaque Session, groupée par Projet."
+  },
+  "extensions": {
+    "heading": "Extensions"
+  },
+  "terminal": {
+    "label": "Terminal",
+    "empty": "Démarrez une Session depuis l'explorateur pour ouvrir son terminal ici."
+  },
+  "map": {
+    "label": "Carte",
+    "heading": "Carte",
+    "collapse": "Replier le panneau Carte",
+    "expand": "Déplier le panneau Carte",
+    "resize": "Redimensionner le panneau Carte",
+    "empty": "Suivez ici la Carte du Projet de la Session affichée."
+  }
+}

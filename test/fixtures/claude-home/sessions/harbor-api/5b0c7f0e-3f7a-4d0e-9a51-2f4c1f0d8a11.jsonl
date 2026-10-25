@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11","uuid":"a1f0c2d4-0001-4000-8000-000000000001","parentUuid":null,"cwd":"__CWD_JSON__","timestamp":"2026-10-22T09:12:00.000Z","message":{"role":"user","content":"Add an OpenAPI export"}}
+{"type":"assistant","sessionId":"5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11","uuid":"a1f0c2d4-0002-4000-8000-000000000002","parentUuid":"a1f0c2d4-0001-4000-8000-000000000001","cwd":"__CWD_JSON__","timestamp":"2026-10-22T09:12:30.000Z","message":{"role":"assistant","content":[{"type":"text","text":"I'll add an OpenAPI export."}]}}

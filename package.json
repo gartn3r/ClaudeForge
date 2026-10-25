@@ -1,0 +1,55 @@
+{
+  "name": "claudeforge",
+  "productName": "ClaudeForge",
+  "version": "0.1.0",
+  "description": "A Windows desktop harness around the real Claude Code CLI.",
+  "license": "MIT",
+  "private": true,
+  "main": "out/main/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gartn3r/ClaudeForge.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "lint": "eslint .",
+    "test": "npm run test:seam1 && npm run test:seam2",
+    "test:seam1": "vitest run",
+    "test:seam2": "npm run build && playwright test",
+    "notices": "node scripts/third-party-notices.mjs",
+    "notices:check": "node scripts/third-party-notices.mjs --check",
+    "check:locales": "node scripts/check-locales.mjs"
+  },
+  "dependencies": {
+    "@fontsource/geist": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "i18next": "26.5.10",
+    "lucide-react": "1.61.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-i18next": "17.1.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "45.0.0",
+    "electron-vite": "6.0.0",
+    "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

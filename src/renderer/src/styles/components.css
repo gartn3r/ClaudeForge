@@ -1,0 +1,161 @@
+/* ClaudeForge components from the design system: plain CSS on the tokens, every class prefixed cf-. */
+
+.cf-root { font-family: var(--font-sans); font-size: 13px; line-height: 18px; color: var(--text); background: var(--surface); -webkit-font-smoothing: antialiased; }
+.cf-root *, .cf-root *::before, .cf-root *::after { box-sizing: border-box; }
+.cf-mono { font-family: var(--font-mono); font-size: 12px; line-height: 16px; }
+.cf-muted { color: var(--text-muted); }
+.cf-eyebrow { font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+
+.cf-icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.cf-icon--sm { width: 14px; height: 14px; }
+
+/* Button */
+.cf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); height: var(--size-control); padding: 0 var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--surface-raised); color: var(--text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; white-space: nowrap; }
+.cf-btn:hover { background: var(--surface-overlay); border-color: var(--line-control); }
+.cf-btn:focus-visible, .cf-toggle:focus-visible, .cf-row:focus-visible, .cf-tab:focus-visible, .cf-ticket:focus-visible, .cf-seg button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cf-btn--primary { background: var(--brass); border-color: var(--brass); color: var(--on-brass); }
+.cf-btn--primary:hover { background: var(--ansi-bright-yellow); border-color: var(--ansi-bright-yellow); box-shadow: 0 0 0 4px var(--brass-soft); }
+.cf-btn--ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.cf-btn--ghost:hover { background: var(--surface-raised); border-color: transparent; color: var(--text); }
+.cf-btn--danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.cf-btn--danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+.cf-btn--icon { width: var(--size-control); padding: 0; }
+.cf-btn:disabled { background: var(--surface); border-color: var(--line); color: var(--text-faint); cursor: default; box-shadow: none; }
+
+/* Chip */
+.cf-chip { display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 6px; border-radius: var(--radius-sm); background: var(--surface-overlay); color: var(--text-muted); font-size: 12px; line-height: 16px; white-space: nowrap; }
+.cf-chip--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--line-control); }
+
+/* Status */
+.cf-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--text-muted); white-space: nowrap; }
+.cf-dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex: none; background: var(--text-faint); }
+.cf-status--working { color: var(--route); }
+.cf-status--working .cf-dot { background: var(--route); animation: cf-pulse 1.6s ease-in-out infinite; }
+.cf-status--waiting { color: var(--waiting); }
+.cf-status--done { color: var(--done); }
+.cf-status--dormant .cf-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
+.cf-status--external { color: var(--text-muted); }
+.cf-status--error { color: var(--danger); }
+.cf-pill { height: 20px; padding: 0 var(--space-2) 0 6px; border-radius: var(--radius-sm); }
+.cf-status--working.cf-pill { background: var(--route-soft); }
+.cf-status--waiting.cf-pill { background: var(--waiting-soft); }
+.cf-status--done.cf-pill { background: var(--done-soft); }
+.cf-status--error.cf-pill { background: var(--danger-soft); }
+@keyframes cf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Toggle */
+.cf-toggle { position: relative; width: 28px; height: 16px; border-radius: var(--radius-full); border: 1.5px solid var(--line-control); background: transparent; padding: 0; cursor: pointer; flex: none; transition: background 120ms, border-color 120ms; }
+.cf-toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 9px; height: 9px; border-radius: var(--radius-full); background: var(--text-muted); transition: transform 120ms; }
+.cf-toggle[aria-checked="true"] { background: var(--brass); border-color: var(--brass); }
+.cf-toggle[aria-checked="true"]::after { background: var(--on-brass); transform: translateX(12px); }
+.cf-toggle:disabled { opacity: 0.5; cursor: default; }
+
+/* Panels and rows */
+.cf-panel { background: var(--surface); display: flex; flex-direction: column; min-width: 0; }
+.cf-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); height: 36px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); }
+.cf-row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--size-row); padding: 0 var(--space-2); border-radius: var(--radius-md); color: var(--text); cursor: pointer; min-width: 0; }
+.cf-row:hover { background: var(--surface-raised); }
+.cf-row[aria-selected="true"] { background: var(--surface-overlay); }
+.cf-row[aria-disabled="true"] { cursor: default; }
+.cf-row[aria-disabled="true"]:hover { background: transparent; }
+.cf-row__text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cf-row__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-row__sub { font-size: 12px; line-height: 16px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-row__meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex: none; }
+.cf-row--two { padding-block: 6px; align-items: flex-start; }
+.cf-row--two .cf-status { margin-top: 5px; }
+
+/* Explorer */
+.cf-project { display: flex; align-items: center; gap: var(--space-2); height: var(--size-row); padding: 0 var(--space-2); color: var(--text); font-weight: 600; }
+.cf-project .cf-btn--icon { margin-left: auto; height: 22px; width: 22px; }
+.cf-sessions { display: flex; flex-direction: column; gap: 2px; padding-left: var(--space-3); }
+
+/* Terminal tabs */
+.cf-tabs { display: flex; align-items: flex-end; gap: 2px; height: var(--size-titlebar); padding: 0 var(--space-2); background: var(--ground); border-bottom: 1px solid var(--line); }
+.cf-tab { display: flex; align-items: center; gap: var(--space-2); height: 30px; max-width: 220px; padding: 0 6px 0 var(--space-3); border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-muted); cursor: pointer; position: relative; }
+.cf-tab:hover { background: var(--surface); color: var(--text); }
+.cf-tab[aria-selected="true"] { background: var(--terminal-well); color: var(--text); font-weight: 500; }
+.cf-tab[aria-selected="true"]::after { content: ""; position: absolute; left: var(--space-2); right: var(--space-2); top: 0; height: 2px; border-radius: 0 0 2px 2px; background: var(--brass); }
+.cf-tab__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-tab .cf-btn--icon { width: 20px; height: 20px; }
+.cf-terminal { background: var(--terminal-well); color: var(--text); font-family: var(--font-mono); font-size: 13px; line-height: 17px; padding: var(--space-3) var(--space-4); white-space: pre; overflow: hidden; }
+
+/* Ticket node */
+.cf-ticket { width: var(--size-ticket); display: flex; flex-direction: column; gap: 6px; padding: var(--space-2) var(--space-3) 10px; border-radius: var(--radius-md); background: var(--surface-raised); box-shadow: inset 0 0 0 1.5px var(--line); color: var(--text); transition: box-shadow 120ms, transform 120ms; }
+.cf-ticket__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.cf-ticket__type { display: inline-flex; align-items: center; gap: var(--space-1); }
+.cf-ticket__name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+.cf-ticket__foot { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.cf-ticket--frontier { background: linear-gradient(var(--brass-soft), var(--brass-soft)), var(--surface-raised); box-shadow: inset 0 0 0 1.5px var(--brass); cursor: pointer; }
+.cf-ticket--frontier .cf-ticket__state { color: var(--brass); }
+.cf-ticket--frontier:hover { box-shadow: inset 0 0 0 1.5px var(--brass), var(--shadow-node-lift); transform: translateY(-1px); }
+.cf-ticket--claimed { background: linear-gradient(var(--route-soft), var(--route-soft)), var(--surface-raised); box-shadow: inset 0 0 0 1.5px var(--route); }
+.cf-ticket--claimed .cf-ticket__state { color: var(--route); }
+.cf-ticket--blocked { background: var(--surface); box-shadow: none; outline: 1.5px dashed var(--line-control); outline-offset: -1.5px; }
+.cf-ticket--blocked .cf-ticket__name { color: var(--text-muted); }
+.cf-ticket--closed { background: var(--surface); box-shadow: none; }
+.cf-ticket--closed .cf-ticket__name { color: var(--text-muted); }
+.cf-ticket--closed .cf-ticket__state { color: var(--done); }
+.cf-ticket--current { box-shadow: inset 0 0 0 2px var(--brass), 0 0 0 4px var(--brass-soft); }
+.cf-ticket__session { display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 6px; border-radius: var(--radius-sm); background: var(--surface-overlay); color: var(--text); font-size: 12px; cursor: pointer; }
+
+/* Map panel */
+.cf-map { position: relative; overflow: hidden; background: var(--surface); }
+.cf-map__contours { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cf-map__contours path { fill: none; stroke: var(--contour); stroke-width: 1; }
+.cf-edge { fill: none; stroke: var(--line-control); stroke-width: 1.5; }
+.cf-edge--spent { stroke: var(--text-faint); stroke-dasharray: 4 4; }
+.cf-edge-head { fill: var(--line-control); }
+.cf-edge-head--spent { fill: var(--text-faint); }
+.cf-destination { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-bottom: 1px solid var(--line); }
+.cf-section-head { display: flex; align-items: center; gap: var(--space-1); height: var(--size-row); padding: 0 var(--space-3); color: var(--text-muted); cursor: pointer; }
+
+/* Segmented control */
+.cf-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-md); background: var(--ground); box-shadow: inset 0 0 0 1px var(--line); }
+.cf-seg button { height: 22px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.cf-seg button[aria-pressed="true"] { background: var(--surface-overlay); color: var(--text); }
+
+/* Popover and dialog */
+.cf-popover { background: var(--surface-overlay); border-radius: var(--radius-lg); box-shadow: var(--shadow-popover); }
+.cf-dialog { width: 420px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface-overlay); border-radius: var(--radius-lg); box-shadow: var(--shadow-popover); color: var(--text); }
+.cf-dialog__title { font-size: 15px; line-height: 20px; font-weight: 600; margin: 0; }
+.cf-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* Map panel: compact nodes, Decided strip, Parent Tickets, roll-up, breadcrumb, tree */
+.cf-ticket--compact { width: 120px; padding: 7px 8px 9px; gap: 4px; }
+.cf-ticket--compact .cf-ticket__name { font-size: 12px; line-height: 16px; -webkit-line-clamp: 3; }
+.cf-ticket--compact .cf-ticket__head { font-size: 11px; line-height: 14px; }
+.cf-ticket--compact .cf-ticket__session, .cf-ticket--compact .cf-chip { height: 18px; font-size: 11px; padding: 0 4px; }
+.cf-ticket--parent { cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line-control), 3px 3px 0 0 var(--surface-raised), 3px 3px 0 1px var(--line), 6px 6px 0 0 var(--surface), 6px 6px 0 1px var(--line); }
+.cf-ticket--parent.cf-ticket--blocked { outline: 1.5px dashed var(--line-control); outline-offset: -1.5px; box-shadow: 3px 3px 0 0 var(--surface), 3px 3px 0 1px var(--line), 6px 6px 0 0 var(--surface), 6px 6px 0 1px var(--line); }
+.cf-decided { display: flex; flex-wrap: wrap; gap: 4px; }
+.cf-decided .cf-chip { max-width: 180px; background: var(--surface-raised); cursor: pointer; }
+.cf-decided .cf-chip span { overflow: hidden; text-overflow: ellipsis; }
+.cf-decided .cf-chip svg { color: var(--done); }
+.cf-rollup { display: flex; height: 4px; border-radius: 2px; overflow: hidden; background: var(--line); }
+.cf-rollup i { display: block; height: 4px; }
+.cf-rollup .r-closed { background: var(--done); }
+.cf-rollup .r-claimed { background: var(--route); }
+.cf-rollup .r-front { background: var(--brass); }
+.cf-rollup-text { font-size: 11px; line-height: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.cf-rollup-text b { font-weight: 600; color: var(--brass); }
+.cf-crumbs { display: flex; align-items: center; gap: 4px; min-width: 0; margin-right: auto; font-size: 12px; color: var(--text-muted); }
+.cf-crumbs a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.cf-crumbs a:hover { color: var(--text); text-decoration: underline; }
+.cf-crumbs [aria-current] { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-tree-row { display: flex; align-items: center; gap: 6px; width: 100%; height: 28px; padding: 0 12px 0 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.cf-tree-row:hover { background: var(--surface-raised); }
+.cf-tree-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.cf-tree-row .cf-indent { display: flex; height: 28px; flex: none; }
+.cf-tree-row .cf-indent i { width: 16px; height: 28px; flex: none; box-shadow: inset -1px 0 0 var(--line); }
+.cf-tree-row .cf-twisty { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex: none; }
+.cf-tree-row .cf-tree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cf-tree-row .cf-rollup { width: 40px; flex: none; }
+.cf-tree-meta { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex: none; }
+.cf-frontier-pill { font-size: 11px; line-height: 14px; font-weight: 600; color: var(--brass); padding: 1px 6px; border-radius: var(--radius-sm); background: var(--brass-soft); flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-status--working .cf-dot { animation: none; }
+  .cf-btn, .cf-toggle, .cf-toggle::after, .cf-ticket { transition: none; }
+  .cf-ticket--frontier:hover { transform: none; }
+}

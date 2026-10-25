@@ -1,0 +1,20 @@
+/* ClaudeForge design system tokens (night theme), from the design system's tokens.json. */
+:root {
+  --ground: #0f141b; --terminal-well: #0b1016; --surface: #141b24; --surface-raised: #1b2430; --surface-overlay: #222d3b;
+  --contour: #1a2330; --line: #263241; --line-control: #5a6b80;
+  --text: #dfe6ee; --text-muted: #93a1b2; --text-faint: #6b7a8c;
+  --brass: #e0a947; --brass-soft: #e0a9472e; --on-brass: #1a1206; --focus: #f3c56b;
+  --route: #7fb0e8; --route-soft: #7fb0e82e; --waiting: #f08a4b; --waiting-soft: #f08a4b2e;
+  --done: #5fb3a1; --done-soft: #5fb3a12e; --danger: #f2706a; --danger-soft: #f2706a2e; --selection: #e0a94740;
+  --ansi-black: #1b2430; --ansi-red: #f2706a; --ansi-green: #7cc49a; --ansi-yellow: #e0a947; --ansi-blue: #7fb0e8;
+  --ansi-magenta: #c99ae6; --ansi-cyan: #6cc7cf; --ansi-white: #c5cfdb; --ansi-bright-black: #6b7a8c; --ansi-bright-red: #ff9690;
+  --ansi-bright-green: #9ad9b3; --ansi-bright-yellow: #f3c56b; --ansi-bright-blue: #a6c8f0; --ansi-bright-magenta: #ddb9f2;
+  --ansi-bright-cyan: #96dde3; --ansi-bright-white: #f2f5f8;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-full: 999px;
+  --size-titlebar: 36px; --size-row: 28px; --size-control: 28px; --size-explorer: 264px; --size-map: 400px; --size-ticket: 208px;
+  --shadow-popover: 0 12px 32px rgba(3, 6, 10, 0.55), 0 0 0 1px #263241; --shadow-node-lift: 0 6px 16px rgba(3, 6, 10, 0.45);
+  --font-sans: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
