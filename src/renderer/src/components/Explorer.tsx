@@ -4,18 +4,23 @@ import {
   ExternalLink,
   Folder,
   GitBranch,
+  GitFork,
+  History,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
+  Plus,
   Puzzle,
-  Trash2
+  Trash2,
+  type LucideIcon
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import type { HostedTab } from '../terminal/hosted-sessions'
+import type { SessionLaunch } from '../terminal/hosted-terminal'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ExtensionsBar } from './ExtensionsMenu'
 import { IconButton } from './IconButton'
@@ -27,6 +32,8 @@ interface ExplorerProps {
   /** The Session shown in the centre, whose Map the Map panel follows. */
   displayedSessionId: string | null
   onDisplaySession(id: string): void
+  /** Starts a Hosted session in a Project: a new Session, or one resumed or forked from a past Session. */
+  onStartSession(project: string, launch: SessionLaunch): void
   /** The displayed Project, whose Extensions the Extensions bar counts. */
   project: string
   /** The Hosted sessions' tabs, which the Extensions menu names after a change. */
@@ -64,7 +71,7 @@ function useNow(): number {
 
 /** What the user is doing to one Session: its menu is open, or it is being renamed or deleted. */
 type Tidying =
-  | { kind: 'menu'; session: SessionSummary; at: { x: number; y: number } }
+  | { kind: 'menu'; session: SessionSummary; project: string; at: { x: number; y: number } }
   | { kind: 'rename'; session: SessionSummary }
   | { kind: 'delete'; session: SessionSummary }
 
@@ -74,12 +81,14 @@ interface RowActions {
   renaming: string | null
   /** The id of the Session whose menu is open, if any. */
   menuOpen: string | null
-  openMenu(session: SessionSummary, at: { x: number; y: number }): void
+  openMenu(session: SessionSummary, project: string, at: { x: number; y: number }): void
   /** Ends a rename: the new title, or null when the user backed out. */
   rename(session: SessionSummary, title: string | null): void
   /** The id of the Session shown in the centre, whose Map the Map panel follows. */
   displayed: string | null
   display(session: SessionSummary): void
+  /** Starts a new Session in the Project. */
+  startNew(project: string): void
 }
 
 /** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
@@ -87,6 +96,7 @@ export function Explorer({
   projects,
   displayedSessionId,
   onDisplaySession,
+  onStartSession,
   project,
   hostedTabs,
   onShowHostedSession,
@@ -100,7 +110,7 @@ export function Explorer({
   const actions: RowActions = {
     renaming: tidying?.kind === 'rename' ? tidying.session.id : null,
     menuOpen: tidying?.kind === 'menu' ? tidying.session.id : null,
-    openMenu: (session, at) => setTidying({ kind: 'menu', session, at }),
+    openMenu: (session, project, at) => setTidying({ kind: 'menu', session, project, at }),
     // The catalog pushes the new title once the backend has stored it. An emptied field is sent
     // too: it gives the Session back Claude Code's name.
     rename: (session, title) => {
@@ -109,11 +119,28 @@ export function Explorer({
       if (!unchanged) void api.sessions.rename(session.id, title)
     },
     displayed: displayedSessionId,
-    display: (session) => onDisplaySession(session.id)
+    display: (session) => onDisplaySession(session.id),
+    startNew: (project) => onStartSession(project, { kind: 'new' })
   }
 
-  const menuItems = (session: SessionSummary): MenuItem[] => [
-    { label: t('explorer.rename'), icon: Pencil, onSelect: () => setTidying({ kind: 'rename', session }) },
+  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends.
+  const startItem = (session: SessionSummary, project: string, kind: 'resume' | 'fork', icon: LucideIcon): MenuItem => ({
+    label: t(`explorer.${kind}`),
+    icon,
+    disabled: session.state !== 'past',
+    disabledReason: t('explorer.openElsewhereTooltip'),
+    onSelect: () => onStartSession(project, { kind, sessionId: session.id })
+  })
+
+  const menuItems = (session: SessionSummary, project: string): MenuItem[] => [
+    startItem(session, project, 'resume', History),
+    startItem(session, project, 'fork', GitFork),
+    {
+      label: t('explorer.rename'),
+      icon: Pencil,
+      separated: true,
+      onSelect: () => setTidying({ kind: 'rename', session })
+    },
     session.hidden
       ? { label: t('explorer.unhide'), icon: Eye, onSelect: () => void api.sessions.setHidden(session.id, false) }
       : { label: t('explorer.hide'), icon: EyeOff, onSelect: () => void api.sessions.setHidden(session.id, true) },
@@ -146,7 +173,7 @@ export function Explorer({
       </div>
       <ExtensionsBar project={project} hostedTabs={hostedTabs} onShowHostedSession={onShowHostedSession} />
       {tidying?.kind === 'menu' && (
-        <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session)} onClose={closeMenu} />
+        <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project)} onClose={closeMenu} />
       )}
       {tidying?.kind === 'delete' && <DeleteDialog session={tidying.session} onDone={() => setTidying(null)} />}
     </>
@@ -168,13 +195,18 @@ function ProjectGroup({ project, now, actions }: ProjectGroupProps): ReactNode {
   const sessions = showHidden ? project.sessions : project.sessions.filter((session) => !session.hidden)
   return (
     <li>
-      <h3 className="cf-project" title={project.path}>
+      <div className="cf-project" title={project.path}>
         <Folder className="cf-icon" aria-hidden="true" />
-        <span className="cf-project__name">{project.name}</span>
-      </h3>
+        <h3 className="cf-project__name">{project.name}</h3>
+        <IconButton
+          icon={Plus}
+          label={t('explorer.newSessionIn', { project: project.name })}
+          onClick={() => actions.startNew(project.path)}
+        />
+      </div>
       <ul className="cf-sessions" aria-label={project.name}>
         {sessions.map((session) => (
-          <SessionRow key={session.id} session={session} now={now} actions={actions} />
+          <SessionRow key={session.id} session={session} project={project.path} now={now} actions={actions} />
         ))}
       </ul>
       {hiddenCount > 0 && (
@@ -199,11 +231,13 @@ function ProjectGroup({ project, now, actions }: ProjectGroupProps): ReactNode {
 
 interface SessionRowProps {
   session: SessionSummary
+  /** The path of the Project the Session belongs to. */
+  project: string
   now: number
   actions: RowActions
 }
 
-function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
+function SessionRow({ session, project, now, actions }: SessionRowProps): ReactNode {
   const { t, i18n } = useTranslation()
   const external = session.state === 'external'
   const renaming = actions.renaming === session.id
@@ -238,7 +272,7 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
       onContextMenu={(event) => {
         if (renaming) return
         event.preventDefault()
-        actions.openMenu(session, { x: event.clientX, y: event.clientY })
+        actions.openMenu(session, project, { x: event.clientX, y: event.clientY })
       }}
     >
       {external ? (
@@ -286,7 +320,7 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
           title={t('explorer.sessionActions')}
           onClick={(event) => {
             const { left, bottom } = event.currentTarget.getBoundingClientRect()
-            actions.openMenu(session, { x: left, y: bottom })
+            actions.openMenu(session, project, { x: left, y: bottom })
           }}
         >
           <MoreHorizontal className="cf-icon" aria-hidden="true" />

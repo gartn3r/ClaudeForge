@@ -3,7 +3,15 @@
 // it to IPC (see src/main/ipc.ts).
 
 import { join } from 'node:path'
-import type { AppState, AppStatePatch, BackendApi, ClaudeCodeStatus, EventName } from '../shared/api'
+import type {
+  AppState,
+  AppStatePatch,
+  BackendApi,
+  ClaudeCodeStatus,
+  EventName,
+  HostedSession,
+  TerminalSize
+} from '../shared/api'
 import { AppStateStore } from './app-state'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
@@ -120,10 +128,21 @@ export function createBackend(options: BackendOptions): Backend {
     await sessions.refresh()
   }
 
+  /** Starts `claude --resume <id>`, plus the given options, in the folder the past Session ran in. */
+  const resumeSession = async (id: string, size: TerminalSize, args: string[] = []): Promise<HostedSession> => {
+    const session = await sessions.find(id)
+    if (!session) throw new Error(`There is no Session ${id}`)
+    // Never two `claude` on one Session: an External one is read-only until it ends.
+    if (session.state !== 'past') throw new Error(`Session ${id} still runs outside ClaudeForge`)
+    return sessionHost.start(session.cwd, size, ['--resume', id, ...args])
+  }
+
   const api: BackendApi = {
     sessionHost: {
       chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
       start: (project, size) => sessionHost.start(project, size),
+      resume: (id, size) => resumeSession(id, size),
+      fork: (id, size) => resumeSession(id, size, ['--fork-session']),
       write: async (id, data) => sessionHost.write(id, data),
       resize: async (id, size) => sessionHost.resize(id, size),
       stop: async (id) => sessionHost.stop(id)

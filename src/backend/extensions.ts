@@ -34,7 +34,7 @@ export interface ExtensionServiceOptions {
   /** A folder of ClaudeForge's own that is no Project, where `claude` sees only the user's Extensions. */
   noProjectFolder: string
   /** The Hosted sessions whose `claude` runs, and the folder it runs in. */
-  hostedSessions(): Array<{ id: string; project: string }>
+  hostedSessions(): Array<{ id: string; folder: string }>
 }
 
 /** Where an Extension comes from: its scope, and the plugin that brings it, if any. */
@@ -376,7 +376,7 @@ export function createExtensionService({
     async change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult> {
       // Claude Code reads its setup when it starts, so only those already running miss the change.
       const running = hostedSessions().filter(
-        (session) => scopeOf(change) === 'global' || pathKey(session.project) === pathKey(project)
+        (session) => scopeOf(change) === 'global' || pathKey(session.folder) === pathKey(project)
       )
       let error = ''
       for (const args of commandsFor(change)) {
