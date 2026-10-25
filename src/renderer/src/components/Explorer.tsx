@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Mous
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
+import type { HostedTab } from '../terminal/hosted-sessions'
 import type { SessionLaunch } from '../terminal/hosted-terminal'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ExtensionsBar } from './ExtensionsMenu'
@@ -35,6 +36,9 @@ interface ExplorerProps {
   onStartSession(project: string, launch: SessionLaunch): void
   /** The displayed Project, whose Extensions the Extensions bar counts. */
   project: string
+  /** The Hosted sessions' tabs, which the Extensions menu names after a change. */
+  hostedTabs: HostedTab[]
+  onShowHostedSession(key: string): void
   onCollapse(): void
 }
 
@@ -94,6 +98,8 @@ export function Explorer({
   onDisplaySession,
   onStartSession,
   project,
+  hostedTabs,
+  onShowHostedSession,
   onCollapse
 }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
@@ -165,7 +171,7 @@ export function Explorer({
           </ul>
         )}
       </div>
-      <ExtensionsBar project={project} />
+      <ExtensionsBar project={project} hostedTabs={hostedTabs} onShowHostedSession={onShowHostedSession} />
       {tidying?.kind === 'menu' && (
         <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project)} onClose={closeMenu} />
       )}

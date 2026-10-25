@@ -1,28 +1,65 @@
-import { Bot, Check, CircleAlert, CircleHelp, CirclePause, CircleSlash, Plug, Puzzle, Sparkles, type LucideIcon } from 'lucide-react'
+import {
+  Bot,
+  Check,
+  CircleAlert,
+  CircleHelp,
+  CirclePause,
+  CircleSlash,
+  Plug,
+  Plus,
+  Puzzle,
+  Sparkles,
+  Trash2,
+  type LucideIcon
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import type { Extension, ExtensionKind, ExtensionListing, ExtensionScope, McpServerStatus } from '../../../shared/api'
+import type {
+  Extension,
+  ExtensionChange,
+  ExtensionChangeResult,
+  ExtensionKind,
+  ExtensionListing,
+  ExtensionScope,
+  McpServerStatus
+} from '../../../shared/api'
 import { api } from '../api'
+import type { HostedTab } from '../terminal/hosted-sessions'
+import { ConfirmDialog } from './ConfirmDialog'
+import { AddMcpServerDialog, InstallPluginDialog } from './ExtensionDialogs'
 
 /** The Extensions of a Project: undefined while they are read, 'failed' when they could not be. */
 type Loaded = ExtensionListing | 'failed' | undefined
 
-/** The Project's Extensions, read again on `refresh()`; the last ones read show meanwhile. */
-function useExtensions(project: string): { listing: Loaded; refresh(): void } {
+/**
+ * The Project's Extensions, read again on `refresh()`, which settles once they are; the last ones
+ * read show meanwhile.
+ */
+function useExtensions(project: string): { listing: Loaded; refresh(): Promise<void> } {
   const [loaded, setLoaded] = useState<{ project: string; listing: ExtensionListing | 'failed' } | null>(null)
   const [round, setRound] = useState(0)
+  const waiting = useRef<Array<() => void>>([])
   useEffect(() => {
     let current = true
-    api.extensions.list(project).then(
-      (listing) => current && setLoaded({ project, listing }),
-      () => current && setLoaded({ project, listing: 'failed' })
-    )
+    const settle = (listing: ExtensionListing | 'failed'): void => {
+      if (!current) return
+      setLoaded({ project, listing })
+      for (const resolve of waiting.current.splice(0)) resolve()
+    }
+    api.extensions.list(project).then(settle, () => settle('failed'))
     return () => {
       current = false
     }
   }, [project, round])
-  const refresh = useCallback(() => setRound((previous) => previous + 1), [])
+  const refresh = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        waiting.current.push(resolve)
+        setRound((previous) => previous + 1)
+      }),
+    []
+  )
   return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
@@ -83,10 +120,13 @@ const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean)
 interface ExtensionsBarProps {
   /** The displayed Session's Project, whose Extensions it counts. */
   project: string
+  /** The Hosted sessions' tabs, for the notice naming those still on the previous setup. */
+  hostedTabs: HostedTab[]
+  onShowHostedSession(key: string): void
 }
 
 /** Docked under the explorer: one count per kind of Extension, opening the Extensions menu. */
-export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
+export function ExtensionsBar({ project, hostedTabs, onShowHostedSession }: ExtensionsBarProps): ReactNode {
   const { t } = useTranslation()
   const { listing, refresh } = useExtensions(project)
   /** Where the open menu sits; null while it is closed. */
@@ -101,7 +141,7 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
   const toggle = (bar: HTMLElement): void => {
     if (placement) return close(false)
     setPlacement(placeAbove(bar))
-    refresh()
+    void refresh()
   }
 
   const counts = BAR_ORDER.map((kind) => {
@@ -143,7 +183,16 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
           })}
       </button>
       {placement && (
-        <ExtensionsPopover project={project} listing={listing} placement={placement} anchor={button} onClose={close} />
+        <ExtensionsPopover
+          project={project}
+          listing={listing}
+          refresh={refresh}
+          hostedTabs={hostedTabs}
+          onShowHostedSession={onShowHostedSession}
+          placement={placement}
+          anchor={button}
+          onClose={close}
+        />
       )}
     </section>
   )
@@ -152,6 +201,10 @@ export function ExtensionsBar({ project }: ExtensionsBarProps): ReactNode {
 interface ExtensionsPopoverProps {
   project: string
   listing: Loaded
+  /** Reads the Extensions again; settles once they are. */
+  refresh(): Promise<void>
+  hostedTabs: HostedTab[]
+  onShowHostedSession(key: string): void
   placement: CSSProperties
   /** The bar's button, which toggles the menu itself. */
   anchor: RefObject<HTMLButtonElement | null>
@@ -159,15 +212,86 @@ interface ExtensionsPopoverProps {
   onClose(refocus: boolean): void
 }
 
-/** The Extensions menu: every Extension of one scope, grouped by kind, read-only. */
-function ExtensionsPopover({ project, listing, placement, anchor, onClose }: ExtensionsPopoverProps): ReactNode {
+/** What asks the user before a change: removing or uninstalling one Extension, adding, installing. */
+type Asking = { kind: 'remove'; extension: Extension } | { kind: 'add-mcp-server' } | { kind: 'install-plugin' }
+
+/** The change that removes an Extension: uninstalling a plugin, or removing an MCP server. */
+function removal(extension: Extension): ExtensionChange | null {
+  if (extension.install) return { action: 'uninstall-plugin', plugin: extension.install }
+  if (extension.removable) return { action: 'remove-mcp-server', name: extension.name, scope: extension.scope }
+  return null
+}
+
+/** Under `extensions.remove`: what removing it is called. */
+const removalKey = (extension: Extension): 'plugin' | 'mcpServer' => (extension.install ? 'plugin' : 'mcpServer')
+
+/**
+ * The Extensions menu: every Extension of one scope, grouped by kind. Plugins switch on and off;
+ * MCP servers and plugins are added and removed, each change through Claude Code's CLI, one at a time.
+ */
+function ExtensionsPopover({
+  project,
+  listing,
+  refresh,
+  hostedTabs,
+  onShowHostedSession,
+  placement,
+  anchor,
+  onClose
+}: ExtensionsPopoverProps): ReactNode {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const [scope, setScope] = useState<ExtensionScope>('project')
+  /** A change runs, then the Extensions are read again: everything that changes them waits. */
+  const [busy, setBusy] = useState(false)
+  /** Claude Code's words on the last toggle it refused. */
+  const [error, setError] = useState<string | null>(null)
+  /** A change went through since the menu opened. */
+  const [changed, setChanged] = useState(false)
+  const [asking, setAsking] = useState<Asking | null>(null)
+  /** Claude Code's words on the last change a dialog asked for. */
+  const [askError, setAskError] = useState<string | null>(null)
+
+  const apply = async (change: ExtensionChange): Promise<ExtensionChangeResult> => {
+    setBusy(true)
+    try {
+      const result = await api.extensions
+        .change(project, change)
+        .catch((failure: unknown): ExtensionChangeResult => ({ ok: false, error: String(failure) }))
+      if (result.ok) {
+        setChanged(true)
+        await refresh()
+      }
+      return result
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggle = async (plugin: Extension): Promise<void> => {
+    setError(null)
+    const result = await apply({ action: plugin.enabled ? 'disable-plugin' : 'enable-plugin', plugin: plugin.install! })
+    if (!result.ok) setError(result.error)
+  }
+
+  const ask = (asked: Asking): void => {
+    setAskError(null)
+    setAsking(asked)
+  }
+  /** Makes the change a dialog asked for; the dialog closes once it went through, else says why not. */
+  const applyAsked = async (change: ExtensionChange): Promise<void> => {
+    setAskError(null)
+    const result = await apply(change)
+    if (result.ok) setAsking(null)
+    else setAskError(result.error)
+  }
 
   useEffect(() => {
+    // While a change runs the menu stays, to show how it went.
+    if (busy) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose(true)
+      // A dialog over the menu takes its own Escape.
+      if (event.key === 'Escape' && !ref.current?.querySelector('dialog[open]')) onClose(true)
     }
     const onPointer = (event: PointerEvent): void => {
       const target = event.target as Node
@@ -182,13 +306,27 @@ function ExtensionsPopover({ project, listing, placement, anchor, onClose }: Ext
       document.removeEventListener('pointerdown', onPointer)
       window.removeEventListener('resize', onResize)
     }
-  }, [anchor, onClose])
+  }, [anchor, onClose, busy])
 
   const inScope = typeof listing === 'object' ? listing.extensions.filter((extension) => extension.scope === scope) : []
   const projectName = folderName(project)
+  const scopeName = scope === 'project' ? projectName : null
+  const outdated = typeof listing === 'object' ? listing.outdatedSessions : []
+  const outdatedTabs = hostedTabs.filter(
+    ({ end, terminal }) => !end && terminal.sessionId !== null && outdated.includes(terminal.sessionId)
+  )
+  const removing = asking?.kind === 'remove' ? asking.extension : null
+  const removingChange = removing && removal(removing)
 
   return createPortal(
-    <div ref={ref} className="cf-popover extmenu" role="dialog" aria-label={t('extensions.heading')} style={placement}>
+    <div
+      ref={ref}
+      className="cf-popover extmenu"
+      role="dialog"
+      aria-label={t('extensions.heading')}
+      aria-busy={busy}
+      style={placement}
+    >
       <div className="extmenu__head">
         <span className="cf-eyebrow">{t('extensions.heading')}</span>
         <div className="cf-seg" role="group" aria-label={t('extensions.scope')}>
@@ -211,6 +349,11 @@ function ExtensionsPopover({ project, listing, placement, anchor, onClose }: Ext
       {typeof listing === 'object' && (
         <>
           {listing.problem && <p className="extmenu__note extmenu__note--problem">{t('extensions.claudeFailed')}</p>}
+          {error && (
+            <p className="extmenu__note extmenu__note--problem" role="alert">
+              {error}
+            </p>
+          )}
           {inScope.length === 0 && (
             <p className="extmenu__note">
               {scope === 'project' ? t('extensions.emptyProject', { project: projectName }) : t('extensions.emptyGlobal')}
@@ -225,20 +368,112 @@ function ExtensionsPopover({ project, listing, placement, anchor, onClose }: Ext
                 <span className="cf-eyebrow">{heading}</span>
                 <ul aria-label={heading}>
                   {rows.map((extension) => (
-                    <ExtensionRow key={`${extension.plugin ?? ''}/${extension.name}`} extension={extension} />
+                    <ExtensionRow
+                      key={`${extension.plugin ?? ''}/${extension.name}`}
+                      extension={extension}
+                      busy={busy}
+                      onToggle={() => void toggle(extension)}
+                      onRemove={() => ask({ kind: 'remove', extension })}
+                    />
                   ))}
                 </ul>
               </div>
             )
           })}
+          {(changed || outdatedTabs.length > 0) && (
+            <div className="extmenu__notice" role="status">
+              <CircleAlert className="cf-icon cf-icon--sm" aria-hidden="true" />
+              <div>
+                <p>
+                  {t('extensions.notice.newSessions')}
+                  {outdatedTabs.length > 0 && ` ${t('extensions.notice.outdated', { count: outdatedTabs.length })}`}
+                </p>
+                {outdatedTabs.length > 0 && (
+                  <ul>
+                    {outdatedTabs.map((tab) => (
+                      <li key={tab.key}>
+                        <button type="button" className="lnk" onClick={() => onShowHostedSession(tab.key)}>
+                          {tab.title ?? folderName(tab.project)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="extmenu__foot">
+            <button type="button" className="cf-btn" disabled={busy} onClick={() => ask({ kind: 'add-mcp-server' })}>
+              <Plus className="cf-icon cf-icon--sm" aria-hidden="true" />
+              {t('extensions.addMcpServer.open')}
+            </button>
+            <button
+              type="button"
+              className="cf-btn cf-btn--ghost"
+              disabled={busy}
+              onClick={() => ask({ kind: 'install-plugin' })}
+            >
+              {t('extensions.installPlugin.open')}
+            </button>
+          </div>
         </>
+      )}
+      {removing && removingChange && (
+        <ConfirmDialog
+          title={t(`extensions.remove.${removalKey(removing)}.title`, { name: removing.name })}
+          actionLabel={t(`extensions.remove.${removalKey(removing)}.action`)}
+          actionIcon={Trash2}
+          error={askError}
+          busy={busy}
+          onConfirm={() => void applyAsked(removingChange)}
+          onCancel={() => setAsking(null)}
+        >
+          <p>
+            {t(`extensions.remove.${removalKey(removing)}.body`, {
+              scope: removing.scope === 'project' ? projectName : t('extensions.global')
+            })}
+          </p>
+          {/* A Project's shared setup is committed with it: the change reaches everyone working on it. */}
+          {(removing.install?.scope === 'project' || (removing.removable && removing.scope === 'project')) && (
+            <p>{t(`extensions.remove.${removalKey(removing)}.shared`)}</p>
+          )}
+        </ConfirmDialog>
+      )}
+      {asking?.kind === 'add-mcp-server' && (
+        <AddMcpServerDialog
+          scopeName={scopeName}
+          busy={busy}
+          error={askError}
+          onAdd={(server) => void applyAsked({ action: 'add-mcp-server', server, scope })}
+          onCancel={() => setAsking(null)}
+        />
+      )}
+      {asking?.kind === 'install-plugin' && (
+        <InstallPluginDialog
+          project={project}
+          scopeName={scopeName}
+          busy={busy}
+          error={askError}
+          onInstall={(plugin) => void applyAsked({ action: 'install-plugin', plugin, scope })}
+          onCancel={() => setAsking(null)}
+        />
       )}
     </div>,
     document.body
   )
 }
 
-function ExtensionRow({ extension }: { extension: Extension }): ReactNode {
+interface ExtensionRowProps {
+  extension: Extension
+  /** A change runs: the row's controls wait. */
+  busy: boolean
+  /** Switches a plugin on or off. */
+  onToggle(): void
+  /** Asks to remove an MCP server or uninstall a plugin. */
+  onRemove(): void
+}
+
+function ExtensionRow({ extension, busy, onToggle, onRemove }: ExtensionRowProps): ReactNode {
   const { t } = useTranslation()
   const Icon = ICONS[extension.kind]
   const { mcp } = extension
@@ -255,6 +490,18 @@ function ExtensionRow({ extension }: { extension: Extension }): ReactNode {
         <span className={`cf-row__title${off ? ' cf-muted' : ''}`}>{extension.name}</span>
         {sub && <span className={`cf-row__sub${failing(extension) ? ' extmenu__problem' : ''}`}>{sub}</span>}
       </span>
+      {removal(extension) && (
+        <button
+          type="button"
+          className="cf-btn cf-btn--ghost cf-btn--icon extmenu__action"
+          aria-label={t(`extensions.remove.${removalKey(extension)}.open`, { name: extension.name })}
+          title={t(`extensions.remove.${removalKey(extension)}.open`, { name: extension.name })}
+          disabled={busy}
+          onClick={onRemove}
+        >
+          <Trash2 className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </button>
+      )}
       <span className="cf-chip">{origin}</span>
       {status && StatusIcon && (
         <span
@@ -265,6 +512,17 @@ function ExtensionRow({ extension }: { extension: Extension }): ReactNode {
         >
           <StatusIcon className="cf-icon cf-icon--sm" aria-hidden="true" />
         </span>
+      )}
+      {extension.install && (
+        <button
+          type="button"
+          className="cf-toggle"
+          role="switch"
+          aria-checked={extension.enabled === true}
+          aria-label={t('extensions.enable', { name: extension.name })}
+          disabled={busy}
+          onClick={onToggle}
+        />
       )}
     </li>
   )

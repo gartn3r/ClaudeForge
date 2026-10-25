@@ -127,6 +127,8 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             onDisplaySession={setDisplayedSessionId}
             onStartSession={startHostedSession}
             project={project}
+            hostedTabs={hosted.tabs}
+            onShowHostedSession={selectHostedSession}
             onCollapse={collapseHandler('explorer', true)}
           />
         </SidePanel>

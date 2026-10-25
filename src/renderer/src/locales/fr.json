@@ -94,7 +94,59 @@
     "emptyProject": "{{project}} n’a aucune Extension qui lui soit propre.",
     "emptyGlobal": "Aucune Extension globale.",
     "claudeFailed": "Claude Code n’a pas pu lister les serveurs MCP et les plugins.",
-    "loadFailed": "Les Extensions n’ont pas pu être lues."
+    "loadFailed": "Les Extensions n’ont pas pu être lues.",
+    "enable": "Activer {{name}}",
+    "remove": {
+      "mcpServer": {
+        "open": "Retirer {{name}}",
+        "title": "Retirer {{name}} ?",
+        "body": "Claude Code retire ce serveur MCP de {{scope}}. Les nouvelles Sessions démarrent sans lui ; ajoutez-le de nouveau pour le retrouver.",
+        "action": "Retirer",
+        "shared": "Si le Projet partage ce serveur dans son .mcp.json, Claude Code l’en retire, pour tous ceux qui travaillent sur le Projet."
+      },
+      "plugin": {
+        "open": "Désinstaller {{name}}",
+        "title": "Désinstaller {{name}} ?",
+        "body": "Claude Code désinstalle ce plugin de {{scope}}, avec les skills, sous-agents et serveurs MCP qu’il apporte. Installez-le de nouveau depuis sa marketplace pour le retrouver.",
+        "action": "Désinstaller",
+        "shared": "Il est installé dans les réglages partagés du Projet (.claude/settings.json) : le désinstaller les change pour tous ceux qui travaillent sur le Projet."
+      }
+    },
+    "notice": {
+      "newSessions": "S’applique aux nouvelles Sessions.",
+      "outdated_one": "{{count}} Session ouverte garde la configuration précédente.",
+      "outdated_other": "{{count}} Sessions ouvertes gardent la configuration précédente."
+    },
+    "addMcpServer": {
+      "open": "Ajouter un serveur MCP",
+      "titleGlobal": "Ajouter un serveur MCP global",
+      "titleProject": "Ajouter un serveur MCP à {{project}}",
+      "name": "Nom",
+      "transport": "Transport",
+      "stdio": "Commande (stdio)",
+      "http": "HTTP",
+      "sse": "Événements serveur (SSE)",
+      "command": "Commande",
+      "url": "URL",
+      "env": "Variables d’environnement",
+      "envHint": "Une CLÉ=valeur par ligne.",
+      "headers": "En-têtes",
+      "headersHint": "Un Nom: valeur par ligne.",
+      "action": "Ajouter"
+    },
+    "installPlugin": {
+      "open": "Installer un plugin",
+      "titleGlobal": "Installer un plugin global",
+      "titleProject": "Installer un plugin dans {{project}}",
+      "search": "Rechercher",
+      "list": "Plugins",
+      "loading": "Lecture des marketplaces…",
+      "failed": "Claude Code n’a pas pu lister les plugins des marketplaces.",
+      "none": "Aucun plugin à installer ne correspond.",
+      "more": "Les {{shown}} premiers sur {{count}} : recherchez pour trouver les autres.",
+      "install": "Installer",
+      "action": "Installer {{name}}"
+    }
   },
   "terminal": {
     "label": "Terminal",
@@ -229,6 +281,7 @@
     }
   },
   "dialog": {
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "close": "Fermer"
   }
 }

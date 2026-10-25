@@ -66,7 +66,8 @@ describe('Extension service', () => {
           scope: 'global',
           plugin: null,
           description: null,
-          mcp: { status: 'needs-sign-in', detail: 'Needs authentication' }
+          mcp: { status: 'needs-sign-in', detail: 'Needs authentication' },
+          removable: false
         },
         {
           kind: 'mcp-server',
@@ -74,7 +75,8 @@ describe('Extension service', () => {
           scope: 'global',
           plugin: null,
           description: null,
-          mcp: { status: 'connected', detail: 'Connected' }
+          mcp: { status: 'connected', detail: 'Connected' },
+          removable: true
         },
         expect.objectContaining({ name: 'pantry', scope: 'global', plugin: 'kitchen-tools' }),
         {
@@ -83,7 +85,8 @@ describe('Extension service', () => {
           scope: 'project',
           plugin: null,
           description: null,
-          mcp: { status: 'failed', detail: 'Failed to connect' }
+          mcp: { status: 'failed', detail: 'Failed to connect' },
+          removable: true
         },
         expect.objectContaining({ name: 'postgres', scope: 'project', mcp: { status: 'connected', detail: 'Connected' } })
       ])
@@ -153,7 +156,8 @@ describe('Extension service', () => {
           scope: 'global',
           plugin: null,
           description: 'Searches the team wiki.',
-          enabled: false
+          enabled: false,
+          install: { id: 'atlas@forge-market', scope: 'user' }
         },
         expect.objectContaining({ name: 'frontend-design', scope: 'project', enabled: true }),
         {
@@ -162,7 +166,8 @@ describe('Extension service', () => {
           scope: 'global',
           plugin: null,
           description: 'Skills and agents for cooking apps.',
-          enabled: true
+          enabled: true,
+          install: { id: 'kitchen-tools@forge-market', scope: 'user' }
         }
       ])
     })

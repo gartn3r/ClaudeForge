@@ -62,8 +62,8 @@ test('the Extensions bar counts the displayed Project’s Extensions, and its me
     /^sous-chef\s*kitchen-tools/
   ])
   await expect(group(menu, 'Plugins')).toHaveText([/^atlas\s*Disabled\s*Global/, /^kitchen-tools\s*Global/])
-  // Read-only: nothing to switch on or off.
-  await expect(menu.getByRole('switch')).toHaveCount(0)
+  // Only plugins switch on and off.
+  await expect(menu.getByRole('switch')).toHaveCount(2)
 
   await claudeforge.window.keyboard.press('Escape')
   await expect(menu).toBeHidden()

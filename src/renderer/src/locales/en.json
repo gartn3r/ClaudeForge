@@ -94,7 +94,59 @@
     "emptyProject": "{{project}} has no Extensions of its own.",
     "emptyGlobal": "No global Extensions.",
     "claudeFailed": "Claude Code could not list the MCP servers and plugins.",
-    "loadFailed": "The Extensions could not be read."
+    "loadFailed": "The Extensions could not be read.",
+    "enable": "Enable {{name}}",
+    "remove": {
+      "mcpServer": {
+        "open": "Remove {{name}}",
+        "title": "Remove {{name}}?",
+        "body": "Claude Code removes this MCP server from {{scope}}. New Sessions start without it; add it again to get it back.",
+        "action": "Remove",
+        "shared": "If the Project shares this server in its .mcp.json, Claude Code removes it from there, for everyone working on the Project."
+      },
+      "plugin": {
+        "open": "Uninstall {{name}}",
+        "title": "Uninstall {{name}}?",
+        "body": "Claude Code uninstalls this plugin from {{scope}}, with the skills, subagents and MCP servers it brings. Install it again from its marketplace to get it back.",
+        "action": "Uninstall",
+        "shared": "It is installed in the Project’s shared settings (.claude/settings.json): uninstalling it changes them for everyone working on the Project."
+      }
+    },
+    "notice": {
+      "newSessions": "Applies to new Sessions.",
+      "outdated_one": "{{count}} open Session still uses the previous setup.",
+      "outdated_other": "{{count}} open Sessions still use the previous setup."
+    },
+    "addMcpServer": {
+      "open": "Add MCP server",
+      "titleGlobal": "Add a global MCP server",
+      "titleProject": "Add an MCP server to {{project}}",
+      "name": "Name",
+      "transport": "Transport",
+      "stdio": "Command (stdio)",
+      "http": "HTTP",
+      "sse": "Server-sent events (SSE)",
+      "command": "Command",
+      "url": "URL",
+      "env": "Environment variables",
+      "envHint": "One KEY=value per line.",
+      "headers": "Headers",
+      "headersHint": "One Name: value per line.",
+      "action": "Add"
+    },
+    "installPlugin": {
+      "open": "Install plugin",
+      "titleGlobal": "Install a global plugin",
+      "titleProject": "Install a plugin in {{project}}",
+      "search": "Search",
+      "list": "Plugins",
+      "loading": "Reading the marketplaces…",
+      "failed": "Claude Code could not list the marketplaces’ plugins.",
+      "none": "No plugin to install matches.",
+      "more": "The first {{shown}} of {{count}}: search to find the others.",
+      "install": "Install",
+      "action": "Install {{name}}"
+    }
   },
   "terminal": {
     "label": "Terminal",
@@ -229,6 +281,7 @@
     }
   },
   "dialog": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "close": "Close"
   }
 }

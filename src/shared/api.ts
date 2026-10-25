@@ -276,6 +276,23 @@ export interface Extension {
   }
   /** Plugins only: false when installed but disabled, so it brings nothing. */
   enabled?: boolean
+  /** Plugins only: how `claude plugin` names it and where it is installed. */
+  install?: InstalledPlugin
+  /** MCP servers only: false for those `claude mcp remove` cannot remove, a plugin's or a claude.ai connector. */
+  removable?: boolean
+}
+
+/**
+ * Where Claude Code's CLI keeps a plugin or MCP server: the user's (global); the Project's, shared
+ * through its repository; or the user's own in the Project (local).
+ */
+export type ClaudeScope = 'user' | 'project' | 'local'
+
+/** An installed plugin, as `claude plugin enable|disable|uninstall` takes it. */
+export interface InstalledPlugin {
+  /** `<plugin>@<marketplace>`. */
+  id: string
+  scope: ClaudeScope
 }
 
 /** Every Extension a new Session in a Project gets, global and Project-scoped. */
@@ -284,7 +301,63 @@ export interface ExtensionListing {
   extensions: Extension[]
   /** Set when `claude` could not list MCP servers or plugins; the listing then lacks them. */
   problem?: 'claude-failed'
+  /**
+   * The Hosted sessions, in any Project, still running with the setup from before a change
+   * ClaudeForge made to their Extensions: Claude Code reads it only when it starts.
+   */
+  outdatedSessions: string[]
 }
+
+/** A plugin a configured marketplace offers. */
+export interface AvailablePlugin {
+  /** `<plugin>@<marketplace>`. */
+  id: string
+  name: string
+  description: string | null
+  marketplace: string
+}
+
+/** The plugins `claude plugin install` could install here. */
+export interface AvailablePluginListing {
+  /** Not installed for the user nor for the Project yet; the most installed first. */
+  plugins: AvailablePlugin[]
+  /** Set when `claude` could not list them; `plugins` is then empty. */
+  problem?: 'claude-failed'
+}
+
+/**
+ * A change to the Extensions, made through `claude plugin …` or `claude mcp …` (ADR 0003). What
+ * ClaudeForge adds for the Project is the user's own there (Claude Code's local scope), so it never
+ * adds to the setup the Project shares; switching or removing what the Project shares changes it.
+ */
+export type ExtensionChange =
+  | { action: 'enable-plugin' | 'disable-plugin' | 'uninstall-plugin'; plugin: InstalledPlugin }
+  /** `plugin` is an AvailablePlugin's id. */
+  | { action: 'install-plugin'; plugin: string; scope: ExtensionScope }
+  | { action: 'add-mcp-server'; server: NewMcpServer; scope: ExtensionScope }
+  /** From the Project, a server the user added there, else one its `.mcp.json` shares. */
+  | { action: 'remove-mcp-server'; name: string; scope: ExtensionScope }
+
+/** How Claude Code reaches an MCP server: a command it runs (stdio), or a URL. */
+export type McpTransport = 'stdio' | 'http' | 'sse'
+
+/** An MCP server as `claude mcp add` takes it. */
+export interface NewMcpServer {
+  name: string
+  /** stdio runs a command; http and sse reach a URL. */
+  transport: McpTransport
+  /** The command (stdio) or the URL. */
+  target: string
+  /** The command's arguments (stdio). */
+  args: string[]
+  /** `KEY=value` variables the command runs with (stdio). */
+  env: string[]
+  /** `Name: value` headers sent to the URL (http, sse). */
+  headers: string[]
+}
+
+/** What came of a change: Claude Code's own words when it refused or failed. */
+export type ExtensionChangeResult = { ok: true } | { ok: false; error: string }
 
 /**
  * What a Hosted session's `claude` is doing: idle until the user first sends it something, working
@@ -319,6 +392,10 @@ export interface BackendApi {
   extensions: {
     /** Lists the Extensions of a Project, through Claude Code's CLI for MCP servers and plugins. */
     list(project: string): Promise<ExtensionListing>
+    /** The marketplaces' plugins that could be installed for the user or the Project. */
+    available(project: string): Promise<AvailablePluginListing>
+    /** Makes one change through Claude Code's CLI, run in the Project's folder. */
+    change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult>
   }
   appState: {
     read(): Promise<AppState>
