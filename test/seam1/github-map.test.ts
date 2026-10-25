@@ -120,7 +120,8 @@ describe('Map service on a GitHub Tracker', () => {
       ])
     })
 
-    it('falls back to the task list of the Map body where it has no sub-issues', async () => {
+    // Its task list also names #63, which has been deleted, and an acceptance item mentioning #30.
+    it('falls back to the top-level task list of the Map body, leaving out issues it cannot read', async () => {
       const map = await load('60')
 
       expect(map.tickets.map(({ id, name, type, state, blockedBy }) => ({ id, name, type, state, blockedBy }))).toEqual([
@@ -139,8 +140,14 @@ describe('Map service on a GitHub Tracker', () => {
     it('only reads through gh, never writing to the Tracker', async () => {
       await load()
 
+      // gh api sends a request with fields as a POST unless told otherwise.
+      const methodOf = (args: string[]): string => {
+        const flag = args.findIndex((arg) => arg === '--method' || arg === '-X')
+        if (flag >= 0) return args[flag + 1]!
+        return args.some((arg) => /^(-f|-F|--field|--raw-field|--input)$/.test(arg)) ? 'POST' : 'GET'
+      }
       for (const { args } of await env.invocations('gh')) {
-        if (args[0] === 'api') expect(args.slice(1, 3)).toEqual(['--method', 'GET'])
+        if (args[0] === 'api') expect(methodOf(args)).toBe('GET')
         else expect(args.slice(0, 2)).toEqual(['repo', 'view'])
       }
     })

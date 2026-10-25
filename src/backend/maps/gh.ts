@@ -1,11 +1,10 @@
 // Runs the user's GitHub CLI. ClaudeForge only ever reads through it (ADR 0002).
 
 import { execFile } from 'node:child_process'
-import { stat } from 'node:fs/promises'
 import { delimiter, extname, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { TrackerProblem } from '../../shared/api'
-import { envVar, type Environment } from '../claude-code'
+import { envVar, isFile, type Environment } from '../claude-code'
 
 const run = promisify(execFile)
 
@@ -27,14 +26,6 @@ export class GhError extends Error {
   }
 }
 
-async function isFile(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isFile()
-  } catch {
-    return false
-  }
-}
-
 /** The first `gh` on PATH, in the order Windows would pick it. */
 async function findGh(env: Environment): Promise<string | undefined> {
   const extensions = (envVar(env, 'PATHEXT') ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
@@ -52,13 +43,14 @@ export type Gh = (args: string[], cwd: string) => Promise<string>
 
 export function createGh(env: Environment): Gh {
   return async (args, cwd) => {
-    // Looked up on every call, so installing gh needs no restart.
     const path = await findGh(env)
     if (!path) throw new GhError('gh-missing', 'The GitHub CLI is not on PATH')
     const options = { cwd, env, timeout: GH_TIMEOUT_MS, maxBuffer: MAX_OUTPUT, windowsHide: true }
+    // Batch files only run through cmd.exe, as one command line, where quotes and percent signs are not literal.
+    const batch = /^\.(cmd|bat)$/i.test(extname(path))
+    if (batch && args.some((arg) => /["%]/.test(arg))) throw new Error(`Cannot pass ${args.join(' ')} to ${path}`)
     try {
-      // Batch files only run through cmd.exe, as one command line; ClaudeForge's arguments hold no quotes.
-      const { stdout } = /^\.(cmd|bat)$/i.test(extname(path))
+      const { stdout } = batch
         ? await run(`"${path}" ${args.map((arg) => `"${arg}"`).join(' ')}`, { ...options, shell: true })
         : await run(path, args, options)
       return stdout
@@ -66,7 +58,8 @@ export function createGh(env: Environment): Gh {
       const { code, stderr } = error as { code?: number | string; stderr?: string }
       const message = stderr?.trim() || String(error)
       if (code === 'ENOENT') throw new GhError('gh-missing', message)
-      if (code === AUTH_REQUIRED || /gh auth login/.test(message)) throw new GhError('gh-signed-out', message)
+      // Exit 4 when no one signed in; HTTP 401 when the stored token no longer works.
+      if (code === AUTH_REQUIRED || /HTTP 401/.test(message)) throw new GhError('gh-signed-out', message)
       throw new GhError('gh-failed', message)
     }
   }

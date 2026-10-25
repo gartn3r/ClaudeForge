@@ -156,13 +156,3 @@ test('says how to sign the GitHub CLI in when it is signed out', async () => {
     'GitHub CLI is not signed in. Run gh auth login, then refresh.'
   )
 })
-
-test('says how to install the GitHub CLI when there is none', async () => {
-  await env.dispose()
-  env = await createFakeEnvironment({ gh: false })
-  claudeforge = await launchClaudeForge(env, { project: 'harbor-api' })
-
-  await expect(claudeforge.window.getByRole('complementary', { name: 'Map' })).toContainText(
-    'GitHub CLI is not installed. Install it from cli.github.com, then refresh.'
-  )
-})

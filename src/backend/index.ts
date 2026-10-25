@@ -27,7 +27,7 @@ export interface BackendOptions {
   claudeHome: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
-  /** The environment `claude` is looked up and run in. */
+  /** The environment `claude` and `gh` are looked up and run in. */
   env: Environment
   /** The folder ClaudeForge was started in; defaults to the current directory. */
   startFolder?: string
