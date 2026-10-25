@@ -47,6 +47,10 @@ function dialogs(win: BrowserWindow): Dialogs {
         filters: [{ name: 'Claude Code', extensions: ['exe', 'cmd'] }]
       })
       return canceled ? undefined : filePaths[0]
+    },
+    chooseProjectFolder: async () => {
+      const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ['openDirectory'] })
+      return canceled ? undefined : filePaths[0]
     }
   }
 }

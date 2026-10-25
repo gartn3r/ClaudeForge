@@ -38,6 +38,31 @@ function describe(name) {
   return { name, version: pkg.version, license: pkg.license ?? 'UNKNOWN', repository, text }
 }
 
+const MIT_LICENSE = `Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
+
+// Shipped inside a package whose own licence does not cover them: node-pty's copy of
+// Windows Terminal's ConPTY, which ClaudeForge hosts every Hosted session in.
+function bundledBinaries() {
+  const [version] = readdirSync(join(ROOT, 'node_modules', 'node-pty', 'third_party', 'conpty'))
+  return [
+    {
+      name: 'Windows Terminal ConPTY (conpty.dll, OpenConsole.exe, inside node-pty)',
+      version,
+      license: 'MIT',
+      repository: 'https://github.com/microsoft/terminal',
+      text: `Copyright (c) Microsoft Corporation. All rights reserved.
+
+MIT License
+
+${MIT_LICENSE}`
+    }
+  ]
+}
+
 function render(packages) {
   const lines = [
     '# Third-party notices',
@@ -62,7 +87,7 @@ function render(packages) {
   return lines.join('\n')
 }
 
-const content = render(productionPackages().map(describe)).replace(/\r\n/g, '\n')
+const content = render([...productionPackages().map(describe), ...bundledBinaries()]).replace(/\r\n/g, '\n')
 
 if (process.argv.includes('--check')) {
   const current = existsSync(OUTPUT) ? readFileSync(OUTPUT, 'utf8').replace(/\r\n/g, '\n') : ''
