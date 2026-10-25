@@ -225,3 +225,40 @@ body {
     transition: none;
   }
 }
+
+/* Explorer: Projects and their Sessions */
+.explorer__projects,
+.explorer__projects ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.explorer__projects {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.explorer__projects .cf-sessions {
+  padding-left: var(--space-3);
+}
+.explorer__projects .cf-project {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+.cf-project__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cf-dot--none {
+  background: transparent;
+}
+.cf-row__sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cf-row__sub .cf-chip {
+  height: 18px;
+}
