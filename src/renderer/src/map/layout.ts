@@ -7,7 +7,9 @@ import type { Ticket, TicketEdge } from '../../../shared/api'
 /** A compact Ticket: 120px wide, three per rank in the 400px panel. */
 export const TICKET_WIDTH = 120
 /** Every Ticket takes the height of a three-line name, so ranks line up. */
-export const TICKET_HEIGHT = 84
+const TICKET_HEIGHT = 84
+/** A Parent Ticket's two-line name, roll-up bar and two-line roll-up. */
+const PARENT_TICKET_HEIGHT = 108
 /** `space-6` between ranks, `space-2` between the Tickets of a rank. */
 const RANK_GAP = 24
 const TICKET_GAP = 8
@@ -44,6 +46,8 @@ export interface MapLayout {
   edges: RoutedEdge[]
   width: number
   height: number
+  /** The height of every Ticket of the layout. */
+  ticketHeight: number
 }
 
 interface Point {
@@ -156,13 +160,15 @@ function assignLanes(runs: Run[]): Map<Run, number> {
  * leaves for it between two columns.
  */
 export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boolean })[]): MapLayout {
-  if (tickets.length === 0) return { tickets: [], edges: [], width: 0, height: 0 }
+  // Every Ticket of a level holding a Parent Ticket takes the height of its roll-up, so ranks line up.
+  const ticketHeight = tickets.some((ticket) => ticket.rollup) ? PARENT_TICKET_HEIGHT : TICKET_HEIGHT
+  if (tickets.length === 0) return { tickets: [], edges: [], width: 0, height: 0, ticketHeight }
   const graph = new Graph()
   graph.setGraph({ rankdir: 'TB', nodesep: TICKET_GAP, edgesep: TICKET_GAP, ranksep: RANK_GAP, marginx: 0, marginy: 0 })
   graph.setDefaultEdgeLabel(() => ({}))
 
   // Tickets and edges go in Map order, which keeps the layout stable across changes.
-  for (const { id } of tickets) graph.setNode(id, { width: TICKET_WIDTH, height: TICKET_HEIGHT })
+  for (const { id } of tickets) graph.setNode(id, { width: TICKET_WIDTH, height: ticketHeight })
   for (const { from, to } of edges) graph.setEdge(from, to, { weight: 1, minlen: 1 })
 
   // dagre may push a Ticket with no blocker down to shorten its edges; heavy
@@ -178,7 +184,7 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
 
   layout(graph)
 
-  const top = Math.min(...tickets.map(({ id }) => graph.node(id).y)) - TICKET_HEIGHT / 2
+  const top = Math.min(...tickets.map(({ id }) => graph.node(id).y)) - ticketHeight / 2
   const left = Math.min(...tickets.map(({ id }) => graph.node(id).x)) - TICKET_WIDTH / 2
   const centre = (id: string): Point => {
     const { x, y } = graph.node(id)
@@ -187,11 +193,11 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
 
   const placed = tickets.map((ticket) => {
     const { x, y } = centre(ticket.id)
-    return { ticket, x: x - TICKET_WIDTH / 2, y: y - TICKET_HEIGHT / 2 }
+    return { ticket, x: x - TICKET_WIDTH / 2, y: y - ticketHeight / 2 }
   })
   // Rank tops, from the placed Tickets: every Ticket has the same height.
   const rankTops = [...new Set(placed.map((ticket) => ticket.y))].sort((a, b) => a - b)
-  const rankOf = (centreY: number): number => rankTops.indexOf(centreY - TICKET_HEIGHT / 2)
+  const rankOf = (centreY: number): number => rankTops.indexOf(centreY - ticketHeight / 2)
 
   // Several edges into one Ticket enter side by side, ordered by where they come from.
   const entries = new Map<string, string[]>()
@@ -211,7 +217,7 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
     const waypoints: Point[] = graph.edge(edge.from, edge.to)?.points ?? []
     for (let rank = sourceRank + 1; rank < rankOf(target.y); rank++) {
       // dagre's placeholder for the edge in this rank, nearest its middle.
-      const middle = rankTops[rank]! + TICKET_HEIGHT / 2 + top
+      const middle = rankTops[rank]! + ticketHeight / 2 + top
       const nearest = waypoints.reduce<Point | undefined>(
         (best, point) => (!best || Math.abs(point.y - middle) < Math.abs(best.y - middle) ? point : best),
         undefined
@@ -232,12 +238,12 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
 
   const routed = routes.map(({ edge, source, target, entryX, runs }): RoutedEdge => {
     // Down from the source, across in its lane of each gap, down into the target.
-    const points: Point[] = [{ x: source.x, y: source.y + TICKET_HEIGHT / 2 }]
+    const points: Point[] = [{ x: source.x, y: source.y + ticketHeight / 2 }]
     for (const run of runs) {
-      const y = rankTops[run.gap]! + TICKET_HEIGHT + (lanes.get(run) ?? RANK_GAP / 2)
+      const y = rankTops[run.gap]! + ticketHeight + (lanes.get(run) ?? RANK_GAP / 2)
       points.push({ x: run.from, y }, { x: run.to, y })
     }
-    const tip = target.y - TICKET_HEIGHT / 2
+    const tip = target.y - ticketHeight / 2
     points.push({ x: entryX, y: tip - HEAD_LENGTH })
     return {
       ...edge,
@@ -250,6 +256,7 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
     tickets: placed,
     edges: routed,
     width: Math.max(...placed.map((ticket) => ticket.x + TICKET_WIDTH)),
-    height: Math.max(...placed.map((ticket) => ticket.y + TICKET_HEIGHT))
+    height: Math.max(...placed.map((ticket) => ticket.y + ticketHeight)),
+    ticketHeight
   }
 }

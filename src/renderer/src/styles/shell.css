@@ -707,3 +707,96 @@ dialog.cf-dialog::backdrop {
   cursor: default;
   color: var(--text-muted);
 }
+
+/* Sub-tickets in the Map graph */
+.map-ticket {
+  position: relative;
+}
+/* A Parent Ticket: a two-line name, then its roll-up at the foot of the stack. */
+.map-ticket.cf-ticket--parent {
+  --map-stack: 3px 3px 0 0 var(--surface-raised), 3px 3px 0 1px var(--line), 6px 6px 0 0 var(--surface),
+    6px 6px 0 1px var(--line);
+}
+.map-ticket.cf-ticket--parent .cf-ticket__name {
+  -webkit-line-clamp: 2;
+}
+.map-ticket.cf-ticket--parent .cf-rollup {
+  flex: none;
+  margin-top: auto;
+}
+.map-ticket .cf-rollup-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Every Sub-ticket closed, or the stack claimed: the state's outline on the stack. */
+.map-ticket.cf-ticket--parent.cf-ticket--frontier {
+  box-shadow: inset 0 0 0 1.5px var(--brass), var(--map-stack);
+}
+.map-ticket.cf-ticket--parent.cf-ticket--claimed {
+  box-shadow: inset 0 0 0 1.5px var(--route), var(--map-stack);
+}
+.map-ticket.cf-ticket--parent.cf-ticket--current {
+  box-shadow: inset 0 0 0 2px var(--brass), 0 0 0 4px var(--brass-soft), var(--map-stack);
+}
+.map-ticket__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* The whole card opens a Parent Ticket; Session badges stay clickable above it. */
+.map-ticket__open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.map-ticket__open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.map-ticket .cf-ticket__foot {
+  position: relative;
+}
+.map-crumbs {
+  overflow: hidden;
+}
+.map-crumbs__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+.map-crumbs__step button {
+  min-width: 2em;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.map-crumbs__step button:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.map-crumbs__step button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.map-crumbs [aria-current] {
+  flex-shrink: 0;
+  max-width: 60%;
+}
+.cf-destination .cf-rollup {
+  margin-top: var(--space-1);
+}

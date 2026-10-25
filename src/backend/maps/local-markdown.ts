@@ -1,6 +1,8 @@
 // The local markdown Tracker, as Wayfinder writes it: one effort per folder
 // under `.scratch/`, with a `map.md` and one numbered file per Ticket in
 // `issues/` (`NN-<slug>.md`) carrying `Type:`, `Status:` and `Blocked by:` lines.
+// A Sub-ticket stays in the same flat folder, with the Map's single numbering,
+// and names its Parent Ticket in a `Parent: NN` line (ADR 0004).
 
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
@@ -42,6 +44,7 @@ async function readTicket(path: string, number: string, slug: string): Promise<T
     claimedByUser: status === 'claimed',
     assignee: null,
     blockedBy: (fieldOf(text, 'Blocked by') ?? '').match(/\d+/g) ?? [],
+    parent: /\d+/.exec(fieldOf(text, 'Parent') ?? '')?.[0] ?? null,
     path,
     question: questionOf(text, sections, METADATA_LINE),
     answer: sections.answer ?? ''
@@ -99,10 +102,12 @@ async function readEffort(project: string, effort: string): Promise<MapRecord> {
     updatedAt = Math.max(updatedAt, (await stat(ticketPath)).mtimeMs)
   }
 
-  // `Blocked by: 2` names the Ticket filed as `02`.
+  // `Blocked by: 2` and `Parent: 2` name the Ticket filed as `02`.
   const byNumber = new Map(tickets.map((ticket) => [Number(ticket.id), ticket.id]))
+  const idOf = (ref: string): string => byNumber.get(Number(ref)) ?? ref
   for (const ticket of tickets) {
-    ticket.blockedBy = [...new Set(ticket.blockedBy.map((ref) => byNumber.get(Number(ref)) ?? ref))]
+    ticket.blockedBy = [...new Set(ticket.blockedBy.map(idOf))]
+    if (ticket.parent !== null) ticket.parent = idOf(ticket.parent)
   }
 
   return {

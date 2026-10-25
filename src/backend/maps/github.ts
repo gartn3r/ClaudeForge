@@ -1,7 +1,8 @@
 // The GitHub Tracker, as Wayfinder writes it (docs/agents/issue-tracker.md,
 // "Wayfinding operations"): a Map is an issue labelled `wayfinder:map`, its
 // Tickets are its sub-issues, blocking is GitHub's native issue dependencies,
-// and `wayfinder:<type>` labels give the Ticket types. Where sub-issues or
+// and `wayfinder:<type>` labels give the Ticket types. A Ticket's own
+// sub-issues are its Sub-tickets, read as deep as they go (ADR 0004). Where sub-issues or
 // dependencies are not available, Wayfinder falls back to a task list in the
 // Map body and a `Blocked by: #<n>` line in the Ticket body. Everything is read
 // through the REST API with `gh api`, in the Project's folder so `gh` finds its
@@ -180,7 +181,30 @@ export function createGitHubTracker(gh: Gh) {
       ref.repository.toLowerCase() === repository.name.toLowerCase()
         ? String(ref.number)
         : `${ref.repository.toLowerCase()}#${ref.number}`
-    const ids = new Set(children.map((child) => idOf(referenceOf(child))))
+
+    // Every Ticket in Map order: each one, then the Tickets beneath it, then its next sibling.
+    const subIssuesOf = async (issue: Issue): Promise<Issue[]> =>
+      (issue.sub_issues_summary?.total ?? 0) > 0
+        ? (await list<Issue>(`${issueRoute(referenceOf(issue))}/sub_issues`)).filter((sub) => !sub.pull_request)
+        : []
+    const seen = new Set<string>()
+    const descend = async (issues: Issue[], parent: string | null): Promise<{ issue: Issue; parent: string | null }[]> => {
+      const fresh = issues.filter((issue) => {
+        const id = idOf(referenceOf(issue))
+        if (seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+      const below = await eachLimited(fresh, subIssuesOf)
+      const placed: { issue: Issue; parent: string | null }[] = []
+      for (const [index, issue] of fresh.entries()) {
+        placed.push({ issue, parent }, ...(await descend(below[index]!, idOf(referenceOf(issue)))))
+      }
+      return placed
+    }
+    const placed = await descend(children, null)
+    const issues = placed.map(({ issue }) => issue)
+    const ids = new Set(issues.map((issue) => idOf(referenceOf(issue))))
     const openOutside = new Set<string>()
     // Issues outside the Map named by a `Blocked by:` line, whose state only the issue itself gives.
     const namedOutside = new Map<string, Reference>()
@@ -202,12 +226,12 @@ export function createGitHubTracker(gh: Gh) {
         return id
       })
     }
-    const blockedBy = await eachLimited(children, blockersOf)
+    const blockedBy = await eachLimited(issues, blockersOf)
     await eachLimited([...namedOutside], async ([id, ref]) => {
       if ((await getIfFound(ref))?.state === 'open') openOutside.add(id)
     })
 
-    const tickets = children.map((child, index): TicketRecord => {
+    const tickets = placed.map(({ issue: child, parent }, index): TicketRecord => {
       const body = child.body ?? ''
       const sections = sectionsOf(body)
       const typeLabels = child.labels.map((label) => /^wayfinder:(.+)$/i.exec(label.name)?.[1]?.toLowerCase())
@@ -222,6 +246,7 @@ export function createGitHubTracker(gh: Gh) {
         // The user first, when they are one of several assignees.
         assignee: logins.includes(login) ? login : (logins[0] ?? null),
         blockedBy: [...new Set(blockedBy[index])],
+        parent,
         path: child.html_url,
         question: questionOf(body, sections, METADATA_LINE),
         answer: sections.answer ?? ''
