@@ -35,7 +35,7 @@ interface HostedProcess {
   status: HostedSessionStatus
   /** Reads the status signals in its output. */
   reader: ProgramStatusReader
-  /** Follows its Session history until `claude` first reports its status itself. */
+  /** Follows its Session history until `claude` shows it reports its status itself. */
   history?: HistoryStatus
 }
 
@@ -95,8 +95,8 @@ export interface SessionHostOptions {
  * A Hosted session's status is what `claude` reports to its terminal through
  * the OSC 7501 Program Status Protocol: the Session host answers Claude Code's
  * support probe as the terminal, before xterm.js answers the device-attributes
- * query Claude Code sends after it. Until `claude` reports, which a Claude Code
- * older than 2.1.295 never does, the status follows the Session history, found
+ * query Claude Code sends after it. Until `claude` asks about status reports,
+ * which a Claude Code older than 2.1.295 never does, the status follows the Session history, found
  * by the Session id: the resumed Session's, or one the Session host gives `claude`.
  */
 export class SessionHost {
@@ -128,12 +128,10 @@ export class SessionHost {
     this.sessions.set(id, session)
     pty.onData((data) => {
       for (const signal of session.reader.read(data)) {
-        if (signal.kind === 'probe') {
-          pty.write(PROBE_REPLY)
-        } else {
-          stopFollowingHistory(session)
-          this.setStatus(session, STATUS_OF_REPORT[signal.state])
-        }
+        // A `claude` that asks whether its terminal reads status reports sends them: its history says no more.
+        stopFollowingHistory(session)
+        if (signal.kind === 'probe') pty.write(PROBE_REPLY)
+        else this.setStatus(session, STATUS_OF_REPORT[signal.state])
       }
       this.options.onOutput(id, data)
     })

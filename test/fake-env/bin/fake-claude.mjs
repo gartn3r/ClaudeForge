@@ -352,7 +352,9 @@ process.stdin.on('data', (chunk) => {
 })
 process.stdin.on('end', () => process.exit(0))
 
-// Only now that it reads its terminal in raw mode, so nothing typed after the banner is lost.
-write(`Fake Claude Code\r\nTerminal ${size()}\r\n> `)
+// Only now that it reads its terminal in raw mode, so nothing typed after the banner is lost. Like
+// Claude Code, it asks about status reports as it starts: before its banner, so the terminal's answer
+// comes before anything the user types once the banner shows.
 if (reportsStatus) write('\x1b]7501;?\x1b\\')
+write(`Fake Claude Code\r\nTerminal ${size()}\r\n> `)
 process.stdout.on('resize', () => write(`\r\nTerminal resized to ${size()}\r\n> ${prompt.replaceAll('\n', '\r\n  ')}`))
