@@ -91,13 +91,18 @@ export class SessionCatalog {
     return projects
   }
 
+  /** The Session with this id as Claude Code's files show it now; undefined when there is none. */
+  async find(id: string): Promise<SessionSummary | undefined> {
+    return (await this.read()).flatMap((project) => project.sessions).find((s) => s.id === id)
+  }
+
   /**
    * Moves a past Session's history to the Recycle Bin: its `<id>.jsonl` in every folder it ran in,
    * with the `<id>` folder of subagent transcripts beside each. The Session's state is read afresh,
    * so one that started running since the interface last listed it is refused.
    */
   async delete(id: string, trashItem: TrashItem): Promise<SessionDeletion> {
-    const session = (await this.read()).flatMap((project) => project.sessions).find((s) => s.id === id)
+    const session = await this.find(id)
     if (!session) return { deleted: false, reason: 'unknown' }
     if (session.state !== 'past') return { deleted: false, reason: session.state }
     const root = join(this.claudeHome, 'projects')

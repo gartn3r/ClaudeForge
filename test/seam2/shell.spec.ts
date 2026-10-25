@@ -25,7 +25,7 @@ test('opens on the title bar and the three columns, with the Extensions bar unde
   // No Hosted session yet: an empty tab strip, and the "+" that starts one.
   await expect(window.getByRole('tablist', { name: 'Hosted sessions' })).toBeAttached()
   for (const control of ['New Session', 'Minimize', 'Maximize', 'Close window']) {
-    await expect(window.getByRole('button', { name: control })).toBeVisible()
+    await expect(window.getByRole('button', { name: control, exact: true })).toBeVisible()
   }
 
   const explorer = window.getByRole('complementary', { name: 'Sessions' })

@@ -997,3 +997,16 @@ dialog.cf-dialog::backdrop {
 .map-tree__claim .cf-dot {
   background: var(--route);
 }
+
+/* Explorer: starting Sessions (the Project's "+", shown on hover and focus) */
+.explorer__projects .cf-project__name {
+  margin: 0;
+  font: inherit;
+}
+.explorer__projects .cf-project .cf-btn--icon {
+  opacity: 0;
+}
+.explorer__projects .cf-project:hover .cf-btn--icon,
+.explorer__projects .cf-project:focus-within .cf-btn--icon {
+  opacity: 1;
+}
