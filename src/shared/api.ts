@@ -151,6 +151,16 @@ export type ClaudeCodeStatus =
 /** Where a Session's `claude` process is: none (past) or outside ClaudeForge (External). */
 export type SessionState = 'past' | 'external'
 
+/**
+ * The Map, and the Ticket when one is named, that a Session works on: from its latest
+ * `/wayfinder` invocation, resolved against its Project's Maps, never from Tracker assignees (ADR 0002).
+ */
+export interface WayfinderLink {
+  mapId: string
+  mapName: string
+  ticket: { id: string; name: string } | null
+}
+
 /** One Session, as the explorer lists it. */
 export interface SessionSummary {
   id: string
@@ -165,6 +175,8 @@ export interface SessionSummary {
   state: SessionState
   /** Hidden by the user: the explorer lists it only when asked to show hidden Sessions. */
   hidden: boolean
+  /** What the Session works on, when its latest `/wayfinder` invocation names one of its Project's Maps. */
+  wayfinder: WayfinderLink | null
 }
 
 /** What came of asking to delete a Session: only a past one can be, so nothing running is ever lost. */

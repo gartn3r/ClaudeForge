@@ -133,7 +133,8 @@ describe('the Session catalog', () => {
           worktree: null,
           lastActivity: Date.parse('2026-10-25T11:00:00.000Z'),
           state: 'external',
-          hidden: false
+          hidden: false,
+          wayfinder: null
         }
       ]
     })

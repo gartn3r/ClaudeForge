@@ -1,13 +1,13 @@
 import { Check, ChevronDown, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { MapListing, MapSummary, WayfinderMap } from '../../../shared/api'
+import type { MapListing, MapSummary, SessionSummary, WayfinderMap } from '../../../shared/api'
 import { api } from '../api'
 import { IconButton } from './IconButton'
 import { MapGraph } from './MapGraph'
 import { MapText, itemCount } from './MapText'
 
-/** The Map the panel shows: the most recently updated open one. */
+/** The Map the panel shows when no Session names one: the most recently updated open one. */
 export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
 
 /** A load of one Map of one Project, and how it went. */
@@ -17,13 +17,37 @@ interface MapPanelProps {
   project: string
   /** The Project's Tracker and Maps; null while they load. */
   listing: MapListing | null
+  /** The Project's Sessions, whose Tickets carry their badges. */
+  sessions: SessionSummary[]
+  /** The Session shown in the centre, whose Map the panel follows; null when none is. */
+  displayedSession: SessionSummary | null
+  onDisplaySession(id: string): void
   onCollapse(): void
 }
 
-/** The Map panel: the Wayfinder Map of the displayed Session's Project. */
-export function MapPanel({ project, listing, onCollapse }: MapPanelProps): ReactNode {
+/**
+ * The Map panel: the Map the displayed Session works on, else its Project's most recent open
+ * Map, unless the user chose another of the Project's Maps since that Session was displayed.
+ */
+export function MapPanel({
+  project,
+  listing,
+  sessions,
+  displayedSession,
+  onDisplaySession,
+  onCollapse
+}: MapPanelProps): ReactNode {
   const { t } = useTranslation()
-  const summary = listing && shownMap(listing)
+  // A Map the user chose holds until the displayed Session or Project changes.
+  const followKey = `${project}\n${displayedSession?.id ?? ''}`
+  const [chosen, setChosen] = useState<{ followKey: string; mapId: string } | null>(null)
+  const chosenId = chosen?.followKey === followKey ? chosen.mapId : undefined
+  const linkedId = displayedSession?.wayfinder?.mapId
+  const summary =
+    listing &&
+    (listing.maps.find((map) => map.id === chosenId) ??
+      listing.maps.find((map) => map.id === linkedId) ??
+      shownMap(listing))
   const [loaded, setLoaded] = useState<Loaded | null>(null)
 
   // A new listing reloads the Map only when it names another one or a newer version.
@@ -51,16 +75,28 @@ export function MapPanel({ project, listing, onCollapse }: MapPanelProps): React
     body = <p className="empty">{name ? t('map.unsupportedNamed', { name }) : t('map.unsupported')}</p>
   } else if (listing && !summary) body = <p className="empty">{t('map.noMap')}</p>
   else if (result && 'error' in result) body = <p className="empty">{t('map.loadError')}</p>
-  else if (map) body = <MapView map={map} />
+  else if (map) {
+    body = (
+      <MapView
+        map={map}
+        sessions={sessions}
+        displayedSessionId={displayedSession?.id ?? null}
+        onDisplaySession={onDisplaySession}
+      />
+    )
+  }
 
   return (
     <>
       <div className="cf-panel-head">
         <span className="cf-eyebrow">{t('map.heading')}</span>
-        {map && (
-          <h2 className="map-name" title={map.name}>
-            <MapIcon className="cf-icon cf-icon--sm" aria-hidden="true" />
-            <span>{map.name}</span>
+        {map && listing && (
+          <h2 className="map-name">
+            <MapSelector
+              maps={listing.maps}
+              shown={map}
+              onChoose={(mapId) => setChosen({ followKey, mapId })}
+            />
           </h2>
         )}
         <IconButton icon={PanelRightClose} label={t('map.collapse')} onClick={onCollapse} />
@@ -70,10 +106,95 @@ export function MapPanel({ project, listing, onCollapse }: MapPanelProps): React
   )
 }
 
-function MapView({ map }: { map: WayfinderMap }): ReactNode {
+interface MapSelectorProps {
+  maps: MapSummary[]
+  shown: MapSummary
+  onChoose(mapId: string): void
+}
+
+/** The shown Map's name, opening a menu of the Project's Maps. */
+function MapSelector({ maps, shown, onChoose }: MapSelectorProps): ReactNode {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const closeOutside = (event: PointerEvent): void => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div className="map-selector" ref={ref}>
+      <button
+        type="button"
+        className="cf-btn cf-btn--ghost map-selector__button"
+        title={`${shown.name}\n${t('map.chooseMap')}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <MapIcon className="cf-icon cf-icon--sm" aria-hidden="true" />
+        <span>{shown.name}</span>
+        <ChevronDown className="cf-icon cf-icon--sm" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="map-selector__menu" role="menu" aria-label={t('map.maps')}>
+          {maps.map((map) => (
+            <button
+              key={map.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={map.id === shown.id}
+              className="map-selector__item"
+              data-open={map.open}
+              onClick={() => {
+                setOpen(false)
+                onChoose(map.id)
+              }}
+            >
+              <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
+              <span>{map.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface MapViewProps {
+  map: WayfinderMap
+  sessions: SessionSummary[]
+  displayedSessionId: string | null
+  onDisplaySession(id: string): void
+}
+
+function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
   const { t } = useTranslation()
   const [showDecided, setShowDecided] = useState(false)
   const decided = map.tickets.filter((ticket) => map.decided.includes(ticket.id))
+  const ticketSessions = useMemo(() => {
+    const byTicket = new Map<string, SessionSummary[]>()
+    for (const session of sessions) {
+      const link = session.wayfinder
+      if (link?.mapId !== map.id || !link.ticket) continue
+      // A Session the user hid carries no badge, unless it is the one displayed.
+      if (session.hidden && session.id !== displayedSessionId) continue
+      byTicket.set(link.ticket.id, [...(byTicket.get(link.ticket.id) ?? []), session])
+    }
+    return byTicket
+  }, [sessions, map.id, displayedSessionId])
 
   return (
     <>
@@ -102,7 +223,12 @@ function MapView({ map }: { map: WayfinderMap }): ReactNode {
             </div>
             <ul className="cf-decided" aria-labelledby="map-decided-label">
               {decided.map((ticket) => (
-                <li key={ticket.id} className="cf-chip" title={ticket.name}>
+                <li
+                  key={ticket.id}
+                  className="cf-chip"
+                  title={ticket.name}
+                  aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
+                >
                   <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
                   <span>{ticket.name}</span>
                 </li>
@@ -110,7 +236,13 @@ function MapView({ map }: { map: WayfinderMap }): ReactNode {
             </ul>
           </div>
         )}
-        <MapGraph map={map} showDecided={showDecided} />
+        <MapGraph
+          map={map}
+          showDecided={showDecided}
+          ticketSessions={ticketSessions}
+          displayedSessionId={displayedSessionId}
+          onDisplaySession={onDisplaySession}
+        />
       </div>
       <div className="map-sections">
         <MapSection id="decisions" title={t('map.section.decisionsSoFar')} markdown={map.decisionsSoFar} />

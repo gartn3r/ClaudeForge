@@ -11,7 +11,7 @@ import {
   Puzzle,
   Trash2
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
@@ -20,11 +20,16 @@ import { IconButton } from './IconButton'
 import { Menu, type MenuItem } from './Menu'
 
 interface ExplorerProps {
+  /** The Session catalog; null until it first answers. */
+  projects: ProjectSessions[] | null
+  /** The Session shown in the centre, whose Map the Map panel follows. */
+  displayedSessionId: string | null
+  onDisplaySession(id: string): void
   onCollapse(): void
 }
 
 /** The Session catalog as the backend last pushed it; null until it first answers. */
-function useSessionCatalog(): ProjectSessions[] | null {
+export function useSessionCatalog(): ProjectSessions[] | null {
   const [projects, setProjects] = useState<ProjectSessions[] | null>(null)
   useEffect(() => {
     let active = true
@@ -65,12 +70,14 @@ interface RowActions {
   openMenu(session: SessionSummary, at: { x: number; y: number }): void
   /** Ends a rename: the new title, or null when the user backed out. */
   rename(session: SessionSummary, title: string | null): void
+  /** The id of the Session shown in the centre, whose Map the Map panel follows. */
+  displayed: string | null
+  display(session: SessionSummary): void
 }
 
 /** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
-export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
+export function Explorer({ projects, displayedSessionId, onDisplaySession, onCollapse }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
-  const projects = useSessionCatalog()
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
   const closeMenu = useCallback(() => setTidying((current) => (current?.kind === 'menu' ? null : current)), [])
@@ -85,7 +92,9 @@ export function Explorer({ onCollapse }: ExplorerProps): ReactNode {
       setTidying(null)
       const unchanged = title === null || title.trim() === (session.title ?? '')
       if (!unchanged) void api.sessions.rename(session.id, title)
-    }
+    },
+    displayed: displayedSessionId,
+    display: (session) => onDisplaySession(session.id)
   }
 
   const menuItems = (session: SessionSummary): MenuItem[] => [
@@ -186,13 +195,31 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
   const title = session.title ?? t('explorer.untitled')
   // Rows never show ids: the tooltip carries the Session id under the title or the External notice.
   const tooltip = `${external ? t('explorer.openElsewhereTooltip') : title}\n${session.id}`
-  const hasSubtitle = external || session.worktree !== null
+  const link = session.wayfinder
+  const hasSubtitle = external || session.worktree !== null || link !== null
   const classes = ['cf-row', hasSubtitle && 'cf-row--two', session.hidden && 'explorer__row--hidden'].filter(Boolean)
+  // An External session runs elsewhere: it cannot be displayed here. Clicks and keys meant
+  // for the row's own controls (its menu button, the rename field) do not display it either.
+  const displayHandlers = external
+    ? {}
+    : {
+        tabIndex: 0,
+        onClick: (event: MouseEvent) => {
+          if (!renaming && !(event.target as Element).closest('button, input')) actions.display(session)
+        },
+        onKeyDown: (event: KeyboardEvent) => {
+          if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+          event.preventDefault()
+          actions.display(session)
+        }
+      }
   return (
     <li
       className={classes.join(' ')}
       title={renaming ? undefined : tooltip}
       aria-disabled={external || undefined}
+      aria-current={actions.displayed === session.id || undefined}
+      {...displayHandlers}
       onContextMenu={(event) => {
         if (renaming) return
         event.preventDefault()
@@ -217,6 +244,13 @@ function SessionRow({ session, now, actions }: SessionRowProps): ReactNode {
         {hasSubtitle && (
           <span className="cf-row__sub">
             {external && <span>{t('explorer.openElsewhere')}</span>}
+            {link && (
+              <span className="explorer__wayfinder">
+                {link.ticket
+                  ? t('explorer.subtitle.ticket', { name: link.ticket.name })
+                  : t('explorer.subtitle.map', { name: link.mapName })}
+              </span>
+            )}
             {session.worktree && (
               <span className="cf-chip">
                 <GitBranch className="cf-icon cf-icon--sm" aria-hidden="true" />

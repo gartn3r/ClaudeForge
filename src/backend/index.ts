@@ -8,6 +8,7 @@ import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
+import { resolveWayfinderLink } from './maps/links'
 import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
@@ -58,10 +59,12 @@ export interface Backend {
 export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
+  const maps = createMapService()
   const sessions = new SessionCatalog(
     options.claudeHome,
     (projects) => events.emit('sessions.changed', projects),
-    async () => (await appState.read()).sessions
+    async () => (await appState.read()).sessions,
+    (project, args) => resolveWayfinderLink(maps, project, args)
   )
   const language = resolveLanguage(options.systemLanguages)
   const startFolder = options.startFolder ?? process.cwd()
@@ -111,7 +114,7 @@ export function createBackend(options: BackendOptions): Backend {
       resize: async (id, size) => sessionHost.resize(id, size),
       stop: async (id) => sessionHost.stop(id)
     },
-    map: createMapService(),
+    map: maps,
     appState: {
       read: () => appState.read(),
       write: writeAppState
