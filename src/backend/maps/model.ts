@@ -28,11 +28,11 @@ export interface MapRecord extends MapSummary {
 
 function stateOf(
   ticket: Pick<TicketRecord, 'open' | 'claimed'>,
-  waits: boolean,
+  blocked: boolean,
   openSubTickets: boolean
 ): TicketState {
   if (!ticket.open) return 'closed'
-  if (waits) return 'blocked'
+  if (blocked) return 'blocked'
   if (openSubTickets) return 'parent'
   if (ticket.claimed) return 'claimed'
   return 'frontier'
@@ -88,13 +88,14 @@ export function deriveMap(record: MapRecord): WayfinderMap {
   const { sections, tickets: records, openOutside = [], ...summary } = record
   const open = new Set(records.filter((ticket) => ticket.open).map((ticket) => ticket.id))
   const openBlocker = (id: string): boolean => open.has(id) || openOutside.includes(id)
-  const byId = new Map(records.map((ticket) => [ticket.id, ticket]))
   const parents = parentsOf(records)
   const children = new Map<string, string[]>()
   for (const { id } of records) {
     const parent = parents.get(id)
     if (parent) children.set(parent, [...(children.get(parent) ?? []), id])
   }
+
+  const hasOpenSubTickets = (id: string): boolean => (children.get(id) ?? []).some((child) => open.has(child))
 
   // Edges between Tickets of one level, listed by blocked Ticket then blocker, both in Map order.
   const order = new Map(records.map((ticket, index) => [ticket.id, index]))
@@ -107,27 +108,26 @@ export function deriveMap(record: MapRecord): WayfinderMap {
 
   // A reference to a Ticket the Map does not have blocks nothing, unless its Tracker says it is open.
   const openBlockers = new Map(records.map((ticket) => [ticket.id, ticket.blockedBy.filter(openBlocker).length]))
-  // A block on an open ancestor blocks every Ticket beneath it (ADR 0004).
+  // An open blocker on any ancestor blocks every Ticket beneath it (ADR 0004).
   const parentWaits = (id: string): boolean => {
-    const parent = byId.get(parents.get(id) ?? '')
-    return parent !== undefined && parent.open && (openBlockers.get(parent.id)! > 0 || parentWaits(parent.id))
+    const parent = parents.get(id)
+    return parent != null && (openBlockers.get(parent)! > 0 || parentWaits(parent))
   }
   const states = new Map(
     records.map((ticket) => {
-      const waits = openBlockers.get(ticket.id)! > 0 || parentWaits(ticket.id)
-      const openSubTickets = (children.get(ticket.id) ?? []).some((id) => open.has(id))
-      return [ticket.id, stateOf(ticket, waits, openSubTickets)]
+      const blocked = openBlockers.get(ticket.id)! > 0 || parentWaits(ticket.id)
+      return [ticket.id, stateOf(ticket, blocked, hasOpenSubTickets(ticket.id))]
     })
   )
   const descendantsOf = (id: string): string[] =>
     (children.get(id) ?? []).flatMap((child) => [child, ...descendantsOf(child)])
+  // Only a Parent Ticket, one with open Sub-tickets, carries a roll-up.
   const rollupOf = (id: string): TicketRollup | null => {
-    const subTickets = children.get(id)?.length ?? 0
-    if (subTickets === 0) return null
+    if (!hasOpenSubTickets(id)) return null
     const beneath = descendantsOf(id).map((descendant) => states.get(descendant))
     const count = (state: TicketState): number => beneath.filter((each) => each === state).length
     return {
-      subTickets,
+      subTickets: children.get(id)!.length,
       total: beneath.length,
       closed: count('closed'),
       claimed: count('claimed'),

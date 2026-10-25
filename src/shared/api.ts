@@ -109,7 +109,7 @@ export type TicketType = 'research' | 'prototype' | 'grilling' | 'task'
  */
 export type TicketState = 'closed' | 'blocked' | 'parent' | 'claimed' | 'frontier'
 
-/** What lies beneath a Ticket with Sub-tickets, at every depth. */
+/** What lies beneath a Parent Ticket, at every depth. */
 export interface TicketRollup {
   /** Its own Sub-tickets, one level down. */
   subTickets: number
@@ -144,9 +144,9 @@ export interface Ticket {
   workable: boolean
   /** How many of its blockers are still open. */
   openBlockers: number
-  /** Blocked because an open ancestor is ("parent waits"), whatever its own blockers. */
+  /** An ancestor has an open blocker, which blocks this Ticket too ("parent waits"). */
   parentWaits: boolean
-  /** Present when it has Sub-tickets, open or closed. */
+  /** Present on a Parent Ticket: one with open Sub-tickets. */
   rollup: TicketRollup | null
 }
 

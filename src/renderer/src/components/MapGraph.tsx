@@ -62,8 +62,9 @@ type TicketCardData = {
 }
 type TicketCardNode = Node<TicketCardData, 'ticket'>
 
-/** Blocked only because an ancestor is. */
-const onlyParentWaits = (ticket: Ticket): boolean => ticket.state === 'blocked' && ticket.openBlockers === 0
+/** Blocked by an ancestor's open blocker alone ("parent waits"). */
+const waitsOnlyForParent = (ticket: Ticket): boolean =>
+  ticket.state === 'blocked' && ticket.parentWaits && ticket.openBlockers === 0
 
 /** The state glyph, with the open-blocker count when several open Tickets block it. */
 function StateGlyph({ ticket }: { ticket: Ticket & { state: Exclude<TicketState, 'parent'> } }): ReactNode {
@@ -71,7 +72,7 @@ function StateGlyph({ ticket }: { ticket: Ticket & { state: Exclude<TicketState,
   const several = ticket.state === 'blocked' && ticket.openBlockers > 1
   let label = t(`map.state.${ticket.state}`)
   if (several) label = t('map.state.blockedBy', { count: ticket.openBlockers })
-  else if (onlyParentWaits(ticket)) label = t('map.state.parentWaits')
+  else if (waitsOnlyForParent(ticket)) label = t('map.state.parentWaits')
   return (
     <span className="cf-ticket__state cf-status" role="img" aria-label={label}>
       {STATE_GLYPHS[ticket.state]}
@@ -90,7 +91,7 @@ export function Rollup({ ticket, blockers }: { ticket: Ticket; blockers: string[
   if (!rollup) return null
   const share = (count: number): string => `${(100 * count) / rollup.total}%`
   let line: ReactNode
-  if (onlyParentWaits(ticket)) line = t('map.rollup.parentWaits')
+  if (waitsOnlyForParent(ticket)) line = t('map.rollup.parentWaits')
   else if (ticket.state === 'blocked') line = t('map.rollup.waitsFor', { blockers: blockers.join(', ') })
   else {
     // What can start beneath it, else what is under way, then how much is decided.
@@ -124,7 +125,7 @@ function TicketCard({
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
   const { rollup } = ticket
   let tooltip = t(`map.tooltip.${ticket.state}`, { name: ticket.name, count: rollup?.subTickets })
-  if (onlyParentWaits(ticket)) tooltip = t('map.tooltip.parentWaits', { name: ticket.name })
+  if (waitsOnlyForParent(ticket)) tooltip = t('map.tooltip.parentWaits', { name: ticket.name })
   else if (ticket.state === 'blocked') tooltip = t('map.tooltip.blocked', { name: ticket.name, blockers: blockers.join(', ') })
   const classes = ['cf-ticket', 'cf-ticket--compact', `cf-ticket--${ticket.state}`, 'map-ticket']
   if (rollup) classes.push('cf-ticket--parent')
@@ -277,7 +278,7 @@ export function openBlockerNames(map: WayfinderMap, ticket: Ticket): string[] {
 }
 
 /** Every Ticket beneath a level of the Map, at any depth. */
-export function ticketsBeneath(map: WayfinderMap, level: string | null): Ticket[] {
+function ticketsBeneath(map: WayfinderMap, level: string | null): Ticket[] {
   return map.tickets
     .filter((ticket) => ticket.parent === level)
     .flatMap((ticket) => [ticket, ...ticketsBeneath(map, ticket.id)])
@@ -331,7 +332,7 @@ export function MapGraph({
         }
       }
     })
-  }, [map, layout, names, ticketSessions, displayedSessionId, onDisplaySession, onOpen])
+  }, [map, layout, ticketSessions, displayedSessionId, onDisplaySession, onOpen])
 
   return (
     <section className="map-graph" aria-label={t('map.graph')}>

@@ -95,7 +95,7 @@
       "closed": "Closed",
       "blockedBy_one": "Blocked by {{count}} open Ticket",
       "blockedBy_other": "Blocked by {{count}} open Tickets",
-      "parentWaits": "Blocked: the parent waits"
+      "parentWaits": "Blocked: its Parent Ticket waits"
     },
     "tooltip": {
       "frontier": "{{name}} · on the Frontier",
@@ -104,7 +104,7 @@
       "closed": "{{name}} · decided",
       "parent_one": "{{name}} · {{count}} Sub-ticket. Open it to see it.",
       "parent_other": "{{name}} · {{count}} Sub-tickets. Open it to see them.",
-      "parentWaits": "{{name}} · blocked: the parent waits"
+      "parentWaits": "{{name}} · blocked: its Parent Ticket waits"
     },
     "type": {
       "research": "research",
@@ -144,7 +144,7 @@
       "claimed": "{{count}} claimed",
       "closed": "{{closed}}/{{total}} closed",
       "waitsFor": "Waits for {{blockers}}",
-      "parentWaits": "The parent waits"
+      "parentWaits": "Its Parent Ticket waits"
     }
   },
   "firstRun": {

@@ -17,7 +17,7 @@ const treeOf = ({ tickets }: WayfinderMap) =>
     parentWaits
   }))
 
-/** The roll-up of each Ticket that has Sub-tickets, by id. */
+/** The roll-up of each Parent Ticket, by id. */
 const rollupsOf = ({ tickets }: WayfinderMap) =>
   Object.fromEntries(tickets.flatMap((ticket) => (ticket.rollup ? [[ticket.id, ticket.rollup]] : [])))
 
@@ -97,15 +97,15 @@ describe('Sub-tickets', () => {
       ])
     })
 
-    it('rolls up every Ticket beneath a Ticket with Sub-tickets: total, closed, claimed and Frontier', async () => {
+    it('rolls up every Ticket beneath a Parent Ticket: total, closed, claimed and Frontier', async () => {
       await writeCookbook(COOKBOOK)
 
       expect(rollupsOf(await load())).toEqual({
         // 03, 04 and, beneath 04, 06 and 07; 04 itself is neither claimed nor on the Frontier.
         '01': { subTickets: 2, total: 4, closed: 1, claimed: 1, frontier: 1 },
         '02': { subTickets: 1, total: 1, closed: 0, claimed: 0, frontier: 0 },
-        '04': { subTickets: 2, total: 2, closed: 0, claimed: 1, frontier: 1 },
-        '08': { subTickets: 1, total: 1, closed: 1, claimed: 0, frontier: 0 }
+        '04': { subTickets: 2, total: 2, closed: 0, claimed: 1, frontier: 1 }
+        // 08's Sub-tickets are all closed: no longer a Parent Ticket, it has no roll-up.
       })
     })
 
@@ -122,6 +122,23 @@ describe('Sub-tickets', () => {
       ])
       expect(map.tickets.at(-1)).toMatchObject({ id: '10', state: 'blocked', openBlockers: 1 })
       expect(map.decided).toEqual(['03', '09'])
+    })
+
+    it('blocks every Ticket beneath an ancestor with an open blocker, even a closed ancestor', async () => {
+      await writeCookbook({
+        '01-chapters.md': '# Chapter order\n\nType: grilling\n',
+        '02-printing.md': '# Printing\n\nType: task\nStatus: resolved\nBlocked by: 01\n',
+        '03-paper.md': '# Paper stock\n\nType: research\nParent: 02\n',
+        '04-weight.md': '# Paper weight\n\nType: research\nParent: 03\n'
+      })
+
+      expect(treeOf(await load())).toEqual([
+        { id: '01', parent: null, state: 'frontier', workable: true, openBlockers: 0, parentWaits: false },
+        // Closed wins over its own still-open blocker, which still holds everything beneath it.
+        { id: '02', parent: null, state: 'closed', workable: false, openBlockers: 1, parentWaits: false },
+        { id: '03', parent: '02', state: 'blocked', workable: false, openBlockers: 0, parentWaits: true },
+        { id: '04', parent: '03', state: 'blocked', workable: false, openBlockers: 0, parentWaits: true }
+      ])
     })
 
     it('keeps a Ticket whose Parent line names no Ticket of the Map, or goes round in a circle, at the Map’s level', async () => {

@@ -66,5 +66,5 @@ test('opens a Parent Ticket level by level, then goes back by the breadcrumb and
 
   // A block on a Parent Ticket blocks everything beneath it.
   await ticket('Signing secrets').getByRole('button', { name: 'Open Signing secrets' }).click()
-  await expect(ticket('Secret rotation').getByRole('img', { name: 'Blocked: the parent waits' })).toBeVisible()
+  await expect(ticket('Secret rotation').getByRole('img', { name: 'Blocked: its Parent Ticket waits' })).toBeVisible()
 })

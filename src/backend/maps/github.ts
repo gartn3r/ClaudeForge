@@ -2,11 +2,11 @@
 // "Wayfinding operations"): a Map is an issue labelled `wayfinder:map`, its
 // Tickets are its sub-issues, blocking is GitHub's native issue dependencies,
 // and `wayfinder:<type>` labels give the Ticket types. A Ticket's own
-// sub-issues are its Sub-tickets, read as deep as they go (ADR 0004). Where sub-issues or
-// dependencies are not available, Wayfinder falls back to a task list in the
-// Map body and a `Blocked by: #<n>` line in the Ticket body. Everything is read
-// through the REST API with `gh api`, in the Project's folder so `gh` finds its
-// repository.
+// sub-issues are its Sub-tickets, read as deep as they go (ADR 0004). Where
+// sub-issues or dependencies are not available, Wayfinder falls back to a task
+// list in the Map body and a `Blocked by: #<n>` line in the Ticket body.
+// Everything is read through the REST API with `gh api`, in the Project's
+// folder so `gh` finds its repository.
 
 import type { MapSummary, TicketType } from '../../shared/api'
 import { GhError, type Gh } from './gh'
@@ -45,6 +45,12 @@ interface Repository {
   name: string
   /** `github.com`, or a GitHub Enterprise Server host. */
   host: string
+}
+
+/** An issue read as a Ticket, with the id of the Ticket it is a Sub-ticket of. */
+interface PlacedIssue {
+  issue: Issue
+  parent: string | null
 }
 
 /** An issue: `#<n>` of a repository. */
@@ -188,7 +194,7 @@ export function createGitHubTracker(gh: Gh) {
         ? (await list<Issue>(`${issueRoute(referenceOf(issue))}/sub_issues`)).filter((sub) => !sub.pull_request)
         : []
     const seen = new Set<string>()
-    const descend = async (issues: Issue[], parent: string | null): Promise<{ issue: Issue; parent: string | null }[]> => {
+    const descend = async (issues: Issue[], parent: string | null): Promise<PlacedIssue[]> => {
       const fresh = issues.filter((issue) => {
         const id = idOf(referenceOf(issue))
         if (seen.has(id)) return false
@@ -196,7 +202,7 @@ export function createGitHubTracker(gh: Gh) {
         return true
       })
       const below = await eachLimited(fresh, subIssuesOf)
-      const placed: { issue: Issue; parent: string | null }[] = []
+      const placed: PlacedIssue[] = []
       for (const [index, issue] of fresh.entries()) {
         placed.push({ issue, parent }, ...(await descend(below[index]!, idOf(referenceOf(issue)))))
       }

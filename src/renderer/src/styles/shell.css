@@ -730,13 +730,6 @@ dialog.cf-dialog::backdrop {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Every Sub-ticket closed, or the stack claimed: the state's outline on the stack. */
-.map-ticket.cf-ticket--parent.cf-ticket--frontier {
-  box-shadow: inset 0 0 0 1.5px var(--brass), var(--map-stack);
-}
-.map-ticket.cf-ticket--parent.cf-ticket--claimed {
-  box-shadow: inset 0 0 0 1.5px var(--route), var(--map-stack);
-}
 .map-ticket.cf-ticket--parent.cf-ticket--current {
   box-shadow: inset 0 0 0 2px var(--brass), 0 0 0 4px var(--brass-soft), var(--map-stack);
 }
