@@ -23,6 +23,7 @@ export function defaultAppState(): AppState {
       map: { width: PANEL_BOUNDS.map.default, collapsed: false }
     },
     claudePath: null,
+    gpuRendering: true,
     sessions: {}
   }
 }
@@ -69,7 +70,7 @@ function mergeSessions(
 
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, sessions } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, sessions } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -81,6 +82,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
     }
   }
   if (typeof claudePath === 'string' || claudePath === null) next = { ...next, claudePath }
+  if (typeof gpuRendering === 'boolean') next = { ...next, gpuRendering }
   if (typeof sessions === 'object' && sessions !== null) {
     next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
   }

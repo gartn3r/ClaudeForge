@@ -5,6 +5,7 @@ import { api, onEvent } from './api'
 import { Explorer, ExplorerRail } from './components/Explorer'
 import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
+import { SettingsMenu } from './components/SettingsMenu'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
@@ -58,7 +59,7 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
 
   return (
     <div className="shell" data-resizing={resizing}>
-      <TitleBar />
+      <TitleBar settings={<SettingsMenu state={state} />} />
       <div className="columns">
         <SidePanel
           id="explorer"
@@ -71,7 +72,7 @@ export function App({ initialState, initialClaudeCode, project }: AppProps): Rea
         >
           <Explorer onCollapse={collapseHandler('explorer', true)} />
         </SidePanel>
-        <TerminalArea />
+        <TerminalArea gpuRendering={state.gpuRendering} />
         <SidePanel
           id="map"
           side="right"
