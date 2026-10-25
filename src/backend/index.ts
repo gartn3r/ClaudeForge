@@ -9,6 +9,8 @@ import type {
   BackendApi,
   ClaudeCodeStatus,
   EventName,
+  HostedSession,
+  TerminalSize,
   WindowNotification
 } from '../shared/api'
 import { AppStateStore } from './app-state'
@@ -113,7 +115,7 @@ export function createBackend(options: BackendOptions): Backend {
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
     onStatus: (id, status) => events.emit('sessionHost.status', { id, status }),
-    onTurnEnd: (id, project) => events.emit('sessionHost.turnEnded', { id, project })
+    onTurnEnd: (id, cwd) => events.emit('sessionHost.turnEnded', { id, cwd })
   })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {
@@ -130,10 +132,21 @@ export function createBackend(options: BackendOptions): Backend {
     await sessions.refresh()
   }
 
+  /** Starts `claude --resume <id>`, plus the given options, in the folder the past Session ran in. */
+  const resumeSession = async (id: string, size: TerminalSize, args: string[] = []): Promise<HostedSession> => {
+    const session = await sessions.find(id)
+    if (!session) throw new Error(`There is no Session ${id}`)
+    // Never two `claude` on one Session: an External one is read-only until it ends.
+    if (session.state !== 'past') throw new Error(`Session ${id} still runs outside ClaudeForge`)
+    return sessionHost.start(session.cwd, size, ['--resume', id, ...args])
+  }
+
   const api: BackendApi = {
     sessionHost: {
       chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
       start: (project, size) => sessionHost.start(project, size),
+      resume: (id, size) => resumeSession(id, size),
+      fork: (id, size) => resumeSession(id, size, ['--fork-session']),
       write: async (id, data) => sessionHost.write(id, data),
       resize: async (id, size) => sessionHost.resize(id, size),
       stop: async (id) => sessionHost.stop(id)

@@ -73,7 +73,7 @@ if (args[0] === 'plugin' && args[1] === 'list' && args.includes('--json')) {
 // permission, while it waits for the user), then done or error for each turn, idle when one is
 // interrupted, and clear when it exits.
 // Older versions send none. Every version keeps the Session history Claude Code keeps, when started
-// with `--session-id`: the user's prompt as a turn starts, Claude's answer as it ends.
+// with `--session-id` or `--resume`: the user's prompt as a turn starts, Claude's answer as it ends.
 const write = (text) => process.stdout.write(text)
 const size = () => `${process.stdout.columns}x${process.stdout.rows}`
 let prompt = ''
@@ -96,8 +96,9 @@ function report(state, extra = '') {
   if (terminalReadsStatus) write(`\x1b]7501;state=${state}:app=claude-code${extra}\x1b\\`)
 }
 
-const sessionIdAt = args.indexOf('--session-id')
-const sessionId = sessionIdAt >= 0 ? args[sessionIdAt + 1] : undefined
+/** The Session id it was given, else the resumed Session's, which it goes on in unless it forks. */
+const optionValue = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined)
+const sessionId = optionValue('--session-id') ?? (args.includes('--fork-session') ? undefined : optionValue('--resume'))
 
 /** Appends one entry to the Session history, where Claude Code keeps it. */
 function remember(entry) {

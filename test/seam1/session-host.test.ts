@@ -12,6 +12,13 @@ const plain = (output: string): string =>
 
 const SIZE = { cols: 100, rows: 30 }
 
+// Fixture Sessions (test/fixtures/claude-home/sessions): a past one and an External one of
+// harbor-api, one whose External `claude` crashed, and one in a git worktree of recipe-box.
+const PAST_SESSION = '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11'
+const RUNNING_EXTERNAL_SESSION = '9c1e4b2a-6d3f-4e8b-8a17-3b5d2e9f0c42'
+const ENDED_EXTERNAL_SESSION = 'c3d2a8f1-1b7e-4c59-9e64-7f0a1d2b3c4d'
+const WORKTREE_SESSION = 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f'
+
 /** The names of the processes this test process started (other than the query itself), as Windows lists them. */
 const childProcessNames = (): string[] =>
   execFileSync(
@@ -102,6 +109,59 @@ describe('the Session host', () => {
         env: expect.objectContaining({ CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT: '1', TERM_PROGRAM: 'ClaudeForge' })
       }
     ])
+  })
+
+  it('resumes a past Session with claude --resume <id> in its Project', async () => {
+    const { api } = await start()
+
+    const { id } = await api.sessionHost.resume(PAST_SESSION, SIZE)
+
+    await waitForText(id, 'Fake Claude Code')
+    expect(await sessionRuns()).toEqual([
+      expect.objectContaining({ args: ['--resume', PAST_SESSION], cwd: env!.projects['harbor-api'] })
+    ])
+  })
+
+  it('forks a past Session into a new one with claude --resume <id> --fork-session, in its Project', async () => {
+    const { api } = await start()
+
+    const { id } = await api.sessionHost.fork(PAST_SESSION, SIZE)
+
+    await waitForText(id, 'Fake Claude Code')
+    expect(await sessionRuns()).toEqual([
+      expect.objectContaining({
+        args: ['--resume', PAST_SESSION, '--fork-session', '--session-id', expect.any(String)],
+        cwd: env!.projects['harbor-api']
+      })
+    ])
+  })
+
+  it('refuses to resume or fork a Session whose claude runs outside ClaudeForge, or one it does not know', async () => {
+    const { api } = await start()
+
+    await expect(api.sessionHost.resume(RUNNING_EXTERNAL_SESSION, SIZE)).rejects.toThrow()
+    await expect(api.sessionHost.fork(RUNNING_EXTERNAL_SESSION, SIZE)).rejects.toThrow()
+    await expect(api.sessionHost.resume('00000000-0000-4000-8000-000000000000', SIZE)).rejects.toThrow()
+
+    expect(await sessionRuns()).toEqual([])
+  })
+
+  it('resumes an External session once its claude has ended, like any past Session', async () => {
+    const { api } = await start()
+
+    const { id } = await api.sessionHost.resume(ENDED_EXTERNAL_SESSION, SIZE)
+
+    await waitForText(id, 'Fake Claude Code')
+    expect(await sessionRuns()).toEqual([expect.objectContaining({ args: ['--resume', ENDED_EXTERNAL_SESSION] })])
+  })
+
+  it('resumes a Session of a git worktree in that worktree', async () => {
+    const { api } = await start()
+
+    const { id } = await api.sessionHost.resume(WORKTREE_SESSION, SIZE)
+
+    await waitForText(id, 'Fake Claude Code')
+    expect(await sessionRuns()).toEqual([expect.objectContaining({ cwd: env!.worktrees['recipe-box@week-view'] })])
   })
 
   it('types into the Hosted session, and claude answers in its output', async () => {
@@ -210,13 +270,13 @@ describe('the Session host', () => {
 
   it('tells when a turn ends, finished or interrupted by the user, with its Project', async () => {
     const { api } = await start()
-    const turnEnds: Array<{ id: string; project: string }> = []
+    const turnEnds: Array<{ id: string; cwd: string }> = []
     backend!.on('sessionHost.turnEnded', (turnEnd) => turnEnds.push(turnEnd))
     const id = await startSession('harbor-api')
 
     await api.sessionHost.write(id, '/work 300\r')
-    const project = env!.projects['harbor-api']
-    await vi.waitFor(() => expect(turnEnds).toEqual([{ id, project }]), { timeout: 15_000 })
+    const cwd = env!.projects['harbor-api']
+    await vi.waitFor(() => expect(turnEnds).toEqual([{ id, cwd }]), { timeout: 15_000 })
     await api.sessionHost.write(id, '/work 60000\r')
     await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done', 'working']), { timeout: 15_000 })
     await api.sessionHost.write(id, 'x')
@@ -235,6 +295,16 @@ describe('the Session host', () => {
 
     await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done']), { timeout: 15_000 })
     expect(turnEnds).toEqual([id])
+  })
+
+  it("follows a resumed Session's history from where it was, so its past turns say nothing", async () => {
+    const { api } = await start({ claude: { version: '2.1.200' } })
+    const { id } = await api.sessionHost.resume(PAST_SESSION, SIZE)
+    await waitForText(id, `Terminal ${SIZE.cols}x${SIZE.rows}`)
+
+    await api.sessionHost.write(id, '/work 1500\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done']), { timeout: 15_000 })
   })
 
   it("does not count claude echoing the user's typing as work", async () => {

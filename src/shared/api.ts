@@ -313,6 +313,13 @@ export interface BackendApi {
      * its output, status and exit arrive as events.
      */
     start(project: string, size: TerminalSize): Promise<HostedSession>
+    /**
+     * Continues a past Session (`claude --resume <id>`) in the folder it ran in; refused for an
+     * unknown Session or one whose `claude` still runs outside ClaudeForge.
+     */
+    resume(sessionId: string, size: TerminalSize): Promise<HostedSession>
+    /** Like resume, but into a new Session (`--fork-session`), leaving the original as it was. */
+    fork(sessionId: string, size: TerminalSize): Promise<HostedSession>
     /** Types into the Hosted session's terminal. */
     write(id: string, data: string): Promise<void>
     resize(id: string, size: TerminalSize): Promise<void>
@@ -368,8 +375,11 @@ export interface BackendEvents {
   'sessionHost.exit': { id: string; exitCode: number }
   /** A Hosted session's status changed; every Hosted session starts idle. */
   'sessionHost.status': { id: string; status: HostedSessionStatus }
-  /** A Hosted session's turn ended, finished or interrupted: what Claude did may have changed its Project. */
-  'sessionHost.turnEnded': { id: string; project: string }
+  /**
+   * A Hosted session's turn ended, finished or interrupted: what Claude did may have changed its
+   * Project. `cwd` is the folder it runs in: its Project, or a git worktree of it.
+   */
+  'sessionHost.turnEnded': { id: string; cwd: string }
   'appState.changed': AppState
   /** The whole Session catalog, after Claude Code's files changed it. */
   'sessions.changed': ProjectSessions[]

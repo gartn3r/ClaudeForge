@@ -29,7 +29,8 @@ function withVariables(env: Environment, variables: Environment): Environment {
 /** One running `claude`, with what it last said it is doing. */
 interface HostedProcess {
   id: string
-  project: string
+  /** The folder it runs in: its Project, or a git worktree of it. */
+  cwd: string
   pty: IPty
   status: HostedSessionStatus
   /** Reads the status signals in its output. */
@@ -52,6 +53,17 @@ const STATUS_OF_REPORT: Record<ProgramStatusState, HostedSessionStatus> = {
 /** Whether a Session in this status is in the middle of a turn. */
 const midTurn = (status: HostedSessionStatus): boolean => status === 'working' || status === 'waiting'
 
+/**
+ * The options to start `claude` with and the Session id they give it. A resumed Session keeps its
+ * id; any other gets a new one (`--session-id`), which Claude Code also takes with `--fork-session`.
+ */
+function withSessionId(args: readonly string[]): { sessionId: string; args: string[] } {
+  const resumed = args.indexOf('--resume')
+  if (resumed >= 0 && !args.includes('--fork-session')) return { sessionId: args[resumed + 1]!, args: [...args] }
+  const sessionId = randomUUID()
+  return { sessionId, args: [...args, '--session-id', sessionId] }
+}
+
 function stopFollowingHistory(session: HostedProcess): void {
   session.history?.stop()
   session.history = undefined
@@ -71,7 +83,7 @@ export interface SessionHostOptions {
   onExit(id: string, exitCode: number): void
   onStatus(id: string, status: HostedSessionStatus): void
   /** A turn ended, finished or interrupted. */
-  onTurnEnd(id: string, project: string): void
+  onTurnEnd(id: string, cwd: string): void
 }
 
 /**
@@ -85,27 +97,32 @@ export interface SessionHostOptions {
  * support probe as the terminal, before xterm.js answers the device-attributes
  * query Claude Code sends after it. Until `claude` reports, which a Claude Code
  * older than 2.1.295 never does, the status follows the Session history, found
- * by the Session id the Session host gives `claude` (`--session-id`).
+ * by the Session id: the resumed Session's, or one the Session host gives `claude`.
  */
 export class SessionHost {
   private readonly sessions = new Map<string, HostedProcess>()
 
   constructor(private readonly options: SessionHostOptions) {}
 
-  async start(project: string, { cols, rows }: TerminalSize): Promise<HostedSession> {
+  /** Starts `claude` with the given options in the folder the Session runs in: its Project, or a git worktree of it. */
+  async start(folder: string, { cols, rows }: TerminalSize, args: readonly string[] = []): Promise<HostedSession> {
     const claude = await this.options.claudePath()
     const env = withVariables(this.options.env, HOSTED_ENVIRONMENT)
-    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: project, env, useConptyDll: true }
-    const sessionId = randomUUID()
-    const args = ['--session-id', sessionId]
+    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
+    const { sessionId, args: claudeArgs } = withSessionId(args)
     // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
+    // Each option is quoted as is: they are ClaudeForge's own flags and Session ids, never user text.
     const pty = /^\.(cmd|bat)$/i.test(extname(claude))
-      ? spawn(envVar(env, 'COMSPEC') ?? 'cmd.exe', `/d /s /c ""${claude}" ${args.join(' ')}"`, ptyOptions)
-      : spawn(claude, args, ptyOptions)
+      ? spawn(
+          envVar(env, 'COMSPEC') ?? 'cmd.exe',
+          `/d /s /c ""${claude}"${claudeArgs.map((arg) => ` "${arg}"`).join('')}"`,
+          ptyOptions
+        )
+      : spawn(claude, claudeArgs, ptyOptions)
 
     const id = randomUUID()
-    const session: HostedProcess = { id, project, pty, status: 'idle', reader: new ProgramStatusReader() }
-    session.history = new HistoryStatus(this.options.claudeHome, project, sessionId, (status) =>
+    const session: HostedProcess = { id, cwd: folder, pty, status: 'idle', reader: new ProgramStatusReader() }
+    session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
       this.setStatus(session, status)
     )
     this.sessions.set(id, session)
@@ -157,6 +174,6 @@ export class SessionHost {
     if (status === previous) return
     session.status = status
     this.options.onStatus(session.id, status)
-    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.project)
+    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.cwd)
   }
 }

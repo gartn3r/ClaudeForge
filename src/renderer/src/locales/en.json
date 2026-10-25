@@ -35,6 +35,9 @@
       "ticket": "Ticket · {{name}}",
       "map": "Map · {{name}}"
     },
+    "newSessionIn": "New Session in {{project}}",
+    "resume": "Resume",
+    "fork": "Fork",
     "sessionActions": "Session actions",
     "sessionName": "Session name",
     "rename": "Rename",

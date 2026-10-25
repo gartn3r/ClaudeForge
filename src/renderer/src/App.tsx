@@ -11,6 +11,7 @@ import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
 import { useHostedSessions } from './terminal/hosted-sessions'
+import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
 
 interface AppProps {
@@ -48,9 +49,10 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // The start folder keeps its own spelling while the displayed Session runs in it.
   const project = samePath(displayedProject, startProject) ? startProject : displayedProject
 
-  const startHostedSession = (folder: string): void => {
+  // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
+  const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
     setDisplayedSessionId(null)
-    hosted.sessions.start(folder, state.gpuRendering)
+    hosted.sessions.start(folder, state.gpuRendering, launch)
   }
   const selectHostedSession = (key: string): void => {
     setDisplayedSessionId(null)
@@ -125,6 +127,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             projects={catalog}
             displayedSessionId={displayedSessionId}
             onDisplaySession={setDisplayedSessionId}
+            onStartSession={startHostedSession}
             project={project}
             onCollapse={collapseHandler('explorer', true)}
           />

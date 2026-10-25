@@ -44,7 +44,7 @@ async function launch({ gpuRendering = false } = {}): Promise<Page> {
 /** Starts a Session with the title bar's "+" and waits for the fake `claude` to start in it. */
 async function newSession(window: Page): Promise<void> {
   const runs = (await sessionRuns(env)).length
-  await window.getByRole('button', { name: 'New Session' }).click()
+  await window.getByRole('button', { name: 'New Session', exact: true }).click()
   await expect.poll(async () => (await sessionRuns(env)).length).toBe(runs + 1)
 }
 
