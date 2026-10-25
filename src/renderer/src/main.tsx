@@ -7,6 +7,7 @@ import '@fontsource/jetbrains-mono/latin-600.css'
 import './styles/tokens.css'
 import './styles/components.css'
 import './styles/shell.css'
+import './styles/first-run.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -15,11 +16,15 @@ import { api } from './api'
 import { initI18n } from './i18n'
 
 async function start(): Promise<void> {
-  const [info, state] = await Promise.all([api.system.info(), api.appState.read()])
+  const [info, state, claudeCode] = await Promise.all([
+    api.system.info(),
+    api.appState.read(),
+    api.claudeCode.locate()
+  ])
   await initI18n(info.language)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App initialState={state} />
+      <App initialState={state} initialClaudeCode={claudeCode} />
     </StrictMode>
   )
 }

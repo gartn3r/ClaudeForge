@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppState, PanelId } from '../../shared/api'
+import type { AppState, ClaudeCodeStatus, PanelId } from '../../shared/api'
 import { api, onEvent } from './api'
 import { Explorer, ExplorerRail } from './components/Explorer'
+import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail } from './components/MapPanel'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
@@ -10,18 +11,29 @@ import { TitleBar } from './components/TitleBar'
 
 interface AppProps {
   initialState: AppState
+  initialClaudeCode: ClaudeCodeStatus
 }
 
-export function App({ initialState }: AppProps): ReactNode {
+export function App({ initialState, initialClaudeCode }: AppProps): ReactNode {
   const { t } = useTranslation()
   // App state lives in the backend; the interface shows the last state it pushed.
   const [state, setState] = useState(initialState)
   const [resizing, setResizing] = useState(false)
+  const [claudeCode, setClaudeCode] = useState(initialClaudeCode)
 
   useEffect(() => onEvent('appState.changed', setState), [])
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
     void api.appState.write({ layout: { [panel]: { collapsed } } })
+
+  if (claudeCode.state !== 'found') {
+    return (
+      <div className="shell">
+        <TitleBar sessionTabs={false} />
+        <FirstRun problem={claudeCode} onStatus={setClaudeCode} />
+      </div>
+    )
+  }
 
   return (
     <div className="shell" data-resizing={resizing}>

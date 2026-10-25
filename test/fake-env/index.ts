@@ -2,7 +2,8 @@
 // holding a Claude Code home, fixture Projects, ClaudeForge's data folder and
 // fake `claude` and `gh` executables first on PATH.
 
-import { cp,mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 
@@ -14,6 +15,9 @@ export type FixtureProject = (typeof FIXTURE_PROJECTS)[number]
 
 export type FakeTool = 'claude' | 'gh'
 
+/** What the fake `claude` answers to `--version` unless told otherwise. */
+export const FAKE_CLAUDE_VERSION = '2.1.300'
+
 export interface Invocation {
   args: string[]
   cwd: string
@@ -21,9 +25,21 @@ export interface Invocation {
   env: Record<string, string>
 }
 
+export interface FakeClaudeOptions {
+  /** What `claude --version` reports; defaults to FAKE_CLAUDE_VERSION. */
+  version?: string
+  /**
+   * On PATH (the default); in the native installer's folder (`%USERPROFILE%\.local\bin`), off PATH;
+   * or in some other folder off PATH, as an install the user has to point at.
+   */
+  location?: 'path' | 'installer' | 'elsewhere'
+}
+
 export interface FakeEnvironmentOptions {
   /** Windows display languages ClaudeForge should see; defaults to English. */
   systemLanguages?: string[]
+  /** The fake `claude`; `false` leaves Claude Code uninstalled. Defaults to one on PATH. */
+  claude?: FakeClaudeOptions | false
 }
 
 export interface FakeEnvironment {
@@ -33,9 +49,13 @@ export interface FakeEnvironment {
   /** ClaudeForge's own data folder, where app state lives. */
   userDataDir: string
   projects: Record<FixtureProject, string>
+  /** Where the fake `claude` is, when there is one. */
+  readonly claudePath: string | undefined
   systemLanguages: string[]
   /** Environment for anything spawned against the fake environment, ClaudeForge included. */
   processEnv: Record<string, string>
+  /** Installs a fake `claude` (replacing any at the same place) and returns its path. */
+  installClaude(options?: FakeClaudeOptions): Promise<string>
   /** Every recorded call of a fake executable, oldest first. */
   invocations(tool: FakeTool): Promise<Invocation[]>
   dispose(): Promise<void>
@@ -44,9 +64,10 @@ export interface FakeEnvironment {
 /** Claude Code names a Project's history folder after its path, every other character a dash. */
 export const encodeProjectPath = (path: string): string => path.replace(/[^a-zA-Z0-9]/g, '-')
 
-/** A Windows shim that runs a fake executable's script with this Node. */
-async function writeExecutable(binDir: string, tool: FakeTool, script: string): Promise<void> {
-  await writeFile(join(binDir, `${tool}.cmd`), `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`)
+/** A Windows shim that runs a fake executable's script with this Node, with extra variables set. */
+async function writeExecutable(path: string, script: string, variables: Record<string, string> = {}): Promise<void> {
+  const set = Object.entries(variables).map(([name, value]) => `set "${name}=${value}"\r\n`)
+  await writeFile(path, `@echo off\r\n${set.join('')}"${process.execPath}" "${script}" %*\r\n`)
 }
 
 async function seedClaudeHome(claudeHome: string, projects: Record<FixtureProject, string>): Promise<void> {
@@ -63,6 +84,18 @@ async function seedClaudeHome(claudeHome: string, projects: Record<FixtureProjec
       await writeFile(join(target, file), filled)
     }
   }
+}
+
+const holdsClaude = (dir: string): boolean =>
+  ['claude.exe', 'claude.cmd', 'claude.bat', 'claude'].some((name) => existsSync(join(dir, name)))
+
+/** This machine's PATH without the folders of any real Claude Code, so only the fake one is found. */
+function inheritedPath(): string {
+  const path = process.env.PATH ?? process.env.Path ?? ''
+  return path
+    .split(delimiter)
+    .filter((dir) => dir && !holdsClaude(dir))
+    .join(delimiter)
 }
 
 function inheritedEnv(): Record<string, string> {
@@ -90,14 +123,15 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
   ) as Record<FixtureProject, string>
   await seedClaudeHome(claudeHome, projects)
-  await writeExecutable(binDir, 'claude', join(BIN_SOURCES, 'fake-claude.mjs'))
-  await writeExecutable(binDir, 'gh', join(BIN_SOURCES, 'fake-gh.mjs'))
+  await writeExecutable(join(binDir, 'gh.cmd'), join(BIN_SOURCES, 'fake-gh.mjs'))
 
   const processEnv: Record<string, string> = {
     ...inheritedEnv(),
-    PATH: `${binDir}${delimiter}${process.env.PATH ?? process.env.Path ?? ''}`,
+    PATH: `${binDir}${delimiter}${inheritedPath()}`,
     HOME: homeDir,
     USERPROFILE: homeDir,
+    APPDATA: join(homeDir, 'AppData', 'Roaming'),
+    LOCALAPPDATA: join(homeDir, 'AppData', 'Local'),
     CLAUDE_CONFIG_DIR: claudeHome,
     CLAUDEFORGE_USER_DATA: userDataDir,
     CLAUDEFORGE_SYSTEM_LANGUAGES: systemLanguages.join(','),
@@ -105,11 +139,30 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     FAKE_GH_RECORDINGS: join(FIXTURES, 'gh')
   }
 
+  let claudePath: string | undefined
+  const installClaude = async ({ version, location }: FakeClaudeOptions = {}): Promise<string> => {
+    // Elsewhere is a folder name with a space, as under Program Files.
+    const dir = { path: binDir, installer: join(homeDir, '.local', 'bin'), elsewhere: join(root, 'Claude Code') }[
+      location ?? 'path'
+    ]
+    await mkdir(dir, { recursive: true })
+    claudePath = join(dir, 'claude.cmd')
+    await writeExecutable(claudePath, join(BIN_SOURCES, 'fake-claude.mjs'), {
+      FAKE_CLAUDE_VERSION: version ?? FAKE_CLAUDE_VERSION
+    })
+    return claudePath
+  }
+  if (options.claude !== false) await installClaude(options.claude)
+
   return {
     root,
     claudeHome,
     userDataDir,
     projects,
+    get claudePath() {
+      return claudePath
+    },
+    installClaude,
     systemLanguages,
     processEnv,
     async invocations(tool) {

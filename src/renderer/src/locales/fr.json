@@ -31,5 +31,27 @@
     "expand": "Déplier le panneau Carte",
     "resize": "Redimensionner le panneau Carte",
     "empty": "Suivez ici la Carte du Projet de la Session affichée."
+  },
+  "firstRun": {
+    "checkAgain": "Vérifier à nouveau",
+    "choose": "Choisir claude.exe…",
+    "missing": {
+      "status": "Introuvable",
+      "title": "Claude Code est introuvable",
+      "lead": "ClaudeForge utilise le Claude Code déjà installé sur votre machine. Il a cherché <code>claude</code> dans votre PATH sans le trouver.",
+      "install": "Installez Claude Code en suivant le <guide>guide d'installation</guide>.",
+      "checkAgain": "Revenez puis choisissez <strong>Vérifier à nouveau</strong>. Vous vous connectez à Claude dans le terminal de ClaudeForge, au démarrage de la première Session.",
+      "choose": "Installé ailleurs ? Choisissez vous-même <code>claude.exe</code>. ClaudeForge retient son emplacement.",
+      "lookedIn": "Cherché dans"
+    },
+    "outdated": {
+      "status": "Mise à jour requise",
+      "title": "Claude Code {{version}} est trop ancien",
+      "lead": "ClaudeForge requiert Claude Code {{minimumVersion}} ou plus récent, pour que chaque fonction se comporte comme prévu.",
+      "update": "Mettez-le à jour en lançant <code>claude update</code> dans un terminal, ou en suivant le <guide>guide d'installation</guide>.",
+      "checkAgain": "Revenez puis choisissez <strong>Vérifier à nouveau</strong>.",
+      "choose": "Une version plus récente est installée ailleurs ? Choisissez vous-même <code>claude.exe</code>. ClaudeForge retient son emplacement.",
+      "foundAt": "Trouvé dans"
+    }
   }
 }
