@@ -98,13 +98,15 @@
         "open": "Remove {{name}}",
         "title": "Remove {{name}}?",
         "body": "Claude Code removes this MCP server from {{scope}}. New Sessions start without it; add it again to get it back.",
-        "action": "Remove"
+        "action": "Remove",
+        "shared": "If the Project shares this server in its .mcp.json, Claude Code removes it from there, for everyone working on the Project."
       },
       "plugin": {
         "open": "Uninstall {{name}}",
         "title": "Uninstall {{name}}?",
         "body": "Claude Code uninstalls this plugin from {{scope}}, with the skills, subagents and MCP servers it brings. Install it again from its marketplace to get it back.",
-        "action": "Uninstall"
+        "action": "Uninstall",
+        "shared": "It is installed in the Project’s shared settings (.claude/settings.json): uninstalling it changes them for everyone working on the Project."
       }
     },
     "notice": {

@@ -287,6 +287,8 @@ function ExtensionsPopover({
   }
 
   useEffect(() => {
+    // While a change runs the menu stays, to show how it went.
+    if (busy) return
     const onKey = (event: KeyboardEvent): void => {
       // A dialog over the menu takes its own Escape.
       if (event.key === 'Escape' && !ref.current?.querySelector('dialog[open]')) onClose(true)
@@ -304,7 +306,7 @@ function ExtensionsPopover({
       document.removeEventListener('pointerdown', onPointer)
       window.removeEventListener('resize', onResize)
     }
-  }, [anchor, onClose])
+  }, [anchor, onClose, busy])
 
   const inScope = typeof listing === 'object' ? listing.extensions.filter((extension) => extension.scope === scope) : []
   const projectName = folderName(project)
@@ -431,6 +433,10 @@ function ExtensionsPopover({
               scope: removing.scope === 'project' ? projectName : t('extensions.global')
             })}
           </p>
+          {/* A Project's shared setup is committed with it: the change reaches everyone working on it. */}
+          {(removing.install?.scope === 'project' || (removing.removable && removing.scope === 'project')) && (
+            <p>{t(`extensions.remove.${removalKey(removing)}.shared`)}</p>
+          )}
         </ConfirmDialog>
       )}
       {asking?.kind === 'add-mcp-server' && (

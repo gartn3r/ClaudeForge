@@ -132,6 +132,38 @@ describe('Extension changes, through Claude Code’s CLI', () => {
       expect(await find(env.projects['recipe-box'], 'plugin', 'pastry-kit')).toBeUndefined()
     })
 
+    it('uninstalls a Project’s plugin at the scope Claude Code installed it in', async () => {
+      const project = env.projects['recipe-box']
+
+      await backend.api.extensions.change(project, {
+        action: 'uninstall-plugin',
+        plugin: { id: 'frontend-design@forge-market', scope: 'project' }
+      })
+
+      expect(await changes()).toEqual([`plugin uninstall frontend-design@forge-market -s project @ ${project}`])
+      expect(await find(project, 'plugin', 'frontend-design')).toBeUndefined()
+    })
+
+    it('switches and uninstalls a plugin installed for the Project as the user’s own with `-s local`', async () => {
+      const project = env.projects.dotfiles
+      await backend.api.extensions.change(project, { action: 'install-plugin', plugin: 'pastry-kit@forge-market', scope: 'project' })
+      const pastryKit = (await find(project, 'plugin', 'pastry-kit'))!.install!
+
+      await backend.api.extensions.change(project, { action: 'disable-plugin', plugin: pastryKit })
+      expect(await find(project, 'plugin', 'pastry-kit')).toMatchObject({ enabled: false })
+      await backend.api.extensions.change(project, { action: 'enable-plugin', plugin: pastryKit })
+      expect(await find(project, 'plugin', 'pastry-kit')).toMatchObject({ enabled: true })
+      await backend.api.extensions.change(project, { action: 'uninstall-plugin', plugin: pastryKit })
+
+      expect(await changes()).toEqual([
+        `plugin install pastry-kit@forge-market -s local @ ${project}`,
+        `plugin disable pastry-kit@forge-market -s local @ ${project}`,
+        `plugin enable pastry-kit@forge-market -s local @ ${project}`,
+        `plugin uninstall pastry-kit@forge-market -s local @ ${project}`
+      ])
+      expect(await find(project, 'plugin', 'pastry-kit')).toBeUndefined()
+    })
+
     it('gives Claude Code’s own words when it refuses a change', async () => {
       const result = await backend.api.extensions.change(env.projects.dotfiles, {
         action: 'disable-plugin',
@@ -231,6 +263,19 @@ describe('Extension changes, through Claude Code’s CLI', () => {
         'X-Team: kitchen'
       ])
       expect(await find(project, 'mcp-server', 'Team Wiki')).toMatchObject({ scope: 'global' })
+    })
+
+    it('adds a remote server for the Project with `-s local`', async () => {
+      const project = env.projects.dotfiles
+
+      await backend.api.extensions.change(project, {
+        action: 'add-mcp-server',
+        scope: 'project',
+        server: { name: 'events', transport: 'sse', target: 'https://events.example/sse', args: [], env: [], headers: [] }
+      })
+
+      expect(await changes()).toEqual([`mcp add -s local -t sse events https://events.example/sse @ ${project}`])
+      expect(await find(project, 'mcp-server', 'events')).toMatchObject({ scope: 'project' })
     })
 
     it('removes the user’s server with `claude mcp remove … -s user`', async () => {

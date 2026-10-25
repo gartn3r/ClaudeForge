@@ -1,6 +1,7 @@
 // The fake `claude`: records how it was called and answers like Claude Code.
-// It answers `mcp list` and `plugin list --json` from test/fixtures/claude; later tickets grow it into
-// a scriptable TUI stub (status signals, the other mcp/plugin subcommands).
+// It answers the `mcp` and `plugin` subcommands ClaudeForge runs from the fake environment's copy of
+// test/fixtures/claude, which its changes change; later tickets grow it into a scriptable TUI stub
+// (status signals).
 import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join, relative } from 'node:path'
 import { record } from './record.mjs'

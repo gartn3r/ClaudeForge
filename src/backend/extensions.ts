@@ -283,6 +283,7 @@ export function createExtensionService({
     })
   }
 
+  /** What `claude plugin list --json` answers in the Project, with any more options given. */
   const pluginList = async (project: string, ...more: string[]): Promise<unknown> =>
     JSON.parse(
       await runClaude(await claudePath(), ['plugin', 'list', '--json', ...more], {
@@ -325,6 +326,7 @@ export function createExtensionService({
 
   /** The Hosted sessions that started before a change ClaudeForge made to their Extensions. */
   const outdated = new Set<string>()
+  /** Those still running, forgetting the ended ones. */
   const outdatedSessions = (): string[] => {
     const running = hostedSessions().map(({ id }) => id)
     for (const id of outdated) if (!running.includes(id)) outdated.delete(id)

@@ -288,6 +288,7 @@ export interface Extension {
  */
 export type ClaudeScope = 'user' | 'project' | 'local'
 
+/** An installed plugin, as `claude plugin enable|disable|uninstall` takes it. */
 export interface InstalledPlugin {
   /** `<plugin>@<marketplace>`. */
   id: string
@@ -316,6 +317,7 @@ export interface AvailablePlugin {
   marketplace: string
 }
 
+/** The plugins `claude plugin install` could install here. */
 export interface AvailablePluginListing {
   /** Not installed for the user nor for the Project yet; the most installed first. */
   plugins: AvailablePlugin[]
@@ -325,8 +327,8 @@ export interface AvailablePluginListing {
 
 /**
  * A change to the Extensions, made through `claude plugin …` or `claude mcp …` (ADR 0003). What
- * ClaudeForge adds for the Project is the user's own there (Claude Code's local scope), leaving
- * the Project's shared settings to its repository.
+ * ClaudeForge adds for the Project is the user's own there (Claude Code's local scope), so it never
+ * adds to the setup the Project shares; switching or removing what the Project shares changes it.
  */
 export type ExtensionChange =
   | { action: 'enable-plugin' | 'disable-plugin' | 'uninstall-plugin'; plugin: InstalledPlugin }
@@ -336,6 +338,7 @@ export type ExtensionChange =
   /** From the Project, a server the user added there, else one its `.mcp.json` shares. */
   | { action: 'remove-mcp-server'; name: string; scope: ExtensionScope }
 
+/** How Claude Code reaches an MCP server: a command it runs (stdio), or a URL. */
 export type McpTransport = 'stdio' | 'http' | 'sse'
 
 /** An MCP server as `claude mcp add` takes it. */

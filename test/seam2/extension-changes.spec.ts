@@ -58,6 +58,9 @@ test('a plugin’s toggle disables it through `claude plugin disable`, waiting w
   await expect.poll(changes).toEqual(['plugin disable kitchen-tools@forge-market -s user'])
   await expect(toggle).toBeDisabled()
   await expect(menu.getByRole('switch', { name: 'Enable atlas' })).toBeDisabled()
+  // The menu stays until the change is through, to show how it went.
+  await claudeforge!.window.keyboard.press('Escape')
+  await expect(menu).toBeVisible()
 
   await release()
 
@@ -90,6 +93,8 @@ test('removing an MCP server asks first, then runs `claude mcp remove`', async (
   const confirm = window.getByRole('alertdialog', { name: 'Remove playwright?' })
   await expect(confirm).toBeVisible()
   await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
+  // It may be the Project's shared server.
+  await expect(confirm).toContainText('If the Project shares this server in its .mcp.json')
   await confirm.getByRole('button', { name: 'Cancel' }).click()
 
   await expect(confirm).toBeHidden()
