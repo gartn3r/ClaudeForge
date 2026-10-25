@@ -31,7 +31,7 @@ test('lists every Session by Project, newest first, with worktrees folded and Ex
   ])
   await expect(sessionsOf('recipe-box')).toHaveText([
     /^Chart the meal planner/,
-    /^\/wayfinder meal-planner 02\s*week-view/,
+    /^\/wayfinder meal-planner 02\s*Ticket · Shape of the week view\s*week-view/,
     /^Track leftovers in the fridge.*leftovers/
   ])
 

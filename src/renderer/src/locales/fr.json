@@ -28,6 +28,25 @@
       "now": "maintenant",
       "minutes": "{{n}} min",
       "hours": "{{n}} h"
+    },
+    "subtitle": {
+      "ticket": "Ticket · {{name}}",
+      "map": "Carte · {{name}}"
+    },
+    "sessionActions": "Actions de la Session",
+    "sessionName": "Nom de la Session",
+    "rename": "Renommer",
+    "hide": "Masquer",
+    "unhide": "Afficher à nouveau",
+    "showHidden": "Afficher les masquées",
+    "showHiddenIn": "Afficher les Sessions masquées de {{project}}",
+    "delete": {
+      "action": "Mettre à la corbeille",
+      "title": "Mettre cette Session à la corbeille ?",
+      "body": "« {{title}} » et son historique quittent ClaudeForge et Claude Code. Vous pouvez les restaurer depuis la corbeille de Windows.",
+      "onlyPast": "Seule une Session terminée peut être mise à la corbeille.",
+      "gone": "Cette Session n’est plus dans l’historique de Claude Code.",
+      "failed": "ClaudeForge n’a pas pu mettre son historique à la corbeille. Fermez ce qui garde ses fichiers ouverts, puis réessayez."
     }
   },
   "extensions": {
@@ -106,7 +125,10 @@
       "ghSignedOut": "GitHub CLI n’est pas connecté. Lancez <code>gh auth login</code>, puis actualisez.",
       "noGitHubRepository": "GitHub CLI ne trouve aucun dépôt GitHub pour ce Projet. Ajoutez un remote GitHub, puis actualisez.",
       "ghFailed": "GitHub n’a pas pu être lu par GitHub CLI. Actualisez pour réessayer."
-    }
+    },
+    "maps": "Cartes",
+    "chooseMap": "Afficher une autre Carte de ce Projet",
+    "switchToSession": "{{title}} : afficher cette Session"
   },
   "firstRun": {
     "checkAgain": "Vérifier à nouveau",
@@ -129,5 +151,8 @@
       "choose": "Une version plus récente est installée ailleurs ? Choisissez vous-même <code>claude.exe</code>. ClaudeForge retient son emplacement.",
       "foundAt": "Trouvé dans"
     }
+  },
+  "dialog": {
+    "cancel": "Annuler"
   }
 }

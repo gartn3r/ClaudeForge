@@ -7,10 +7,22 @@ import {
   type Node,
   type NodeProps
 } from '@xyflow/react'
-import { Check, ChevronRight, Lock, Maximize, MessagesSquare, Minus, Plus, Search, Shapes, SquareCheck } from 'lucide-react'
+import {
+  Check,
+  ChevronRight,
+  Lock,
+  Maximize,
+  MessagesSquare,
+  Minus,
+  Plus,
+  Search,
+  Shapes,
+  SquareCheck,
+  SquareTerminal
+} from 'lucide-react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Ticket, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
+import type { SessionSummary, Ticket, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
 import { TICKET_HEIGHT, TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
 import { IconButton } from './IconButton'
 
@@ -35,7 +47,15 @@ const COUNTED_STATES: readonly TicketState[] = ['frontier', 'claimed', 'blocked'
 const PADDING = 12
 const ZOOM_DURATION = 120
 
-type TicketCardData = { ticket: Ticket; blockers: string[] }
+type TicketCardData = {
+  ticket: Ticket
+  blockers: string[]
+  /** The displayed Session works on this Ticket. */
+  current: boolean
+  /** The other Sessions working on it, each a badge that displays it. */
+  sessions: SessionSummary[]
+  onDisplaySession(id: string): void
+}
 type TicketCardNode = Node<TicketCardData, 'ticket'>
 
 /** The state glyph, with the open-blocker count when several open Tickets block it. */
@@ -52,15 +72,17 @@ function StateGlyph({ ticket }: { ticket: Ticket }): ReactNode {
 }
 
 /** A compact Ticket: type, state glyph and name; the full name and any block in its tooltip. */
-function TicketCard({ data: { ticket, blockers } }: NodeProps<TicketCardNode>): ReactNode {
+function TicketCard({ data: { ticket, blockers, current, sessions, onDisplaySession } }: NodeProps<TicketCardNode>): ReactNode {
   const { t } = useTranslation()
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
   const tooltip =
     ticket.state === 'blocked'
       ? t('map.tooltip.blocked', { name: ticket.name, blockers: blockers.join(', ') })
       : t(`map.tooltip.${ticket.state}`, { name: ticket.name })
+  const classes = ['cf-ticket', 'cf-ticket--compact', `cf-ticket--${ticket.state}`, 'map-ticket']
+  if (current) classes.push('cf-ticket--current')
   return (
-    <div className={`cf-ticket cf-ticket--compact cf-ticket--${ticket.state} map-ticket`} title={tooltip}>
+    <div className={classes.join(' ')} title={tooltip}>
       <span className="cf-ticket__head">
         {ticket.type && TypeIcon ? (
           <span className="cf-ticket__type">
@@ -73,7 +95,33 @@ function TicketCard({ data: { ticket, blockers } }: NodeProps<TicketCardNode>): 
         <StateGlyph ticket={ticket} />
       </span>
       <span className="cf-ticket__name">{ticket.name}</span>
+      {sessions.length > 0 && (
+        <span className="cf-ticket__foot">
+          {sessions.map((session) => (
+            <SessionBadge key={session.id} session={session} onDisplay={() => onDisplaySession(session.id)} />
+          ))}
+        </span>
+      )}
     </div>
+  )
+}
+
+/** Another Session working on a Ticket; clicking it displays that Session, unless it runs elsewhere. */
+function SessionBadge({ session, onDisplay }: { session: SessionSummary; onDisplay(): void }): ReactNode {
+  const { t } = useTranslation()
+  const title = session.title ?? t('explorer.untitled')
+  const external = session.state === 'external'
+  return (
+    <button
+      type="button"
+      className="cf-ticket__session nopan"
+      title={external ? `${title}\n${t('explorer.openElsewhereTooltip')}` : t('map.switchToSession', { title })}
+      disabled={external}
+      onClick={onDisplay}
+    >
+      <SquareTerminal className="cf-icon cf-icon--sm" aria-hidden="true" />
+      <span>{title}</span>
+    </button>
   )
 }
 
@@ -149,36 +197,57 @@ interface MapGraphProps {
   map: WayfinderMap
   /** Draws the closed Tickets and their spent edges too. */
   showDecided: boolean
+  /** The Sessions working on each Ticket, by Ticket id. */
+  ticketSessions: Map<string, SessionSummary[]>
+  displayedSessionId: string | null
+  onDisplaySession(id: string): void
 }
 
 /** The open work of a Map, top to bottom, with pan, zoom and fit. */
-export function MapGraph({ map, showDecided }: MapGraphProps): ReactNode {
+export function MapGraph({
+  map,
+  showDecided,
+  ticketSessions,
+  displayedSessionId,
+  onDisplaySession
+}: MapGraphProps): ReactNode {
   const { t } = useTranslation()
 
-  const { layout, nodes, names } = useMemo(() => {
-    const byId = new Map(map.tickets.map((ticket) => [ticket.id, ticket]))
+  // The layout changes with the Map only, so displaying another Session never moves the graph.
+  const { layout, names } = useMemo(() => {
     const names = new Map(map.tickets.map((ticket) => [ticket.id, ticket.name]))
     const tickets = map.tickets.filter((ticket) => showDecided || ticket.open)
     const edges = [
       ...map.liveEdges.map((edge) => ({ ...edge, spent: false })),
       ...(showDecided ? map.spentEdges.map((edge) => ({ ...edge, spent: true })) : [])
     ]
-    const layout = layoutMap(tickets, edges)
-    const nodes: TicketCardNode[] = layout.tickets.map(({ ticket, x, y }) => ({
-      id: ticket.id,
-      type: 'ticket',
-      position: { x, y },
-      width: TICKET_WIDTH,
-      height: TICKET_HEIGHT,
-      ariaRole: 'group',
-      ariaLabel: ticket.name,
-      data: {
-        ticket,
-        blockers: ticket.blockedBy.filter((id) => byId.get(id)?.open).map((id) => names.get(id)!)
-      }
-    }))
-    return { layout, nodes, names }
+    return { layout: layoutMap(tickets, edges), names }
   }, [map, showDecided])
+
+  const nodes = useMemo(() => {
+    const open = new Set(map.tickets.filter((ticket) => ticket.open).map((ticket) => ticket.id))
+    return layout.tickets.map(({ ticket, x, y }): TicketCardNode => {
+      const sessions = ticketSessions.get(ticket.id) ?? []
+      const current = sessions.some((session) => session.id === displayedSessionId)
+      return {
+        id: ticket.id,
+        type: 'ticket',
+        position: { x, y },
+        width: TICKET_WIDTH,
+        height: TICKET_HEIGHT,
+        ariaRole: 'group',
+        ariaLabel: ticket.name,
+        domAttributes: { 'aria-current': current || undefined },
+        data: {
+          ticket,
+          blockers: ticket.blockedBy.filter((id) => open.has(id)).map((id) => names.get(id)!),
+          current,
+          sessions: sessions.filter((session) => session.id !== displayedSessionId),
+          onDisplaySession
+        }
+      }
+    })
+  }, [map, layout, names, ticketSessions, displayedSessionId, onDisplaySession])
 
   return (
     <section className="map-graph" aria-label={t('map.graph')}>

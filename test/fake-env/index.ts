@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
+import { standInContents, standInRecycleBin } from '../../src/backend/recycle-bin'
 
 const FIXTURES = resolve(__dirname, '../fixtures')
 const BIN_SOURCES = resolve(__dirname, 'bin')
@@ -18,6 +19,12 @@ export type FakeTool = 'claude' | 'gh'
 
 /** What the fake `claude` answers to `--version` unless told otherwise. */
 export const FAKE_CLAUDE_VERSION = '2.1.300'
+
+/** A `/wayfinder` invocation as Claude Code records a slash command in a history's user message; `plugin` namespaces it. */
+export const wayfinderCommand = (args: string, plugin?: string): string => {
+  const name = plugin ? `${plugin}:wayfinder` : 'wayfinder'
+  return `<command-message>${name}</command-message>\n<command-name>/${name}</command-name>\n<command-args>${args}</command-args>`
+}
 
 export interface Invocation {
   args: string[]
@@ -72,6 +79,10 @@ export interface FakeEnvironment {
   systemLanguages: string[]
   /** Environment for anything spawned against the fake environment, ClaudeForge included. */
   processEnv: Record<string, string>
+  /** Moves a file or folder into the fake Recycle Bin (`CLAUDEFORGE_RECYCLE_BIN`), as Windows would into the real one. */
+  trashItem(path: string): Promise<void>
+  /** The original paths of everything in the fake Recycle Bin, oldest first. */
+  recycled(): Promise<string[]>
   /** Writes (or replaces) a Session history for a folder, one history entry per line. */
   writeHistory(cwd: string, sessionId: string, entries: object[]): Promise<void>
   /** Writes a live-session registry entry (`sessions/<pid>.json`) as a running `claude` does. */
@@ -178,9 +189,10 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   const binDir = join(root, 'bin')
   const logDir = join(root, 'log')
   const projectsDir = join(root, 'projects')
+  const recycleBin = join(root, 'recycle-bin')
   const systemLanguages = options.systemLanguages ?? ['en-US']
 
-  await Promise.all([mkdir(binDir, { recursive: true }), mkdir(logDir), mkdir(userDataDir)])
+  await Promise.all([mkdir(binDir, { recursive: true }), mkdir(logDir), mkdir(userDataDir), mkdir(recycleBin)])
   await cp(join(FIXTURES, 'projects'), projectsDir, { recursive: true })
   const projects = Object.fromEntries(
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
@@ -202,6 +214,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     CLAUDE_CONFIG_DIR: claudeHome,
     CLAUDEFORGE_USER_DATA: userDataDir,
     CLAUDEFORGE_SYSTEM_LANGUAGES: systemLanguages.join(','),
+    CLAUDEFORGE_RECYCLE_BIN: recycleBin,
     FAKE_ENV_LOG_DIR: logDir,
     FAKE_GH_RECORDINGS: join(FIXTURES, 'gh')
   }
@@ -234,6 +247,9 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     liveSessions,
     systemLanguages,
     processEnv,
+    // ClaudeForge's own stand-in, the one the main process uses when CLAUDEFORGE_RECYCLE_BIN is set.
+    trashItem: standInRecycleBin(recycleBin),
+    recycled: () => standInContents(recycleBin),
     async writeHistory(cwd, sessionId, entries) {
       const folder = join(claudeHome, 'projects', encodeProjectPath(cwd))
       await mkdir(folder, { recursive: true })

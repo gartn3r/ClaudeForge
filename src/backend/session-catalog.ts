@@ -1,8 +1,15 @@
 import { watch, type FSWatcher, type Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import type { ProjectSessions, SessionSummary } from '../shared/api'
+import type {
+  ProjectSessions,
+  SessionDeletion,
+  SessionPreferences,
+  SessionSummary,
+  WayfinderLink
+} from '../shared/api'
 import { readLiveSessions, type LiveSession } from './live-sessions'
+import type { TrashItem } from './recycle-bin'
 import { readHistory, type HistorySummary } from './session-history'
 import { placeFolder, type FolderPlace } from './worktree'
 
@@ -13,6 +20,16 @@ const SETTLE_MS = 150
  * registry entry behind, and no file changes when its process dies.
  */
 const RECHECK_MS = 2_000
+/** How long a resolved `/wayfinder` link holds before its Project's Maps are read again. */
+const LINK_TTL_MS = 30_000
+
+/** Resolves the arguments of a `/wayfinder` invocation against a Project's Maps. */
+export type LinkResolver = (project: string, args: string) => Promise<WayfinderLink | null>
+
+interface CachedLink {
+  at: number
+  link: Promise<WayfinderLink | null>
+}
 
 /** A Session and the path of the Project it belongs to. */
 interface PlacedSession {
@@ -41,6 +58,8 @@ export class SessionCatalog {
   private readonly histories = new Map<string, CachedHistory>()
   /** Which Project each folder belongs to; a folder's git link does not change. */
   private readonly places = new Map<string, Promise<FolderPlace>>()
+  /** Resolved `/wayfinder` links by Project and arguments. */
+  private readonly links = new Map<string, CachedLink>()
 
   private readonly watchers = new Map<string, FSWatcher>()
   private recheck: NodeJS.Timeout | undefined
@@ -50,10 +69,15 @@ export class SessionCatalog {
   private lastSeen: string | undefined
   private disposed = false
 
-  /** Calls back with the whole catalog whenever Claude Code's files change it, once watching. */
+  /**
+   * Calls back with the whole catalog whenever Claude Code's files change it, once watching.
+   * `preferences` reads how the user tidied each Session in ClaudeForge, by Session id.
+   */
   constructor(
     private readonly claudeHome: string,
-    private readonly onChange: (projects: ProjectSessions[]) => void
+    private readonly onChange: (projects: ProjectSessions[]) => void,
+    private readonly preferences: () => Promise<Record<string, SessionPreferences>>,
+    private readonly resolveLink: LinkResolver
   ) {}
 
   /** The catalog as it is now. The first call starts watching Claude Code's files. */
@@ -65,6 +89,24 @@ export class SessionCatalog {
     const projects = await this.read()
     this.lastSeen = JSON.stringify(projects)
     return projects
+  }
+
+  /**
+   * Moves a past Session's history to the Recycle Bin: its `<id>.jsonl` in every folder it ran in,
+   * with the `<id>` folder of subagent transcripts beside each. The Session's state is read afresh,
+   * so one that started running since the interface last listed it is refused.
+   */
+  async delete(id: string, trashItem: TrashItem): Promise<SessionDeletion> {
+    const session = (await this.read()).flatMap((project) => project.sessions).find((s) => s.id === id)
+    if (!session) return { deleted: false, reason: 'unknown' }
+    if (session.state !== 'past') return { deleted: false, reason: session.state }
+    const root = join(this.claudeHome, 'projects')
+    for (const folder of await entriesOf(root)) {
+      for (const name of await entriesOf(join(root, folder))) {
+        if (name === `${id}.jsonl` || name === id) await trashItem(join(root, folder, name))
+      }
+    }
+    return { deleted: true }
   }
 
   dispose(): void {
@@ -98,17 +140,19 @@ export class SessionCatalog {
   }
 
   /** Reads the catalog again and pushes it if it differs from the last one seen. */
-  private refresh(): void {
+  refresh(): Promise<void> {
     this.watch()
-    void this.read()
-      .then((projects) => {
-        const text = JSON.stringify(projects)
-        if (this.disposed || text === this.lastSeen) return
-        this.lastSeen = text
-        this.onChange(projects)
-      })
-      // A read that failed midway (a folder vanished) is retried at the next recheck.
-      .catch(() => undefined)
+    return (
+      this.read()
+        .then((projects) => {
+          const text = JSON.stringify(projects)
+          if (this.disposed || text === this.lastSeen) return
+          this.lastSeen = text
+          this.onChange(projects)
+        })
+        // A read that failed midway (a folder vanished) is retried at the next recheck.
+        .catch(() => undefined)
+    )
   }
 
   /** One read at a time: a read asked for during another waits for it, then runs. */
@@ -119,10 +163,16 @@ export class SessionCatalog {
   }
 
   private async readNow(): Promise<ProjectSessions[]> {
-    const [histories, live] = await Promise.all([this.readHistories(), readLiveSessions(this.claudeHome)])
+    const [histories, live, preferences] = await Promise.all([
+      this.readHistories(),
+      readLiveSessions(this.claudeHome),
+      this.preferences()
+    ])
     const liveById = new Map(live.map((session) => [session.sessionId, session]))
     const ids = new Set([...histories.keys(), ...liveById.keys()])
-    const placed = await Promise.all([...ids].map((id) => this.place(id, histories.get(id), liveById.get(id))))
+    const placed = await Promise.all(
+      [...ids].map((id) => this.place(id, histories.get(id), liveById.get(id), preferences[id] ?? {}))
+    )
     return group(placed.filter((entry) => entry !== null))
   }
 
@@ -130,25 +180,40 @@ export class SessionCatalog {
   private async place(
     id: string,
     history: HistorySummary | undefined,
-    live: LiveSession | undefined
+    live: LiveSession | undefined,
+    preferences: SessionPreferences
   ): Promise<PlacedSession | null> {
     // The running process knows the Session's name first: it writes the history afterwards.
-    const title = live?.name ?? history?.customTitle ?? history?.aiTitle ?? history?.firstMessage ?? null
+    const claudeTitle = live?.name ?? history?.customTitle ?? history?.aiTitle ?? history?.firstMessage ?? null
     const cwd = history?.cwd ?? live?.cwd
     // A finished history with nothing typed in it holds no Session worth listing.
-    if (!cwd || (!live && title === null)) return null
+    if (!cwd || (!live && claudeTitle === null)) return null
     const { project, worktree } = await this.placeOf(cwd)
     // Nothing runs in ClaudeForge yet, so every running Session is External.
     const session: SessionSummary = {
       id,
-      title,
+      // The user's own name for it wins over every name Claude Code gives it.
+      title: preferences.title ?? claudeTitle,
       cwd,
       worktree,
       // A running claude reports activity (a status change) before it reaches the history.
       lastActivity: Math.max(history?.lastActivity ?? 0, live?.updatedAt ?? 0),
-      state: live ? 'external' : 'past'
+      state: live ? 'external' : 'past',
+      hidden: preferences.hidden ?? false,
+      wayfinder: history?.wayfinder ? await this.linkOf(project, history.wayfinder) : null
     }
     return { project, session }
+  }
+
+  /** A Session's link, read again once it is older than LINK_TTL_MS, so renamed Maps and Tickets show. */
+  private linkOf(project: string, args: string): Promise<WayfinderLink | null> {
+    const key = JSON.stringify([pathKey(project), args])
+    const cached = this.links.get(key)
+    if (cached && Date.now() - cached.at < LINK_TTL_MS) return cached.link
+    // A Tracker that cannot be read links nothing, until the next try.
+    const link = this.resolveLink(project, args).catch(() => null)
+    this.links.set(key, { at: Date.now(), link })
+    return link
   }
 
   private placeOf(folder: string): Promise<FolderPlace> {
@@ -223,7 +288,8 @@ function mergeHistories(a: HistorySummary | undefined, b: HistorySummary): Histo
     firstMessage: older.firstMessage ?? recent.firstMessage,
     customTitle: recent.customTitle ?? older.customTitle,
     aiTitle: recent.aiTitle ?? older.aiTitle,
-    lastActivity: recent.lastActivity
+    lastActivity: recent.lastActivity,
+    wayfinder: recent.wayfinder ?? older.wayfinder
   }
 }
 

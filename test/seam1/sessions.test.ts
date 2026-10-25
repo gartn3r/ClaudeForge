@@ -132,7 +132,9 @@ describe('the Session catalog', () => {
           cwd: env.projects.dotfiles,
           worktree: null,
           lastActivity: Date.parse('2026-10-25T11:00:00.000Z'),
-          state: 'external'
+          state: 'external',
+          hidden: false,
+          wayfinder: null
         }
       ]
     })
