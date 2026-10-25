@@ -35,7 +35,7 @@
   },
   "terminal": {
     "label": "Terminal",
-    "empty": "Démarrez une Session depuis l'explorateur pour ouvrir son terminal ici.",
+    "empty": "Ouvrez un dossier pour y démarrer une Session.",
     "openFolder": "Ouvrir un dossier",
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
     "failed": "Claude Code n'a pas pu démarrer dans ce dossier."

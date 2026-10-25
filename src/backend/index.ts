@@ -66,8 +66,10 @@ export function createBackend(options: BackendOptions): Backend {
 
   // The last status found, so starting a Session does not run `claude --version` again.
   let claudeCode: ClaudeCodeStatus | undefined
-  const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> =>
-    (claudeCode = await locateClaudeCode({ env: options.env, userPath: (await appState.read()).claudePath }))
+  const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> => {
+    claudeCode = await locateClaudeCode({ env: options.env, userPath: (await appState.read()).claudePath })
+    return claudeCode
+  }
 
   const sessionHost = new SessionHost({
     env: options.env,
@@ -82,6 +84,8 @@ export function createBackend(options: BackendOptions): Backend {
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {
     const state = await appState.write(patch)
+    // The located `claude` may no longer be the one to run.
+    if (patch.claudePath !== undefined) claudeCode = undefined
     events.emit('appState.changed', state)
     return state
   }

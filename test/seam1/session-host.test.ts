@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
-import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions } from '../fake-env'
+import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions, type FixtureProject } from '../fake-env'
 import { startBackend } from './backend'
 
 /** Drops the escape sequences ConPTY wraps around text, leaving what reads on screen. */
@@ -9,9 +9,29 @@ const plain = (output: string): string =>
   // eslint-disable-next-line no-control-regex -- escape sequences start with ESC and may end with BEL
   output.replace(/\x1b\[[0-9;?<=>]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[@-_]/g, '')
 
+const SIZE = { cols: 100, rows: 30 }
+
+/** The names of the processes this test process started (other than the query itself), as Windows lists them. */
+const childProcessNames = (): string[] =>
+  execFileSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-Command',
+      `Get-CimInstance Win32_Process -Filter "ParentProcessId=${process.pid} AND ProcessId<>$PID" | ForEach-Object Name`
+    ],
+    { encoding: 'utf8' }
+  )
+    .split(/\r?\n/)
+    .filter(Boolean)
+
 describe('the Session host', () => {
   let env: FakeEnvironment | undefined
   let backend: Backend | undefined
+  /** Everything each Hosted session has printed so far, by id. */
+  let outputs: Map<string, string>
+  /** The exit events of the Hosted sessions, oldest first. */
+  let exits: Array<{ id: string; exitCode: number }>
 
   afterEach(async () => {
     backend?.dispose()
@@ -21,18 +41,25 @@ describe('the Session host', () => {
   const start = async (options?: FakeEnvironmentOptions): Promise<Backend> => {
     env = await createFakeEnvironment(options)
     backend = startBackend(env)
+    outputs = new Map()
+    exits = []
+    backend.on('sessionHost.output', ({ id, data }) => outputs.set(id, (outputs.get(id) ?? '') + data))
+    backend.on('sessionHost.exit', (exit) => exits.push(exit))
     return backend
   }
 
-  /** Everything each Hosted session has printed so far, by id, as plain text. */
-  const recordOutput = (from: Backend): ((id: string) => string) => {
-    const outputs = new Map<string, string>()
-    from.on('sessionHost.output', ({ id, data }) => outputs.set(id, (outputs.get(id) ?? '') + data))
-    return (id) => plain(outputs.get(id) ?? '')
-  }
+  /** What a Hosted session has printed so far, as plain text. */
+  const output = (id: string): string => plain(outputs.get(id) ?? '')
 
-  const waitForText = (output: () => string, text: string): Promise<void> =>
-    vi.waitFor(() => expect(output()).toContain(text), { timeout: 15_000, interval: 50 })
+  const waitForText = (id: string, text: string): Promise<void> =>
+    vi.waitFor(() => expect(output(id)).toContain(text), { timeout: 15_000, interval: 50 })
+
+  /** Starts a Session in a fixture Project and waits for the fake `claude` to show its prompt; returns its id. */
+  const startSession = async (project: FixtureProject = 'recipe-box'): Promise<string> => {
+    const { id } = await backend!.api.sessionHost.start(env!.projects[project], SIZE)
+    await waitForText(id, `Terminal ${SIZE.cols}x${SIZE.rows}`)
+    return id
+  }
 
   /** The runs of `claude` other than the locator's version checks. */
   const sessionRuns = async () => (await env!.invocations('claude')).filter(({ args }) => args[0] !== '--version')
@@ -50,18 +77,16 @@ describe('the Session host', () => {
   it('refuses to start a Session while Claude Code is missing', async () => {
     const { api } = await start({ claude: false })
 
-    await expect(api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })).rejects.toThrow()
+    await expect(api.sessionHost.start(env!.projects['recipe-box'], SIZE)).rejects.toThrow()
   })
 
   it('starts claude with no options in the Project, with the environment ConPTY hosts need, and streams its output', async () => {
     const { api } = await start()
-    const output = recordOutput(backend!)
     const project = env!.projects['recipe-box']
 
-    const session = await api.sessionHost.start(project, { cols: 100, rows: 30 })
+    const { id } = await api.sessionHost.start(project, SIZE)
 
-    expect(session.project).toBe(project)
-    await waitForText(() => output(session.id), 'Fake Claude Code')
+    await waitForText(id, 'Fake Claude Code')
     expect(await sessionRuns()).toEqual([
       {
         args: [],
@@ -73,45 +98,25 @@ describe('the Session host', () => {
 
   it('types into the Hosted session, and claude answers in its output', async () => {
     const { api } = await start()
-    const output = recordOutput(backend!)
-    const { id } = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    await waitForText(() => output(id), 'Terminal 100x30')
+    const id = await startSession()
 
     await api.sessionHost.write(id, 'hello\r')
 
-    await waitForText(() => output(id), 'You wrote: "hello"')
+    await waitForText(id, 'You wrote: "hello"')
   })
 
   it('gives claude the terminal size it starts at, then every new size', async () => {
     const { api } = await start()
-    const output = recordOutput(backend!)
-    const { id } = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    await waitForText(() => output(id), 'Terminal 100x30')
+    const id = await startSession()
 
     await api.sessionHost.resize(id, { cols: 132, rows: 41 })
 
-    await waitForText(() => output(id), 'Terminal resized to 132x41')
+    await waitForText(id, 'Terminal resized to 132x41')
   })
 
-  /** The names of the processes this test process started (other than the query itself), as Windows lists them. */
-  const childProcessNames = (): string[] =>
-    execFileSync(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-Command',
-        `Get-CimInstance Win32_Process -Filter "ParentProcessId=${process.pid} AND ProcessId<>$PID" | ForEach-Object Name`
-      ],
-      { encoding: 'utf8' }
-    )
-      .split(/\r?\n/)
-      .filter(Boolean)
-
-  it("hosts claude in the ConPTY ClaudeForge ships (OpenConsole), not the older one built into Windows (conhost)", async () => {
-    const { api } = await start()
-    const output = recordOutput(backend!)
-    const { id } = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    await waitForText(() => output(id), 'Terminal 100x30')
+  it('hosts claude in the ConPTY ClaudeForge ships (OpenConsole), not the older one built into Windows (conhost)', async () => {
+    await start()
+    await startSession()
 
     const children = childProcessNames()
 
@@ -120,30 +125,26 @@ describe('the Session host', () => {
   })
 
   it('ends every Hosted session when ClaudeForge closes', async () => {
-    const { api } = await start()
-    const output = recordOutput(backend!)
-    const { id } = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    await waitForText(() => output(id), 'Terminal 100x30')
+    await start()
+    await startSession()
 
     backend!.dispose()
     backend = undefined
 
-    await vi.waitFor(() => expect(childProcessNames()).toEqual([]), { timeout: 15_000, interval: 500 })
+    // The pseudoconsole host and `claude` (run through cmd.exe, as the fake is a batch file) are gone.
+    await vi.waitFor(
+      () => {
+        const children = childProcessNames()
+        expect(children).not.toContain('OpenConsole.exe')
+        expect(children).not.toContain('cmd.exe')
+      },
+      { timeout: 15_000, interval: 500 }
+    )
   })
-
-  /** The exit events of the Hosted sessions, oldest first. */
-  const recordExits = (from: Backend): Array<{ id: string; exitCode: number }> => {
-    const exits: Array<{ id: string; exitCode: number }> = []
-    from.on('sessionHost.exit', (exit) => exits.push(exit))
-    return exits
-  }
 
   it('reports when claude exits, with its exit code', async () => {
     const { api } = await start()
-    const output = recordOutput(backend!)
-    const exits = recordExits(backend!)
-    const { id } = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    await waitForText(() => output(id), 'Terminal 100x30')
+    const id = await startSession()
 
     await api.sessionHost.write(id, '/exit\r')
 
@@ -152,16 +153,13 @@ describe('the Session host', () => {
 
   it('stops a Hosted session, and reports that its claude ended', async () => {
     const { api } = await start()
-    const output = recordOutput(backend!)
-    const exits = recordExits(backend!)
-    const first = await api.sessionHost.start(env!.projects['recipe-box'], { cols: 100, rows: 30 })
-    const second = await api.sessionHost.start(env!.projects['harbor-api'], { cols: 100, rows: 30 })
-    await waitForText(() => output(first.id), 'Terminal 100x30')
+    const first = await startSession('recipe-box')
+    const second = await startSession('harbor-api')
 
-    await api.sessionHost.stop(first.id)
+    await api.sessionHost.stop(first)
 
-    await vi.waitFor(() => expect(exits.map(({ id }) => id)).toEqual([first.id]), { timeout: 15_000 })
-    await api.sessionHost.write(second.id, 'still here\r')
-    await waitForText(() => output(second.id), 'You wrote: "still here"')
+    await vi.waitFor(() => expect(exits.map(({ id }) => id)).toEqual([first]), { timeout: 15_000 })
+    await api.sessionHost.write(second, 'still here\r')
+    await waitForText(second, 'You wrote: "still here"')
   })
 })

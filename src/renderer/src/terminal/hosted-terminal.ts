@@ -42,8 +42,8 @@ function terminalTheme(): ITheme {
 
 /**
  * One Hosted session's terminal: xterm.js wired to its `claude` through the
- * Session host. It outlives the component showing it, so it can be shown
- * again elsewhere without restarting anything.
+ * Session host. It lives outside React, so a component re-mounting (as React's
+ * strict mode does) never starts `claude` twice.
  */
 export class HostedTerminal {
   private readonly terminal: Terminal
@@ -51,7 +51,7 @@ export class HostedTerminal {
   private webgl: WebglAddon | undefined
   private session: HostedSession | undefined
   /** Events that arrived before the Session host said which Hosted session is this one. */
-  private early: Array<{ id: string; apply(): void }> = []
+  private eventsBeforeStart: Array<{ id: string; apply(): void }> = []
   private end: SessionEnd | undefined
   private readonly endListeners = new Set<(end: SessionEnd) => void>()
   private readonly unsubscribers: Array<() => void>
@@ -61,7 +61,7 @@ export class HostedTerminal {
   private refitTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(
-    readonly project: string,
+    private readonly project: string,
     private gpuRendering: boolean
   ) {
     this.terminal = new Terminal({
@@ -92,8 +92,8 @@ export class HostedTerminal {
     })
 
     this.unsubscribers = [
-      onEvent('sessionHost.output', ({ id, data }) => this.receive(id, () => this.terminal.write(data))),
-      onEvent('sessionHost.exit', ({ id, exitCode }) => this.receive(id, () => this.finish({ exitCode })))
+      onEvent('sessionHost.output', ({ id, data }) => this.handleEvent(id, () => this.terminal.write(data))),
+      onEvent('sessionHost.exit', ({ id, exitCode }) => this.handleEvent(id, () => this.finish({ exitCode })))
     ]
   }
 
@@ -107,9 +107,6 @@ export class HostedTerminal {
     if (!this.opened) {
       this.opened = true
       void this.open()
-    } else if (this.terminal.element && this.terminal.element.parentElement !== container) {
-      container.append(this.terminal.element)
-      this.terminal.focus()
     }
     const observer = new ResizeObserver(() => {
       clearTimeout(this.refitTimer)
@@ -154,10 +151,11 @@ export class HostedTerminal {
     this.terminal.open(this.container!)
     if (this.gpuRendering) this.loadWebgl()
     this.fit.fit()
+    const { cols, rows } = this.terminal
     try {
-      this.session = await api.sessionHost.start(this.project, { cols: this.terminal.cols, rows: this.terminal.rows })
+      this.session = await api.sessionHost.start(this.project, { cols, rows })
     } catch {
-      this.early = []
+      this.eventsBeforeStart = []
       this.finish({ exitCode: null })
       return
     }
@@ -165,12 +163,17 @@ export class HostedTerminal {
     if (this.disposed) return void api.sessionHost.stop(this.session.id)
     this.terminal.options.windowsPty = this.session.windowsPty ?? undefined
     const id = this.session.id
-    for (const event of this.early.splice(0)) if (event.id === id) event.apply()
+    // A refit while `claude` was starting could not reach it yet.
+    if (this.terminal.cols !== cols || this.terminal.rows !== rows) {
+      void api.sessionHost.resize(id, { cols: this.terminal.cols, rows: this.terminal.rows })
+    }
+    for (const event of this.eventsBeforeStart.splice(0)) if (event.id === id) event.apply()
     this.terminal.focus()
   }
 
-  private receive(id: string, apply: () => void): void {
-    if (!this.session) this.early.push({ id, apply })
+  /** Applies a Session host event if it is this Hosted session's, holding it back until `claude` has started. */
+  private handleEvent(id: string, apply: () => void): void {
+    if (!this.session) this.eventsBeforeStart.push({ id, apply })
     else if (id === this.session.id) apply()
   }
 

@@ -171,8 +171,6 @@ export interface TerminalSize {
 export interface HostedSession {
   /** ClaudeForge's id for the Hosted session, not Claude Code's session id. */
   id: string
-  /** The Project `claude` runs in. */
-  project: string
   /** The pseudoconsole behind the terminal, as xterm.js's `windowsPty` option takes it; null off Windows. */
   windowsPty: { backend: 'conpty'; buildNumber: number } | null
 }

@@ -35,7 +35,7 @@
   },
   "terminal": {
     "label": "Terminal",
-    "empty": "Start a Session from the explorer to open its terminal here.",
+    "empty": "Open a folder to start a Session in it.",
     "openFolder": "Open folder",
     "exited": "Claude Code exited with code {{code}}.",
     "failed": "Claude Code could not start in this folder."

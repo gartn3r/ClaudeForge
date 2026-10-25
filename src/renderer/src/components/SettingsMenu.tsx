@@ -14,7 +14,7 @@ export function SettingsMenu({ state }: SettingsMenuProps): ReactNode {
   const [open, setOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
-  const ids = useId()
+  const idPrefix = useId()
 
   useEffect(() => {
     if (!open) return
@@ -52,8 +52,8 @@ export function SettingsMenu({ state }: SettingsMenuProps): ReactNode {
         <div className="settings__popover cf-popover" role="dialog" aria-label={t('settings.label')}>
           <div className="settings__row">
             <div>
-              <div id={`${ids}-gpu`}>{t('settings.gpuRendering')}</div>
-              <div id={`${ids}-gpu-hint`} className="settings__hint">
+              <div id={`${idPrefix}-gpu`}>{t('settings.gpuRendering')}</div>
+              <div id={`${idPrefix}-gpu-hint`} className="settings__hint">
                 {t('settings.gpuRenderingHint')}
               </div>
             </div>
@@ -62,8 +62,8 @@ export function SettingsMenu({ state }: SettingsMenuProps): ReactNode {
               className="cf-toggle"
               role="switch"
               aria-checked={state.gpuRendering}
-              aria-labelledby={`${ids}-gpu`}
-              aria-describedby={`${ids}-gpu-hint`}
+              aria-labelledby={`${idPrefix}-gpu`}
+              aria-describedby={`${idPrefix}-gpu-hint`}
               autoFocus
               onClick={() => void api.appState.write({ gpuRendering: !state.gpuRendering })}
             />

@@ -86,7 +86,7 @@ test('draws the terminal with WebGL where the machine has it, and with the DOM r
   const { app, window } = claudeforge
   const terminal = terminalOf(window)
   // WebGL draws the cells on a canvas; the DOM renderer writes them into the page as text.
-  const cellsOnCanvas = terminal.locator('.xterm-screen canvas')
+  const cellsOnCanvas = terminal.locator('canvas')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
   await window.getByRole('button', { name: 'Open folder' }).click()
   await expect.poll(async () => (await env.invocations('claude')).length).toBeGreaterThan(1)

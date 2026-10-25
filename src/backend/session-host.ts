@@ -13,8 +13,7 @@ const HOSTED_ENVIRONMENT: Environment = {
   CLAUDE_CODE_FORCE_SYNC_OUTPUT: '1',
   TERM_PROGRAM: 'ClaudeForge',
   // Describes the terminal ClaudeForge was started from, not this one.
-  TERM_PROGRAM_VERSION: undefined,
-  COLORTERM: 'truecolor'
+  TERM_PROGRAM_VERSION: undefined
 }
 
 /** The environment with the given variables set or removed, whatever case it spells them in. */
@@ -64,7 +63,7 @@ export class SessionHost {
       this.ptys.delete(id)
       this.options.onExit(id, exitCode)
     })
-    return { id, project, windowsPty: windowsPty() }
+    return { id, windowsPty: windowsPty() }
   }
 
   // A Hosted session that has ended ignores input, resizes and stops.
