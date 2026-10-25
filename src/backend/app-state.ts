@@ -6,10 +6,14 @@ import {
   type AppState,
   type AppStatePatch,
   type PanelId,
-  type PanelLayout
+  type PanelLayout,
+  type SessionPreferences
 } from '../shared/api'
 
 export const STATE_FILE = 'state.json'
+
+/** The longest name the user can give a Session, as long as the titles Claude Code's history yields. */
+export const SESSION_TITLE_MAX_LENGTH = 200
 
 export function defaultAppState(): AppState {
   return {
@@ -19,7 +23,8 @@ export function defaultAppState(): AppState {
       map: { width: PANEL_BOUNDS.map.default, collapsed: false }
     },
     claudePath: null,
-    gpuRendering: true
+    gpuRendering: true,
+    sessions: {}
   }
 }
 
@@ -37,9 +42,35 @@ function mergePanel(panel: PanelId, base: PanelLayout, patch: unknown): PanelLay
   }
 }
 
+/** One Session's preferences with a patch applied; undefined once none is left. */
+function mergeSession(base: SessionPreferences | undefined, patch: unknown): SessionPreferences | undefined {
+  if (patch === null) return undefined
+  if (typeof patch !== 'object') return base
+  const { title, hidden } = patch as Record<string, unknown>
+  const next: SessionPreferences = { ...base }
+  if (typeof title === 'string' && title.trim()) next.title = title.trim().slice(0, SESSION_TITLE_MAX_LENGTH)
+  else if (title !== undefined) delete next.title
+  if (hidden === true) next.hidden = true
+  else if (hidden !== undefined) delete next.hidden
+  return Object.keys(next).length ? next : undefined
+}
+
+function mergeSessions(
+  base: Record<string, SessionPreferences>,
+  patch: Record<string, unknown>
+): Record<string, SessionPreferences> {
+  const next = { ...base }
+  for (const [id, entry] of Object.entries(patch)) {
+    const merged = mergeSession(next[id], entry)
+    if (merged) next[id] = merged
+    else delete next[id]
+  }
+  return next
+}
+
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, sessions } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -52,6 +83,9 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   }
   if (typeof claudePath === 'string' || claudePath === null) next = { ...next, claudePath }
   if (typeof gpuRendering === 'boolean') next = { ...next, gpuRendering }
+  if (typeof sessions === 'object' && sessions !== null) {
+    next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
+  }
   return next
 }
 

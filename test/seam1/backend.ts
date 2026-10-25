@@ -16,6 +16,7 @@ export function startBackend(env: FakeEnvironment, window?: WindowHost, dialogs?
       chooseClaudeExecutable: async () => undefined,
       chooseProjectFolder: async () => undefined,
       ...dialogs
-    }
+    },
+    trashItem: env.trashItem
   })
 }
