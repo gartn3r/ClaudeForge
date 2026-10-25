@@ -17,10 +17,10 @@ npm run dev
 ## Architecture
 
 - `src/main/`: the Electron main process. It creates the frameless window and exposes the backend API over IPC (`ipc.ts`).
-- `src/backend/`: every service of the **typed backend API** in plain Node, with no Electron import. The main process owns all access to the machine through it. `maps/` is the Map service: Tracker detection, the local markdown adapter, and the Tracker-independent Map model with its derived states, Decided set and transitively reduced edges.
+- `src/backend/`: every service of the **typed backend API** in plain Node, with no Electron import. The main process owns all access to the machine through it. `session-host.ts` runs each Hosted session's `claude` in a pseudoconsole (node-pty with the `conpty.dll` and `OpenConsole.exe` it ships), every PTY in that one process. `maps/` is the Map service: Tracker detection, the local markdown adapter, and the Tracker-independent Map model with its derived states, Decided set and transitively reduced edges.
 - `src/shared/api.ts`: the API's types, the pushed events and the IPC channel names, shared by every side.
 - `src/preload/`: the sandboxed bridge (`window.claudeforge`) carrying only backend API channels.
-- `src/renderer/`: the React interface. The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.
+- `src/renderer/`: the React interface. `terminal/hosted-terminal.ts` wires one Hosted session to xterm.js (WebGL renderer unless GPU rendering is off, Shift+Enter sent as a newline). The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.
 - `design/tokens.json`: the ClaudeForge design system tokens; `src/renderer/src/styles/` carries them as CSS with the design system's `cf-` components. Geist and JetBrains Mono ship as font files.
 
 ## Test

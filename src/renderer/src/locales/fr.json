@@ -9,6 +9,11 @@
     "restore": "Restaurer",
     "close": "Fermer la fenêtre"
   },
+  "settings": {
+    "label": "Paramètres",
+    "gpuRendering": "Rendu GPU",
+    "gpuRenderingHint": "Désactivez-le si le terminal affiche du texte brouillé."
+  },
   "explorer": {
     "label": "Sessions",
     "heading": "Sessions",
@@ -30,7 +35,10 @@
   },
   "terminal": {
     "label": "Terminal",
-    "empty": "Démarrez une Session depuis l'explorateur pour ouvrir son terminal ici."
+    "empty": "Ouvrez un dossier pour y démarrer une Session.",
+    "openFolder": "Ouvrir un dossier",
+    "exited": "Claude Code s'est arrêté avec le code {{code}}.",
+    "failed": "Claude Code n'a pas pu démarrer dans ce dossier."
   },
   "map": {
     "label": "Carte",

@@ -54,6 +54,14 @@ describe('app state', () => {
     expect(wide.layout.map.width).toBe(720)
   })
 
+  it('renders the terminal on the GPU until the user turns GPU rendering off, and remembers that across a restart', async () => {
+    expect((await start().api.appState.read()).gpuRendering).toBe(true)
+
+    await start().api.appState.write({ gpuRendering: false })
+
+    expect((await start().api.appState.read()).gpuRendering).toBe(false)
+  })
+
   it('pushes the new state to the interface after every write', async () => {
     const backend = start()
     const pushed: unknown[] = []

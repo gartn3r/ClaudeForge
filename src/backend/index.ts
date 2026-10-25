@@ -9,6 +9,7 @@ import { BackendEventEmitter, type Listener } from './events'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
 import { SessionCatalog } from './session-catalog'
+import { SessionHost } from './session-host'
 
 /** The window the interface runs in, as the backend sees it. */
 export interface WindowHost {
@@ -41,6 +42,8 @@ export interface BackendOptions {
 export interface Dialogs {
   /** Asks for the `claude` executable; undefined when the user cancels. */
   chooseClaudeExecutable(): Promise<string | undefined>
+  /** Asks for a Project folder; undefined when the user cancels. */
+  chooseProjectFolder(): Promise<string | undefined>
 }
 
 export interface Backend {
@@ -61,16 +64,40 @@ export function createBackend(options: BackendOptions): Backend {
     events.emit('window.maximizedChanged', { maximized })
   )
 
-  const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> =>
-    locateClaudeCode({ env: options.env, userPath: (await appState.read()).claudePath })
+  // The last status found, so starting a Session does not run `claude --version` again.
+  let claudeCode: ClaudeCodeStatus | undefined
+  const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> => {
+    claudeCode = await locateClaudeCode({ env: options.env, userPath: (await appState.read()).claudePath })
+    return claudeCode
+  }
+
+  const sessionHost = new SessionHost({
+    env: options.env,
+    claudePath: async () => {
+      const status = claudeCode?.state === 'found' ? claudeCode : await locateWithChosenPath()
+      if (status.state !== 'found') throw new Error(`Claude Code cannot run: it is ${status.state}`)
+      return status.path
+    },
+    onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
+    onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode })
+  })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {
     const state = await appState.write(patch)
+    // The located `claude` may no longer be the one to run.
+    if (patch.claudePath !== undefined) claudeCode = undefined
     events.emit('appState.changed', state)
     return state
   }
 
   const api: BackendApi = {
+    sessionHost: {
+      chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
+      start: (project, size) => sessionHost.start(project, size),
+      write: async (id, data) => sessionHost.write(id, data),
+      resize: async (id, size) => sessionHost.resize(id, size),
+      stop: async (id) => sessionHost.stop(id)
+    },
     map: createMapService(options.env),
     appState: {
       read: () => appState.read(),
@@ -103,6 +130,7 @@ export function createBackend(options: BackendOptions): Backend {
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
       unsubscribeWindow?.()
+      sessionHost.dispose()
       sessions.dispose()
       events.clear()
     }
