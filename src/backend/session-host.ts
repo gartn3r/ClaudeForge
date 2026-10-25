@@ -32,6 +32,8 @@ const QUIET_MS = 1500
 /** One running `claude`, with what its output says it is doing. */
 interface HostedProcess {
   id: string
+  /** The folder `claude` runs in. */
+  project: string
   pty: IPty
   status: HostedSessionStatus
   /** When the user last typed into it or resized it, in ms since the epoch. */
@@ -82,7 +84,7 @@ export class SessionHost {
       : spawn(claude, [], ptyOptions)
 
     const id = randomUUID()
-    const session: HostedProcess = { id, pty, status: 'idle', touchedAt: 0, inTurn: false }
+    const session: HostedProcess = { id, project, pty, status: 'idle', touchedAt: 0, inTurn: false }
     this.sessions.set(id, session)
     pty.onData((data) => {
       this.options.onOutput(id, data)
@@ -94,6 +96,11 @@ export class SessionHost {
       this.options.onExit(id, exitCode)
     })
     return { id, windowsPty: windowsPty() }
+  }
+
+  /** The Hosted sessions whose `claude` still runs, oldest first. */
+  running(): Array<{ id: string; project: string }> {
+    return [...this.sessions.values()].map(({ id, project }) => ({ id, project }))
   }
 
   // A Hosted session that has ended ignores input, resizes and stops.

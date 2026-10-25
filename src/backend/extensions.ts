@@ -5,12 +5,24 @@
 import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import type { Extension, ExtensionKind, ExtensionListing, McpServerStatus } from '../shared/api'
+import type {
+  AvailablePluginListing,
+  ClaudeScope,
+  Extension,
+  ExtensionChange,
+  ExtensionChangeResult,
+  ExtensionKind,
+  ExtensionListing,
+  ExtensionScope,
+  McpServerStatus
+} from '../shared/api'
 import { runClaude, type Environment } from './claude-code'
 
 /** How long `claude mcp list` may take: it starts and health-checks every server. */
 const MCP_LIST_TIMEOUT_MS = 120_000
 const PLUGIN_LIST_TIMEOUT_MS = 30_000
+/** How long a change may take: installing a plugin downloads it. */
+const CHANGE_TIMEOUT_MS = 300_000
 
 export interface ExtensionServiceOptions {
   /** The Claude Code home, holding the user's own skills and subagents. */
@@ -21,6 +33,8 @@ export interface ExtensionServiceOptions {
   claudePath(): Promise<string>
   /** A folder of ClaudeForge's own that is no Project, where `claude` sees only the user's Extensions. */
   noProjectFolder: string
+  /** The Hosted sessions whose `claude` runs, and the folder it runs in. */
+  hostedSessions(): Array<{ id: string; project: string }>
 }
 
 /** Where an Extension comes from: its scope, and the plugin that brings it, if any. */
@@ -110,6 +124,9 @@ function parseMcpList(output: string): McpServerLine[] {
   return servers
 }
 
+/** How Claude Code names the MCP servers the user's claude.ai account brings. */
+const CONNECTOR = /^claude\.ai /
+
 function mcpStatus(detail: string): McpServerStatus {
   if (/needs authentication/i.test(detail)) return 'needs-sign-in'
   if (/pending approval/i.test(detail)) return 'pending-approval'
@@ -120,9 +137,10 @@ function mcpStatus(detail: string): McpServerStatus {
 }
 
 /** The fields of a `claude plugin list --json` entry ClaudeForge reads. */
-interface InstalledPlugin {
+interface PluginEntry {
   /** `<plugin>@<marketplace>`. */
   id: string
+  scope?: ClaudeScope
   /** Whether the plugin is on where `claude` ran. */
   enabled: boolean
   installPath: string
@@ -165,14 +183,80 @@ const pathKey = (path: string): string => {
   return process.platform === 'win32' ? resolved.toLowerCase() : resolved
 }
 
-const KIND_ORDER: ExtensionKind[] = ['skill', 'subagent', 'mcp-server', 'plugin']
+/** Where Claude Code keeps what ClaudeForge adds at a scope: for the Project, the user's own there. */
+const CLAUDE_SCOPE: Record<ExtensionScope, ClaudeScope> = { global: 'user', project: 'local' }
+
+/**
+ * The arguments of the `claude` commands that make a change, each tried in turn while Claude Code
+ * finds nothing to remove.
+ */
+function commandsFor(change: ExtensionChange): string[][] {
+  switch (change.action) {
+    case 'enable-plugin':
+    case 'disable-plugin':
+    case 'uninstall-plugin':
+      return [['plugin', change.action.replace('-plugin', ''), change.plugin.id, '-s', change.plugin.scope]]
+    case 'install-plugin':
+      return [['plugin', 'install', change.plugin, '-s', CLAUDE_SCOPE[change.scope]]]
+    case 'add-mcp-server': {
+      const { name, transport, target, args, env, headers } = change.server
+      const add = ['mcp', 'add', '-s', CLAUDE_SCOPE[change.scope], '-t', transport, name]
+      // `-e` and `-H` take values up to the next option, so they follow the name, and `--` ends them.
+      return [
+        transport === 'stdio'
+          ? [...add, ...env.flatMap((variable) => ['-e', variable]), '--', target, ...args]
+          : [...add, target, ...headers.flatMap((header) => ['-H', header])]
+      ]
+    }
+    case 'remove-mcp-server':
+      // `claude mcp list` does not say whether the Project's server is the user's own or shared.
+      return (change.scope === 'global' ? ['user'] : ['local', 'project']).map((scope) => [
+        'mcp',
+        'remove',
+        change.name,
+        '-s',
+        scope
+      ])
+  }
+}
+
+/** The scope a change applies to. */
+const scopeOf = (change: ExtensionChange): ExtensionScope =>
+  'scope' in change ? change.scope : change.plugin.scope === 'user' ? 'global' : 'project'
+
+/** Claude Code found nothing of that name to remove at the scope it was told. */
+const NOTHING_TO_REMOVE = /^No MCP server named/
+
+/** The fields of a `claude plugin list --available --json` marketplace entry ClaudeForge reads. */
+interface MarketplaceEntry {
+  pluginId: string
+  name: string
+  description?: string
+  marketplaceName: string
+  installCount?: number
+}
+
+/** What Claude Code said when a command failed, else how it failed. */
+function claudeError(error: unknown): string {
+  const { stderr, stdout, killed, message } = error as { stderr?: string; stdout?: string; killed?: boolean; message?: string }
+  if (killed) return 'Claude Code did not answer in time.'
+  return stderr?.trim() || stdout?.trim() || message || String(error)
+}
+
+const KIND_ORDER: ExtensionKind[] =['skill', 'subagent', 'mcp-server', 'plugin']
 
 const byKindThenName = (a: Extension, b: Extension): number =>
   KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
   a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) ||
   a.name.localeCompare(b.name, 'en')
 
-export function createExtensionService({ claudeHome, env, claudePath, noProjectFolder }: ExtensionServiceOptions) {
+export function createExtensionService({
+  claudeHome,
+  env,
+  claudePath,
+  noProjectFolder,
+  hostedSessions
+}: ExtensionServiceOptions) {
   const mcpList = async (cwd: string): Promise<McpServerLine[]> =>
     parseMcpList(await runClaude(await claudePath(), ['mcp', 'list'], { env, cwd, timeout: MCP_LIST_TIMEOUT_MS }))
 
@@ -193,34 +277,58 @@ export function createExtensionService({ claudeHome, env, claudePath, noProjectF
         scope: global.has(`${name}\n${target}`) ? 'global' : 'project',
         plugin: plugin ?? null,
         description: null,
-        mcp: { status: mcpStatus(detail), detail }
+        mcp: { status: mcpStatus(detail), detail },
+        removable: !plugin && !CONNECTOR.test(name)
       }
     })
   }
+
+  const pluginList = async (project: string, ...more: string[]): Promise<unknown> =>
+    JSON.parse(
+      await runClaude(await claudePath(), ['plugin', 'list', '--json', ...more], {
+        env,
+        cwd: project,
+        timeout: PLUGIN_LIST_TIMEOUT_MS
+      })
+    )
+
+  /** The plugins installed for the user or for the Project, leaving out those of other Projects. */
+  const installedHere = (entries: PluginEntry[], project: string): PluginEntry[] =>
+    entries.filter(({ projectPath }) => !projectPath || pathKey(projectPath) === pathKey(project))
 
   /**
    * The plugins installed for the user or for the Project, with the skills and subagents of those
    * enabled there; plugins installed for other Projects are left out.
    */
   const plugins = async (project: string): Promise<Extension[]> => {
-    const output = await runClaude(await claudePath(), ['plugin', 'list', '--json'], {
-      env,
-      cwd: project,
-      timeout: PLUGIN_LIST_TIMEOUT_MS
-    })
-    const installed = (JSON.parse(output) as InstalledPlugin[]).filter(
-      ({ projectPath }) => !projectPath || pathKey(projectPath) === pathKey(project)
-    )
+    const installed = installedHere((await pluginList(project)) as PluginEntry[], project)
     const listed = await Promise.all(
-      installed.map(async ({ id, enabled, installPath, projectPath }): Promise<Extension[]> => {
+      installed.map(async ({ id, enabled, installPath, projectPath, ...entry }): Promise<Extension[]> => {
         const name = id.replace(/@[^@]*$/, '')
         const scope = projectPath ? 'project' : 'global'
+        const install = { id, scope: entry.scope ?? (projectPath ? 'project' : 'user') }
         const manifest = await readManifest(installPath)
-        const plugin: Extension = { kind: 'plugin', name, scope, plugin: null, description: manifest.description, enabled }
+        const plugin: Extension = {
+          kind: 'plugin',
+          name,
+          scope,
+          plugin: null,
+          description: manifest.description,
+          enabled,
+          install
+        }
         return [plugin, ...(enabled ? await skillsAndSubagentsIn(installPath, { scope, plugin: name }, manifest) : [])]
       })
     )
     return listed.flat()
+  }
+
+  /** The Hosted sessions that started before a change ClaudeForge made to their Extensions. */
+  const outdated = new Set<string>()
+  const outdatedSessions = (): string[] => {
+    const running = hostedSessions().map(({ id }) => id)
+    for (const id of outdated) if (!running.includes(id)) outdated.delete(id)
+    return running.filter((id) => outdated.has(id))
   }
 
   return {
@@ -241,7 +349,45 @@ export function createExtensionService({ claudeHome, env, claudePath, noProjectF
         ])
       ).flat()
       extensions.sort(byKindThenName)
-      return failed ? { extensions, problem: 'claude-failed' } : { extensions }
+      return { extensions, ...(failed ? { problem: 'claude-failed' as const } : {}), outdatedSessions: outdatedSessions() }
+    },
+
+    async available(project: string): Promise<AvailablePluginListing> {
+      try {
+        const listing = (await pluginList(project, '--available')) as { installed: PluginEntry[]; available: MarketplaceEntry[] }
+        const installed = new Set(installedHere(listing.installed, project).map(({ id }) => id))
+        const plugins = listing.available
+          .filter(({ pluginId }) => !installed.has(pluginId))
+          .sort((a, b) => (b.installCount ?? 0) - (a.installCount ?? 0) || a.name.localeCompare(b.name, 'en'))
+          .map(({ pluginId, name, description, marketplaceName }) => ({
+            id: pluginId,
+            name,
+            description: description || null,
+            marketplace: marketplaceName
+          }))
+        return { plugins }
+      } catch {
+        return { plugins: [], problem: 'claude-failed' }
+      }
+    },
+
+    async change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult> {
+      // Claude Code reads its setup when it starts, so only those already running miss the change.
+      const running = hostedSessions().filter(
+        (session) => scopeOf(change) === 'global' || pathKey(session.project) === pathKey(project)
+      )
+      let error = ''
+      for (const args of commandsFor(change)) {
+        try {
+          await runClaude(await claudePath(), args, { env, cwd: project, timeout: CHANGE_TIMEOUT_MS })
+          for (const { id } of running) outdated.add(id)
+          return { ok: true }
+        } catch (failure) {
+          error = claudeError(failure)
+          if (!NOTHING_TO_REMOVE.test(error)) break
+        }
+      }
+      return { ok: false, error }
     }
   }
 }
