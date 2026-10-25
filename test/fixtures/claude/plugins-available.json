@@ -1,0 +1,43 @@
+[
+  {
+    "pluginId": "atlas@forge-market",
+    "name": "atlas",
+    "description": "Searches the team wiki.",
+    "marketplaceName": "forge-market",
+    "source": "./plugins/atlas",
+    "installCount": 1200
+  },
+  {
+    "pluginId": "frontend-design@forge-market",
+    "name": "frontend-design",
+    "description": "Polishes interfaces.",
+    "marketplaceName": "forge-market",
+    "source": "./plugins/frontend-design",
+    "installCount": 500
+  },
+  {
+    "pluginId": "kitchen-tools@forge-market",
+    "name": "kitchen-tools",
+    "description": "Skills and agents for cooking apps.",
+    "marketplaceName": "forge-market",
+    "source": "./plugins/kitchen-tools",
+    "installCount": 3000
+  },
+  {
+    "pluginId": "pastry-kit@forge-market",
+    "name": "pastry-kit",
+    "description": "Recipes and timers for baking.",
+    "marketplaceName": "forge-market",
+    "source": "./plugins/pastry-kit",
+    "installCount": 900
+  },
+  {
+    "pluginId": "sentry-tools@ops-market",
+    "name": "sentry-tools",
+    "description": "Triage Sentry issues.",
+    "marketplaceName": "ops-market",
+    "source": { "source": "git", "url": "https://git.ops.example/plugins.git" },
+    "installCount": 40,
+    "fakeInstallError": "Failed to install plugin \"sentry-tools@ops-market\": could not reach https://git.ops.example/plugins.git"
+  }
+]

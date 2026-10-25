@@ -101,13 +101,6 @@ export function createBackend(options: BackendOptions): Backend {
     return status.path
   }
 
-  const extensions = createExtensionService({
-    claudeHome: options.claudeHome,
-    env: options.env,
-    claudePath,
-    noProjectFolder: join(options.stateDir, 'no-project')
-  })
-
   const sessionHost = new SessionHost({
     env: options.env,
     claudeHome: options.claudeHome,
@@ -116,6 +109,14 @@ export function createBackend(options: BackendOptions): Backend {
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
     onStatus: (id, status) => events.emit('sessionHost.status', { id, status }),
     onTurnEnd: (id, cwd) => events.emit('sessionHost.turnEnded', { id, cwd })
+  })
+
+  const extensions = createExtensionService({
+    claudeHome: options.claudeHome,
+    env: options.env,
+    claudePath,
+    noProjectFolder: join(options.stateDir, 'no-project'),
+    hostedSessions: () => sessionHost.running()
   })
 
   const writeAppState = async (patch: AppStatePatch): Promise<AppState> => {

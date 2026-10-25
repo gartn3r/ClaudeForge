@@ -59,16 +59,28 @@ export interface RunOptions {
   cwd?: string
 }
 
+/** The characters cmd.exe gives a meaning to, outside quotes or not, each escaped with a caret. */
+const caretEscape = (text: string): string => text.replace(/([()\][%!^"`<>&|;, *?])/g, '^$1')
+
+/** An argument quoted as a C program reads it back: backslashes before a quote, or the end, doubled. */
+const quoteArgument = (arg: string): string => `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, '$1$1')}"`
+
 /**
- * Runs `claude` with plain arguments (words without spaces or quotes) and returns what it printed;
- * rejects when it fails, exits non-zero or outlasts the timeout.
+ * The command line that runs a batch file through cmd.exe with these arguments exactly, as
+ * cross-spawn builds it. cmd.exe reads the line once, then the batch file's `%*` line (an npm
+ * shim's, or the fake environment's) again, so each argument is escaped twice: nothing in it,
+ * not even a quote or a `%`, means anything to cmd.exe.
  */
+const batchCommandLine = (path: string, args: string[]): string =>
+  [caretEscape(path), ...args.map((arg) => caretEscape(caretEscape(quoteArgument(arg))))].join(' ')
+
+/** Runs `claude` and returns what it printed; rejects when it fails, exits non-zero or outlasts the timeout. */
 export async function runClaude(path: string, args: string[], options: RunOptions): Promise<string> {
-  // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
+  // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one command line.
   const batch = /^\.(cmd|bat)$/i.test(extname(path))
   const settings = { ...options, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }
   const { stdout } = batch
-    ? await run(`"${path}" ${args.join(' ')}`, { ...settings, shell: true })
+    ? await run(batchCommandLine(path, args), { ...settings, shell: true })
     : await run(path, args, settings)
   return stdout
 }

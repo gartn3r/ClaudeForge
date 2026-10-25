@@ -824,6 +824,116 @@ dialog.cf-dialog::backdrop {
 .extmenu__note--problem {
   color: var(--danger);
 }
+/* Remove or Uninstall shows on the row the pointer or the focus is on. */
+.extmenu__action {
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+}
+.extmenu .cf-row:hover .extmenu__action,
+.extmenu__action:focus-visible {
+  opacity: 1;
+}
+.extmenu__notice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.extmenu__notice > .cf-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--waiting);
+}
+.extmenu__notice p,
+.extmenu__notice ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.extmenu__notice .lnk {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--route);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.extmenu__notice .lnk:hover {
+  text-decoration: underline;
+}
+.extmenu__notice .lnk:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.extmenu__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.extdialog {
+  width: 460px;
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+.extdialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+.extdialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.extdialog__form label,
+.extdialog__label {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.extdialog__form .cf-dialog__actions {
+  margin-top: var(--space-3);
+}
+.extdialog__input {
+  min-height: var(--size-control);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.extdialog__input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.extdialog__hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.extdialog__error {
+  margin: 0;
+  color: var(--danger);
+}
+.extdialog__plugins {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.extdialog__plugins .cf-row {
+  cursor: default;
+}
 
 /* Sub-tickets in the Map graph */
 .map-ticket {

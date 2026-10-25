@@ -29,8 +29,8 @@ function withVariables(env: Environment, variables: Environment): Environment {
 /** One running `claude`, with what it last said it is doing. */
 interface HostedProcess {
   id: string
-  /** The folder it runs in: its Project, or a git worktree of it. */
-  cwd: string
+  /** The folder `claude` runs in: its Project, or a git worktree of it. */
+  folder: string
   pty: IPty
   status: HostedSessionStatus
   /** Reads the status signals in its output. */
@@ -121,7 +121,7 @@ export class SessionHost {
       : spawn(claude, claudeArgs, ptyOptions)
 
     const id = randomUUID()
-    const session: HostedProcess = { id, cwd: folder, pty, status: 'idle', reader: new ProgramStatusReader() }
+    const session: HostedProcess = { id, folder, pty, status: 'idle', reader: new ProgramStatusReader() }
     session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
       this.setStatus(session, status)
     )
@@ -143,6 +143,11 @@ export class SessionHost {
       this.options.onExit(id, exitCode)
     })
     return { id, windowsPty: windowsPty() }
+  }
+
+  /** The Hosted sessions whose `claude` still runs, oldest first. */
+  running(): Array<{ id: string; folder: string }> {
+    return [...this.sessions.values()].map(({ id, folder }) => ({ id, folder }))
   }
 
   // A Hosted session that has ended ignores input, resizes and stops.
@@ -174,6 +179,6 @@ export class SessionHost {
     if (status === previous) return
     session.status = status
     this.options.onStatus(session.id, status)
-    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.cwd)
+    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.folder)
   }
 }
