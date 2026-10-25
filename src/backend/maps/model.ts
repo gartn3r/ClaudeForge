@@ -13,8 +13,8 @@ function stateOf(ticket: Pick<TicketRecord, 'open' | 'claimed'>, openBlockers: n
  * the edge from A to C). Malformed Maps with cycles terminate too.
  */
 function transitiveReduction(edges: TicketEdge[]): TicketEdge[] {
-  const next = new Map<string, string[]>()
-  for (const { from, to } of edges) next.set(from, [...(next.get(from) ?? []), to])
+  const blocks = new Map<string, string[]>()
+  for (const { from, to } of edges) blocks.set(from, [...(blocks.get(from) ?? []), to])
 
   const reachable = (start: string, target: string): boolean => {
     const seen = new Set<string>()
@@ -24,13 +24,13 @@ function transitiveReduction(edges: TicketEdge[]): TicketEdge[] {
       if (id === target) return true
       if (seen.has(id)) continue
       seen.add(id)
-      stack.push(...(next.get(id) ?? []))
+      stack.push(...(blocks.get(id) ?? []))
     }
     return false
   }
 
   return edges.filter(({ from, to }) =>
-    (next.get(from) ?? []).every((via) => via === to || !reachable(via, to))
+    (blocks.get(from) ?? []).every((via) => via === to || !reachable(via, to))
   )
 }
 
@@ -48,14 +48,15 @@ export function deriveMap(record: MapRecord): WayfinderMap {
       .map((from) => ({ from, to: ticket.id }))
   )
 
-  const tickets = records.map(({ claimedByMe, ...ticket }): Ticket => {
+  const tickets = records.map((ticket): Ticket => {
     // A reference to a Ticket the Map does not have blocks nothing.
     const openBlockers = ticket.blockedBy.filter((id) => open.has(id)).length
     const state = stateOf(ticket, openBlockers)
     return {
       ...ticket,
       state,
-      workable: state === 'frontier' || (state === 'claimed' && claimedByMe),
+      // A local markdown claim names no one: the files, and the claim, are the user's own.
+      workable: state === 'frontier' || state === 'claimed',
       openBlockers
     }
   })

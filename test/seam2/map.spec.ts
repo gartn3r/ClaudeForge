@@ -75,6 +75,13 @@ test('draws the spent edges of decided Tickets on demand', async () => {
   await expect(graph.getByLabel('Where recipes are stored blocks Grocery list format')).toHaveCount(1)
   await expect(graph.getByLabel('Shape of the week view blocks Nutrition labels')).toHaveCount(1)
 
+  // The decided Tickets sit above the first rank of open work, which still holds every Ticket with no open blocker.
+  const decidedFirst = await boxOf(graph.getByRole('group', { name: 'Where recipes are stored' }))
+  const weekView = await boxOf(graph.getByRole('group', { name: 'Shape of the week view' }))
+  const grocery = await boxOf(graph.getByRole('group', { name: 'Grocery list format' }))
+  expect(grocery.y).toBe(weekView.y)
+  expect(decidedFirst.y + decidedFirst.height).toBeLessThan(weekView.y)
+
   await panel.getByRole('button', { name: 'Hide their links' }).click()
   await expect(graph.getByRole('group', { name: 'Where recipes are stored' })).toHaveCount(0)
 })

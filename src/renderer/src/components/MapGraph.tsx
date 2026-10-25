@@ -10,8 +10,8 @@ import {
 import { Check, ChevronRight, Lock, Maximize, MessagesSquare, Minus, Plus, Search, Shapes, SquareCheck } from 'lucide-react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Ticket, TicketType, WayfinderMap } from '../../../shared/api'
-import { NODE_HEIGHT, NODE_WIDTH, layoutMap, type MapLayout } from '../map/layout'
+import type { Ticket, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
+import { TICKET_HEIGHT, TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
 import { IconButton } from './IconButton'
 
 const TYPE_ICONS: Record<TicketType, typeof Search> = {
@@ -21,32 +21,38 @@ const TYPE_ICONS: Record<TicketType, typeof Search> = {
   task: SquareCheck
 }
 
-/** Space kept around the graph when it is placed in the panel. */
+const STATE_GLYPHS: Record<TicketState, ReactNode> = {
+  frontier: <ChevronRight className="cf-icon cf-icon--sm" aria-hidden="true" />,
+  claimed: <span className="cf-dot" style={{ background: 'var(--route)' }} />,
+  blocked: <Lock className="cf-icon cf-icon--sm" aria-hidden="true" />,
+  closed: <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
+}
+
+/** The order of the counts line. */
+const COUNTED_STATES: readonly TicketState[] = ['frontier', 'claimed', 'blocked', 'closed']
+
+/** Space kept around the graph when it is placed in or fitted to the panel. */
 const PADDING = 12
 const ZOOM_DURATION = 120
 
-type TicketNodeData = { ticket: Ticket; blockers: string[] }
-type TicketNodeType = Node<TicketNodeData, 'ticket'>
+type TicketCardData = { ticket: Ticket; blockers: string[] }
+type TicketCardNode = Node<TicketCardData, 'ticket'>
 
-function TicketState({ ticket }: { ticket: Ticket }): ReactNode {
+/** The state glyph, with the open-blocker count when several open Tickets block it. */
+function StateGlyph({ ticket }: { ticket: Ticket }): ReactNode {
   const { t } = useTranslation()
-  const label =
-    ticket.state === 'blocked' && ticket.openBlockers > 1
-      ? t('map.state.blockedBy', { count: ticket.openBlockers })
-      : t(`map.state.${ticket.state}`)
+  const several = ticket.state === 'blocked' && ticket.openBlockers > 1
+  const label = several ? t('map.state.blockedBy', { count: ticket.openBlockers }) : t(`map.state.${ticket.state}`)
   return (
     <span className="cf-ticket__state cf-status" role="img" aria-label={label}>
-      {ticket.state === 'frontier' && <ChevronRight className="cf-icon cf-icon--sm" aria-hidden="true" />}
-      {ticket.state === 'claimed' && <span className="cf-dot" style={{ background: 'var(--route)' }} />}
-      {ticket.state === 'blocked' && <Lock className="cf-icon cf-icon--sm" aria-hidden="true" />}
-      {ticket.state === 'closed' && <Check className="cf-icon cf-icon--sm" aria-hidden="true" />}
-      {ticket.state === 'blocked' && ticket.openBlockers > 1 && <span aria-hidden="true">{ticket.openBlockers}</span>}
+      {STATE_GLYPHS[ticket.state]}
+      {several && <span aria-hidden="true">{ticket.openBlockers}</span>}
     </span>
   )
 }
 
-/** A compact TicketNode: type, state glyph and name; the full name and any block in its tooltip. */
-function TicketNode({ data: { ticket, blockers } }: NodeProps<TicketNodeType>): ReactNode {
+/** A compact Ticket: type, state glyph and name; the full name and any block in its tooltip. */
+function TicketCard({ data: { ticket, blockers } }: NodeProps<TicketCardNode>): ReactNode {
   const { t } = useTranslation()
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
   const tooltip =
@@ -54,7 +60,7 @@ function TicketNode({ data: { ticket, blockers } }: NodeProps<TicketNodeType>): 
       ? t('map.tooltip.blocked', { name: ticket.name, blockers: blockers.join(', ') })
       : t(`map.tooltip.${ticket.state}`, { name: ticket.name })
   return (
-    <div className={`cf-ticket cf-ticket--compact cf-ticket--${ticket.state} map-node`} title={tooltip}>
+    <div className={`cf-ticket cf-ticket--compact cf-ticket--${ticket.state} map-ticket`} title={tooltip}>
       <span className="cf-ticket__head">
         {ticket.type && TypeIcon ? (
           <span className="cf-ticket__type">
@@ -64,14 +70,14 @@ function TicketNode({ data: { ticket, blockers } }: NodeProps<TicketNodeType>): 
         ) : (
           <span />
         )}
-        <TicketState ticket={ticket} />
+        <StateGlyph ticket={ticket} />
       </span>
       <span className="cf-ticket__name">{ticket.name}</span>
     </div>
   )
 }
 
-const NODE_TYPES = { ticket: TicketNode }
+const NODE_TYPES = { ticket: TicketCard }
 
 /** The edges, drawn in the graph's own coordinates under the pan and zoom. */
 function Edges({ layout, names }: { layout: MapLayout; names: Map<string, string> }): ReactNode {
@@ -94,17 +100,17 @@ function Edges({ layout, names }: { layout: MapLayout; names: Map<string, string
   )
 }
 
-/** Places a new layout at full size, centred and from the top, or fits it when it is wider than the panel. */
+/**
+ * Places a new layout at full size from the top: centred when it fits the
+ * panel, from the left when a rank holds more Tickets than the panel shows.
+ * Text never shrinks on its own; zoom and fit are the user's.
+ */
 function Placement({ layout }: { layout: MapLayout }): null {
   const flow = useReactFlow()
   const width = useStore((state) => state.width)
   useEffect(() => {
     if (width === 0) return
-    if (layout.width + 2 * PADDING <= width) {
-      void flow.setViewport({ x: (width - layout.width) / 2, y: PADDING, zoom: 1 })
-    } else {
-      void flow.fitView({ padding: PADDING / width, maxZoom: 1 })
-    }
+    void flow.setViewport({ x: Math.max(PADDING, (width - layout.width) / 2), y: PADDING, zoom: 1 })
   }, [flow, layout, width])
   return null
 }
@@ -119,7 +125,7 @@ function ZoomControls(): ReactNode {
       <IconButton
         icon={Maximize}
         label={t('map.fit')}
-        onClick={() => void flow.fitView({ padding: 0.08, maxZoom: 1, duration: ZOOM_DURATION })}
+        onClick={() => void flow.fitView({ padding: `${PADDING}px`, maxZoom: 1, duration: ZOOM_DURATION })}
       />
     </div>
   )
@@ -127,19 +133,12 @@ function ZoomControls(): ReactNode {
 
 function Counts({ tickets }: { tickets: Ticket[] }): ReactNode {
   const { t } = useTranslation()
-  const count = (state: Ticket['state']): number => tickets.filter((ticket) => ticket.state === state).length
-  const items = [
-    { state: 'frontier', text: t('map.count.frontier', { count: count('frontier') }) },
-    { state: 'claimed', text: t('map.count.claimed', { count: count('claimed') }) },
-    { state: 'blocked', text: t('map.count.blocked', { count: count('blocked') }) },
-    { state: 'closed', text: t('map.count.closed', { count: count('closed') }) }
-  ]
   return (
     <p className="map-counts" role="status" aria-label={t('map.counts')}>
-      {items.map(({ state, text }, index) => (
-        <span key={state} data-state={state}>
+      {COUNTED_STATES.map((state, index) => (
+        <span key={state}>
           {index > 0 && ' · '}
-          {text}
+          {t(`map.count.${state}`, { count: tickets.filter((ticket) => ticket.state === state).length })}
         </span>
       ))}
     </p>
@@ -157,6 +156,7 @@ export function MapGraph({ map, showDecided }: MapGraphProps): ReactNode {
   const { t } = useTranslation()
 
   const { layout, nodes, names } = useMemo(() => {
+    const byId = new Map(map.tickets.map((ticket) => [ticket.id, ticket]))
     const names = new Map(map.tickets.map((ticket) => [ticket.id, ticket.name]))
     const tickets = map.tickets.filter((ticket) => showDecided || ticket.open)
     const edges = [
@@ -164,19 +164,17 @@ export function MapGraph({ map, showDecided }: MapGraphProps): ReactNode {
       ...(showDecided ? map.spentEdges.map((edge) => ({ ...edge, spent: true })) : [])
     ]
     const layout = layoutMap(tickets, edges)
-    const nodes: TicketNodeType[] = layout.tickets.map(({ ticket, x, y }) => ({
+    const nodes: TicketCardNode[] = layout.tickets.map(({ ticket, x, y }) => ({
       id: ticket.id,
       type: 'ticket',
       position: { x, y },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      width: TICKET_WIDTH,
+      height: TICKET_HEIGHT,
       ariaRole: 'group',
       ariaLabel: ticket.name,
       data: {
         ticket,
-        blockers: ticket.blockedBy
-          .filter((id) => map.tickets.find((other) => other.id === id)?.open)
-          .map((id) => names.get(id)!)
+        blockers: ticket.blockedBy.filter((id) => byId.get(id)?.open).map((id) => names.get(id)!)
       }
     }))
     return { layout, nodes, names }

@@ -166,6 +166,16 @@ describe('Map service', () => {
       expect(tickets.find((ticket) => ticket.id === '07')?.openBlockers).toBe(3)
     })
 
+    it('keeps Tickets in number order past 99', async () => {
+      const issues = join(env.projects['recipe-box'], '.scratch', 'meal-planner', 'issues')
+      await writeFile(join(issues, '100-dessert.md'), '# Desserts\n\nType: grilling\n')
+      await writeFile(join(issues, '99-snacks.md'), '# Snacks\n\nType: grilling\n')
+
+      const { tickets } = await load()
+
+      expect(tickets.slice(-2).map((ticket) => ticket.name)).toEqual(['Snacks', 'Desserts'])
+    })
+
     it('ignores a Blocked by reference to a Ticket the Map does not have', async () => {
       const file = join(env.projects['recipe-box'], '.scratch', 'meal-planner', 'issues', '07-seasonal.md')
       await writeFile(file, '# Seasonal menus\n\nType: grilling\nBlocked by: 2, 42\n')

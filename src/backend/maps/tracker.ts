@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Tracker } from '../../shared/api'
 
-export const DECLARATION = join('docs', 'agents', 'issue-tracker.md')
+const DECLARATION = join('docs', 'agents', 'issue-tracker.md')
 
 /**
  * Reads the Project's Tracker from its issue-tracker declaration, whose title

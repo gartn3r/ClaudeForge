@@ -41,17 +41,17 @@ export const itemCount = (markdown: string): number =>
 
 export function MapText({ markdown }: { markdown: string }): ReactNode {
   const blocks = blocksOf(markdown)
-  const out: ReactNode[] = []
+  const rendered: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!
     if (block.kind === 'paragraph') {
-      out.push(<p key={i}>{inline(block.text)}</p>)
+      rendered.push(<p key={i}>{inline(block.text)}</p>)
       continue
     }
     const items: ReactNode[] = []
     for (; i < blocks.length && blocks[i]!.kind === 'item'; i++) items.push(<li key={i}>{inline(blocks[i]!.text)}</li>)
     i--
-    out.push(<ul key={i}>{items}</ul>)
+    rendered.push(<ul key={i}>{items}</ul>)
   }
-  return <div className="map-text">{out}</div>
+  return <div className="map-text">{rendered}</div>
 }

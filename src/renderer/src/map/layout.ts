@@ -4,18 +4,23 @@
 import { Graph, layout } from '@dagrejs/dagre'
 import type { Ticket, TicketEdge } from '../../../shared/api'
 
-/** A compact Ticket node: 120px wide, three per rank in the 400px panel. */
-export const NODE_WIDTH = 120
-/** Every node takes the height of a three-line name, so ranks line up. */
-export const NODE_HEIGHT = 84
+/** A compact Ticket: 120px wide, three per rank in the 400px panel. */
+export const TICKET_WIDTH = 120
+/** Every Ticket takes the height of a three-line name, so ranks line up. */
+export const TICKET_HEIGHT = 84
 /** `space-6` between ranks, `space-2` between the Tickets of a rank. */
 const RANK_GAP = 24
-const NODE_GAP = 8
+const TICKET_GAP = 8
 const CORNER = 6
-/** Room between the arrowhead's tip and the line's end. */
-const HEAD = 7
+/** Length of an arrowhead, from its base to its tip. */
+const HEAD_LENGTH = 7
 /** Spacing of the entry points of several edges into one Ticket. */
 const ENTRY_SPACING = 12
+/** Horizontal runs that share a gap take separate lanes this far apart, at most. */
+const LANE_SPACING = 5
+/** The band of a gap where horizontal runs may go: clear of the rank above and of the arrowheads below. */
+const LANE_TOP = 3
+const LANE_BOTTOM = RANK_GAP - HEAD_LENGTH - 3
 
 const ROOT = '\u0000root'
 
@@ -95,43 +100,98 @@ function simplify(points: Point[]): Point[] {
   return kept
 }
 
+function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>()
+  for (const item of items) groups.set(keyOf(item), [...(groups.get(keyOf(item)) ?? []), item])
+  return groups
+}
+
+/** One horizontal run of an edge, in the gap under a rank. */
+interface Run {
+  gap: number
+  from: number
+  to: number
+  /** Runs of the same source may share a lane: they leave together. */
+  source: string
+}
+
 /**
- * Lays the given Tickets out in ranks from top to bottom. The first rank holds
- * every Ticket with no blocker among the given edges; an edge that skips ranks
- * runs down the gutter dagre leaves for it between two columns.
+ * Gives each source its own lane in every gap where its runs would overlap
+ * another source's, so a reader can follow each edge. Returns the y offset
+ * into the gap of each run.
+ */
+function assignLanes(runs: Run[]): Map<Run, number> {
+  const offsets = new Map<Run, number>()
+  const gaps = groupBy(runs, (run) => run.gap)
+  for (const gapRuns of gaps.values()) {
+    const spans = [...groupBy(gapRuns, (run) => run.source).values()].map((group) => ({
+      group,
+      min: Math.min(...group.flatMap((run) => [run.from, run.to])),
+      max: Math.max(...group.flatMap((run) => [run.from, run.to]))
+    }))
+    spans.sort((a, b) => a.min - b.min)
+    const laneEnds: number[] = []
+    const laneOf = new Map<(typeof spans)[number], number>()
+    for (const span of spans) {
+      let lane = laneEnds.findIndex((end) => end + TICKET_GAP <= span.min)
+      if (lane === -1) lane = laneEnds.length
+      laneEnds[lane] = span.max
+      laneOf.set(span, lane)
+    }
+    const count = laneEnds.length
+    const spacing = count > 1 ? Math.min(LANE_SPACING, (LANE_BOTTOM - LANE_TOP) / (count - 1)) : 0
+    const middle = (LANE_TOP + LANE_BOTTOM) / 2
+    for (const span of spans) {
+      const offset = middle + (laneOf.get(span)! - (count - 1) / 2) * spacing
+      for (const run of span.group) offsets.set(run, offset)
+    }
+  }
+  return offsets
+}
+
+/**
+ * Lays the given Tickets out in ranks from top to bottom. The first rank of
+ * open work holds every open Ticket with no open blocker; decided Tickets, when
+ * drawn, sit above it. An edge that skips ranks runs down the gutter dagre
+ * leaves for it between two columns.
  */
 export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boolean })[]): MapLayout {
   if (tickets.length === 0) return { tickets: [], edges: [], width: 0, height: 0 }
   const graph = new Graph()
-  graph.setGraph({ rankdir: 'TB', nodesep: NODE_GAP, edgesep: NODE_GAP, ranksep: RANK_GAP, marginx: 0, marginy: 0 })
+  graph.setGraph({ rankdir: 'TB', nodesep: TICKET_GAP, edgesep: TICKET_GAP, ranksep: RANK_GAP, marginx: 0, marginy: 0 })
   graph.setDefaultEdgeLabel(() => ({}))
 
-  // Nodes and edges go in Map order, which keeps the layout stable across changes.
-  for (const { id } of tickets) graph.setNode(id, { width: NODE_WIDTH, height: NODE_HEIGHT })
+  // Tickets and edges go in Map order, which keeps the layout stable across changes.
+  for (const { id } of tickets) graph.setNode(id, { width: TICKET_WIDTH, height: TICKET_HEIGHT })
   for (const { from, to } of edges) graph.setEdge(from, to, { weight: 1, minlen: 1 })
 
-  // dagre may push a Ticket with no blocker down to shorten its edges; a heavy
-  // edge from a hidden root holds every such Ticket in the first rank.
+  // dagre may push a Ticket with no blocker down to shorten its edges; heavy
+  // edges from a hidden root hold the open Tickets with no open blocker in the
+  // first rank of open work, and the decided Tickets with no blocker one above.
+  const openlyBlocked = new Set(edges.filter((edge) => !edge.spent).map((edge) => edge.to))
   const blocked = new Set(edges.map((edge) => edge.to))
   graph.setNode(ROOT, { width: 0, height: 0 })
-  for (const { id } of tickets) if (!blocked.has(id)) graph.setEdge(ROOT, id, { weight: 1000, minlen: 1 })
+  for (const { id, open } of tickets) {
+    if (open && !openlyBlocked.has(id)) graph.setEdge(ROOT, id, { weight: 1000, minlen: 2 })
+    else if (!open && !blocked.has(id)) graph.setEdge(ROOT, id, { weight: 1000, minlen: 1 })
+  }
 
   layout(graph)
 
-  const top = Math.min(...tickets.map(({ id }) => graph.node(id).y)) - NODE_HEIGHT / 2
-  const left = Math.min(...tickets.map(({ id }) => graph.node(id).x)) - NODE_WIDTH / 2
+  const top = Math.min(...tickets.map(({ id }) => graph.node(id).y)) - TICKET_HEIGHT / 2
+  const left = Math.min(...tickets.map(({ id }) => graph.node(id).x)) - TICKET_WIDTH / 2
   const centre = (id: string): Point => {
-    const node = graph.node(id)
-    return { x: node.x - left, y: node.y - top }
+    const { x, y } = graph.node(id)
+    return { x: x - left, y: y - top }
   }
 
   const placed = tickets.map((ticket) => {
     const { x, y } = centre(ticket.id)
-    return { ticket, x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 }
+    return { ticket, x: x - TICKET_WIDTH / 2, y: y - TICKET_HEIGHT / 2 }
   })
-  // Rank tops, from the placed nodes: every node has the same height.
+  // Rank tops, from the placed Tickets: every Ticket has the same height.
   const rankTops = [...new Set(placed.map((ticket) => ticket.y))].sort((a, b) => a - b)
-  const rankOf = (y: number): number => rankTops.indexOf(y - NODE_HEIGHT / 2)
+  const rankOf = (centreY: number): number => rankTops.indexOf(centreY - TICKET_HEIGHT / 2)
 
   // Several edges into one Ticket enter side by side, ordered by where they come from.
   const entries = new Map<string, string[]>()
@@ -139,19 +199,19 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
     entries.set(edge.to, [...(entries.get(edge.to) ?? []), edge.from])
   }
 
-  const routed = edges.map((edge): RoutedEdge => {
+  // The column each edge holds in each rank from its source to its target.
+  const routes = edges.map((edge) => {
     const source = centre(edge.from)
     const target = centre(edge.to)
     const sourceRank = rankOf(source.y)
-    const targetRank = rankOf(target.y)
     const siblings = entries.get(edge.to)!
     const entryX = target.x + (siblings.indexOf(edge.from) - (siblings.length - 1) / 2) * ENTRY_SPACING
 
-    // The column the edge holds in each rank it crosses, from dagre's dummy points.
     const columns = [source.x]
     const waypoints: Point[] = graph.edge(edge.from, edge.to)?.points ?? []
-    for (let rank = sourceRank + 1; rank < targetRank; rank++) {
-      const middle = rankTops[rank]! + NODE_HEIGHT / 2 + top
+    for (let rank = sourceRank + 1; rank < rankOf(target.y); rank++) {
+      // dagre's placeholder for the edge in this rank, nearest its middle.
+      const middle = rankTops[rank]! + TICKET_HEIGHT / 2 + top
       const nearest = waypoints.reduce<Point | undefined>(
         (best, point) => (!best || Math.abs(point.y - middle) < Math.abs(best.y - middle) ? point : best),
         undefined
@@ -159,27 +219,37 @@ export function layoutMap(tickets: Ticket[], edges: (TicketEdge & { spent: boole
       columns.push(nearest ? nearest.x - left : source.x)
     }
     columns.push(entryX)
+    const runs: Run[] = columns.slice(1).map((to, step) => ({
+      gap: sourceRank + step,
+      from: columns[step]!,
+      to,
+      source: edge.from
+    }))
+    return { edge, source, target, entryX, runs }
+  })
 
-    // Down from the source, across in the gap above each next rank, down into the target.
-    const points: Point[] = [{ x: source.x, y: source.y + NODE_HEIGHT / 2 }]
-    for (let step = 1; step < columns.length; step++) {
-      const gap = rankTops[sourceRank + step - 1]! + NODE_HEIGHT + RANK_GAP / 2
-      points.push({ x: columns[step - 1]!, y: gap }, { x: columns[step]!, y: gap })
+  const lanes = assignLanes(routes.flatMap((route) => route.runs.filter((run) => run.from !== run.to)))
+
+  const routed = routes.map(({ edge, source, target, entryX, runs }): RoutedEdge => {
+    // Down from the source, across in its lane of each gap, down into the target.
+    const points: Point[] = [{ x: source.x, y: source.y + TICKET_HEIGHT / 2 }]
+    for (const run of runs) {
+      const y = rankTops[run.gap]! + TICKET_HEIGHT + (lanes.get(run) ?? RANK_GAP / 2)
+      points.push({ x: run.from, y }, { x: run.to, y })
     }
-    const tip = target.y - NODE_HEIGHT / 2
-    points.push({ x: entryX, y: tip - HEAD })
-
+    const tip = target.y - TICKET_HEIGHT / 2
+    points.push({ x: entryX, y: tip - HEAD_LENGTH })
     return {
       ...edge,
       line: roundedPath(simplify(points)),
-      head: `M${entryX - 4} ${tip - HEAD} L${entryX} ${tip} L${entryX + 4} ${tip - HEAD}z`
+      head: `M${entryX - 4} ${tip - HEAD_LENGTH} L${entryX} ${tip} L${entryX + 4} ${tip - HEAD_LENGTH}z`
     }
   })
 
   return {
     tickets: placed,
     edges: routed,
-    width: Math.max(...placed.map((ticket) => ticket.x + NODE_WIDTH)),
-    height: Math.max(...placed.map((ticket) => ticket.y + NODE_HEIGHT))
+    width: Math.max(...placed.map((ticket) => ticket.x + TICKET_WIDTH)),
+    height: Math.max(...placed.map((ticket) => ticket.y + TICKET_HEIGHT))
   }
 }

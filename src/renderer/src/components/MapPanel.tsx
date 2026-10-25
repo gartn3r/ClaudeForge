@@ -7,9 +7,11 @@ import { IconButton } from './IconButton'
 import { MapGraph } from './MapGraph'
 import { MapText, itemCount } from './MapText'
 
-/** The Map the panel shows: the most recently updated open one, else the most recent. */
-export const shownMap = (listing: MapListing): MapSummary | undefined =>
-  listing.maps.find((map) => map.open) ?? listing.maps[0]
+/** The Map the panel shows: the most recently updated open one. */
+export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
+
+/** A load of one Map of one Project, and how it went. */
+type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap } | { error: true })
 
 interface MapPanelProps {
   project: string
@@ -22,7 +24,7 @@ interface MapPanelProps {
 export function MapPanel({ project, listing, onCollapse }: MapPanelProps): ReactNode {
   const { t } = useTranslation()
   const summary = listing && shownMap(listing)
-  const [loaded, setLoaded] = useState<{ map: WayfinderMap } | { error: true } | null>(null)
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
 
   // A new listing reloads the Map only when it names another one or a newer version.
   const mapId = summary?.id
@@ -31,22 +33,24 @@ export function MapPanel({ project, listing, onCollapse }: MapPanelProps): React
     if (!mapId) return
     let current = true
     api.map.load(project, mapId).then(
-      (map) => current && setLoaded({ map }),
-      () => current && setLoaded({ error: true })
+      (map) => current && setLoaded({ project, mapId, map }),
+      () => current && setLoaded({ project, mapId, error: true })
     )
     return () => {
       current = false
     }
   }, [project, mapId, updatedAt])
 
-  const map = loaded && 'map' in loaded && loaded.map.id === mapId ? loaded.map : null
+  // Only the load of the Map shown now counts, never a previous Project's or Map's.
+  const result = loaded?.project === project && loaded.mapId === mapId ? loaded : null
+  const map = result && 'map' in result ? result.map : null
 
   let body: ReactNode = null
   if (listing?.tracker.kind === 'unsupported') {
     const { name } = listing.tracker
     body = <p className="empty">{name ? t('map.unsupportedNamed', { name }) : t('map.unsupported')}</p>
   } else if (listing && !summary) body = <p className="empty">{t('map.noMap')}</p>
-  else if (loaded && 'error' in loaded) body = <p className="empty">{t('map.loadError')}</p>
+  else if (result && 'error' in result) body = <p className="empty">{t('map.loadError')}</p>
   else if (map) body = <MapView map={map} />
 
   return (
@@ -69,7 +73,7 @@ export function MapPanel({ project, listing, onCollapse }: MapPanelProps): React
 function MapView({ map }: { map: WayfinderMap }): ReactNode {
   const { t } = useTranslation()
   const [showDecided, setShowDecided] = useState(false)
-  const decided = map.decided.map((id) => map.tickets.find((ticket) => ticket.id === id)!)
+  const decided = map.tickets.filter((ticket) => map.decided.includes(ticket.id))
 
   return (
     <>

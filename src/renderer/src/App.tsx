@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { AppState, MapListing, PanelId } from '../../shared/api'
 import { api, onEvent } from './api'
 import { Explorer, ExplorerRail } from './components/Explorer'
-import { MapPanel, MapRail } from './components/MapPanel'
+import { MapPanel, MapRail, shownMap } from './components/MapPanel'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
@@ -36,7 +36,7 @@ export function App({ initialState, project }: AppProps): ReactNode {
     }
   }, [project])
   const listing = maps?.project === project ? maps.listing : null
-  const noMap = listing?.tracker.kind === 'local-markdown' && listing.maps.length === 0
+  const noMap = listing?.tracker.kind === 'local-markdown' && !shownMap(listing)
   // The panel collapses on its own without a Map; the user's own setting stays as it was.
   const mapLayout = noMap && mapOpenedAnyway !== project ? { ...state.layout.map, collapsed: true } : state.layout.map
   const expandMap = (): void => {

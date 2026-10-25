@@ -297,7 +297,7 @@ body {
   overflow: visible;
   pointer-events: none;
 }
-.map-node {
+.map-ticket {
   height: 100%;
 }
 .map-zoom {

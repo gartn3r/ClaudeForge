@@ -6,11 +6,11 @@ import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { MapSummary, TicketType } from '../../shared/api'
 
-export const SCRATCH = '.scratch'
+const SCRATCH = '.scratch'
 
 const TICKET_FILE = /^(\d+)-(.+)\.md$/i
 const METADATA_LINE = /^(Type|Status|Blocked by|Parent)\s*:/i
-const TYPES: readonly TicketType[] =['research', 'prototype', 'grilling', 'task']
+const TICKET_TYPES: readonly TicketType[] =['research', 'prototype', 'grilling', 'task']
 
 /** A Ticket as its file states it, before anything is derived. */
 export interface TicketRecord {
@@ -20,8 +20,6 @@ export interface TicketRecord {
   open: boolean
   claimed: boolean
   assignee: string | null
-  /** Whether the claim is the current user's. */
-  claimedByMe: boolean
   blockedBy: string[]
   path: string
   question: string
@@ -85,12 +83,11 @@ async function readTicket(path: string, number: string, slug: string): Promise<T
   return {
     id: number,
     name: titleOf(text) ?? nameFromSlug(slug),
-    type: TYPES.find((known) => known === type) ?? null,
+    type: TICKET_TYPES.find((known) => known === type) ?? null,
     open: status !== 'resolved' && status !== 'closed',
     claimed: status === 'claimed',
-    // Local markdown claims name no one: the files are the user's own.
+    // Local markdown claims name no one.
     assignee: null,
-    claimedByMe: status === 'claimed',
     blockedBy: (fieldOf(text, 'Blocked by') ?? '').match(/\d+/g) ?? [],
     path,
     question: questionOf(text, sections),
@@ -137,11 +134,15 @@ async function readEffort(project: string, effort: string): Promise<MapRecord> {
     // A Map charted without Tickets yet.
   }
   const tickets: TicketRecord[] = []
-  for (const file of files.sort()) {
+  // In Ticket number order, whatever the width of the numbers.
+  const numbered = files.flatMap((file) => {
     const match = TICKET_FILE.exec(file)
-    if (!match) continue
+    return match ? [{ file, number: match[1]!, slug: match[2]! }] : []
+  })
+  numbered.sort((a, b) => Number(a.number) - Number(b.number))
+  for (const { file, number, slug } of numbered) {
     const ticketPath = join(folder, 'issues', file)
-    tickets.push(await readTicket(ticketPath, match[1]!, match[2]!))
+    tickets.push(await readTicket(ticketPath, number, slug))
     updatedAt = Math.max(updatedAt, (await stat(ticketPath)).mtimeMs)
   }
 
