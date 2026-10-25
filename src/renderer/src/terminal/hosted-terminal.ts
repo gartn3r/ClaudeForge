@@ -160,6 +160,11 @@ export class HostedTerminal {
     this.terminal.focus()
   }
 
+  /** The Session host's id for it, once `claude` has started. */
+  get sessionId(): string | null {
+    return this.session?.id ?? null
+  }
+
   /** What `claude` is doing, as the Session host last said. */
   get status(): HostedSessionStatus {
     return this.currentStatus

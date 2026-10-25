@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Mous
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
+import type { HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
 import { ExtensionsBar } from './ExtensionsMenu'
 import { IconButton } from './IconButton'
@@ -28,6 +29,9 @@ interface ExplorerProps {
   onDisplaySession(id: string): void
   /** The displayed Project, whose Extensions the Extensions bar counts. */
   project: string
+  /** The Hosted sessions' tabs, which the Extensions menu names after a change. */
+  hostedTabs: HostedTab[]
+  onShowHostedSession(key: string): void
   onCollapse(): void
 }
 
@@ -79,7 +83,15 @@ interface RowActions {
 }
 
 /** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
-export function Explorer({ projects, displayedSessionId, onDisplaySession, project, onCollapse }: ExplorerProps): ReactNode {
+export function Explorer({
+  projects,
+  displayedSessionId,
+  onDisplaySession,
+  project,
+  hostedTabs,
+  onShowHostedSession,
+  onCollapse
+}: ExplorerProps): ReactNode {
   const { t } = useTranslation()
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
@@ -132,7 +144,7 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, proje
           </ul>
         )}
       </div>
-      <ExtensionsBar project={project} />
+      <ExtensionsBar project={project} hostedTabs={hostedTabs} onShowHostedSession={onShowHostedSession} />
       {tidying?.kind === 'menu' && (
         <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session)} onClose={closeMenu} />
       )}

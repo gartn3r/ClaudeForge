@@ -30,6 +30,14 @@ const refuse = (message) => {
   process.exit(1)
 }
 
+// An Extension change waits while the fake environment holds changes, and fails while it fails them.
+if (['mcp', 'plugin'].includes(args[0]) && args[1] !== 'list') {
+  const hold = join(process.env.FAKE_CLAUDE_STATE, 'hold-changes')
+  while (existsSync(hold)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50)
+  const failure = recording('fail-changes')
+  if (failure) refuse(failure)
+}
+
 /** The value of an option such as `-s user` or `--scope user`. */
 const option = (short, long) => {
   const at = args.findIndex((arg) => arg === short || arg === long)
