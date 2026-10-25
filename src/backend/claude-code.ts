@@ -17,7 +17,7 @@ export function envVar(env: Environment, name: string): string | undefined {
   return key === undefined ? undefined : env[key]
 }
 
-async function isFile(path: string): Promise<boolean> {
+export async function isFile(path: string): Promise<boolean> {
   try {
     return (await stat(path)).isFile()
   } catch {

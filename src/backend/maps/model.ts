@@ -1,5 +1,28 @@
-import type { Ticket, TicketEdge, TicketState, WayfinderMap } from '../../shared/api'
-import type { MapRecord, TicketRecord } from './local-markdown'
+import type { MapSummary, Ticket, TicketEdge, TicketState, TicketType, WayfinderMap } from '../../shared/api'
+
+/** A Ticket as its Tracker states it, before anything is derived. */
+export interface TicketRecord {
+  id: string
+  name: string
+  type: TicketType | null
+  open: boolean
+  claimed: boolean
+  /** Claimed by the user ClaudeForge runs for. */
+  claimedByUser: boolean
+  assignee: string | null
+  blockedBy: string[]
+  path: string
+  question: string
+  answer: string
+}
+
+/** A Map as its Tracker stores it. */
+export interface MapRecord extends MapSummary {
+  sections: Record<string, string>
+  tickets: TicketRecord[]
+  /** Ids of open issues outside the Map that some Ticket names as a blocker. */
+  openOutside?: string[]
+}
 
 function stateOf(ticket: Pick<TicketRecord, 'open' | 'claimed'>, openBlockers: number): TicketState {
   if (!ticket.open) return 'closed'
@@ -36,8 +59,9 @@ function transitiveReduction(edges: TicketEdge[]): TicketEdge[] {
 
 /** Turns a Map as its Tracker stores it into the model the panel draws. */
 export function deriveMap(record: MapRecord): WayfinderMap {
-  const { sections, tickets: records, ...summary } = record
+  const { sections, tickets: records, openOutside = [], ...summary } = record
   const open = new Set(records.filter((ticket) => ticket.open).map((ticket) => ticket.id))
+  const openBlocker = (id: string): boolean => open.has(id) || openOutside.includes(id)
 
   // Edges between Tickets of the Map, listed by blocked Ticket then blocker, both in Map order.
   const order = new Map(records.map((ticket, index) => [ticket.id, index]))
@@ -48,15 +72,14 @@ export function deriveMap(record: MapRecord): WayfinderMap {
       .map((from) => ({ from, to: ticket.id }))
   )
 
-  const tickets = records.map((ticket): Ticket => {
-    // A reference to a Ticket the Map does not have blocks nothing.
-    const openBlockers = ticket.blockedBy.filter((id) => open.has(id)).length
+  const tickets = records.map(({ claimedByUser, ...ticket }): Ticket => {
+    // A reference to a Ticket the Map does not have blocks nothing, unless its Tracker says it is open.
+    const openBlockers = ticket.blockedBy.filter(openBlocker).length
     const state = stateOf(ticket, openBlockers)
     return {
       ...ticket,
       state,
-      // A local markdown claim names no one: the files, and the claim, are the user's own.
-      workable: state === 'frontier' || state === 'claimed',
+      workable: state === 'frontier' || (state === 'claimed' && claimedByUser),
       openBlockers
     }
   })

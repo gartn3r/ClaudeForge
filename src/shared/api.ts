@@ -66,11 +66,13 @@ export interface SystemInfo {
 /** Where a Project keeps its Maps, from its `docs/agents/issue-tracker.md`. */
 export type Tracker =
   | { kind: 'local-markdown' }
+  /** GitHub Issues, read through the user's `gh` in the Project's folder. */
+  | { kind: 'github' }
   /** A declared Tracker ClaudeForge cannot read yet, with its name when the declaration gives one. */
   | { kind: 'unsupported'; name: string | null }
 
 export interface MapSummary {
-  /** Unique within the Project; for local markdown, the effort's folder name. */
+  /** Unique within the Project: for local markdown, the effort's folder name; for GitHub, the issue number. */
   id: string
   name: string
   /** The Map's file (local markdown) or URL. */
@@ -81,8 +83,20 @@ export interface MapSummary {
   open: boolean
 }
 
+/** Why a Tracker's Maps cannot be read right now. */
+export type TrackerProblem =
+  /** The GitHub CLI is not installed. */
+  | 'gh-missing'
+  | 'gh-signed-out'
+  /** `gh` finds no GitHub repository for the Project's folder. */
+  | 'no-github-repository'
+  /** Any other failure of `gh`, such as GitHub being unreachable. */
+  | 'gh-failed'
+
 export interface MapListing {
   tracker: Tracker
+  /** Present when the Maps cannot be read; `maps` is then empty. */
+  problem?: TrackerProblem
   /** Most recently updated first. */
   maps: MapSummary[]
 }
@@ -93,7 +107,10 @@ export type TicketType = 'research' | 'prototype' | 'grilling' | 'task'
 export type TicketState = 'closed' | 'blocked' | 'claimed' | 'frontier'
 
 export interface Ticket {
-  /** Unique within the Map; for local markdown, the file's number (`03`). */
+  /**
+   * Unique within the Map: for local markdown, the file's number (`03`); for GitHub, the issue
+   * number (`42`), or `owner/repo#42` for an issue of another repository.
+   */
   id: string
   name: string
   type: TicketType | null

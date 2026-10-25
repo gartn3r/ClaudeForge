@@ -30,7 +30,7 @@ export interface BackendOptions {
   claudeHome: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
-  /** The environment `claude` is looked up and run in. */
+  /** The environment `claude` and `gh` are looked up and run in. */
   env: Environment
   /** The folder ClaudeForge was started in; defaults to the current directory. */
   startFolder?: string
@@ -59,7 +59,7 @@ export interface Backend {
 export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
-  const maps = createMapService()
+  const maps = createMapService(options.env)
   const sessions = new SessionCatalog(
     options.claudeHome,
     (projects) => events.emit('sessions.changed', projects),

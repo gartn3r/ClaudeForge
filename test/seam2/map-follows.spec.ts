@@ -68,7 +68,7 @@ test('the Map panel follows the displayed Session, its Ticket highlighted and ot
 
   // A Session of another Project brings that Project's Map panel.
   await explorer.getByRole('list', { name: 'harbor-api' }).getByRole('listitem').filter({ hasText: 'Add an OpenAPI export' }).click()
-  await expect(panel).toContainText('This Project’s Tracker, GitHub, is not supported yet.')
+  await expect(panel.getByRole('heading', { name: 'Rate limiting' })).toBeVisible()
 })
 
 test('a Session’s Map shows even when every Ticket on it is decided, without the panel collapsing', async () => {

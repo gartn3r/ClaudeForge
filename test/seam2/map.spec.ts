@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { launchClaudeForge, type RunningClaudeForge } from './claudeforge'
@@ -114,9 +116,43 @@ test('collapses the Map panel on its own in a Project with no Map', async () => 
 })
 
 test('says so when the Project’s Tracker is not supported', async () => {
+  await mkdir(join(env.projects.dotfiles, 'docs', 'agents'), { recursive: true })
+  await writeFile(join(env.projects.dotfiles, 'docs', 'agents', 'issue-tracker.md'), '# Issue tracker: GitLab\n')
+  claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
+
+  await expect(claudeforge.window.getByRole('complementary', { name: 'Map' })).toContainText(
+    'This Project’s Tracker, GitLab, is not supported yet.'
+  )
+})
+
+test('shows a GitHub Map read through gh: its sub-issues, their blocks and who claimed them', async () => {
+  claudeforge = await launchClaudeForge(env, { project: 'harbor-api' })
+  const panel = claudeforge.window.getByRole('complementary', { name: 'Map' })
+
+  await expect(panel.getByRole('heading', { name: 'Rate limiting' })).toBeVisible()
+  await expect(panel.getByRole('region', { name: 'Destination' })).toContainText(
+    'Every public endpoint is rate limited per tenant, with limits clients can read.'
+  )
+  await expect(panel.getByRole('list', { name: 'Decided' }).getByRole('listitem')).toHaveText([
+    'Where limits are enforced',
+    'Retry-After semantics'
+  ])
+
+  const graph = panel.getByRole('region', { name: 'Open work' })
+  const ticket = (name: string): Locator => graph.getByRole('group', { name })
+  await expect(ticket('Shape of the limit headers').getByRole('img', { name: 'Frontier' })).toBeVisible()
+  await expect(ticket('Admin override').getByRole('img', { name: 'Claimed' })).toBeVisible()
+  await expect(ticket('Quota dashboard').getByRole('img', { name: 'Blocked by 2 open Tickets' })).toBeVisible()
+  await expect(graph.getByLabel('Burst allowance blocks Quota dashboard')).toHaveCount(1)
+  await expect(panel.getByRole('status', { name: 'Counts' })).toHaveText('1 Frontier · 2 claimed · 3 blocked · 2 closed')
+})
+
+test('says how to sign the GitHub CLI in when it is signed out', async () => {
+  await env.dispose()
+  env = await createFakeEnvironment({ gh: 'signed-out' })
   claudeforge = await launchClaudeForge(env, { project: 'harbor-api' })
 
   await expect(claudeforge.window.getByRole('complementary', { name: 'Map' })).toContainText(
-    'This Project’s Tracker, GitHub, is not supported yet.'
+    'GitHub CLI is not signed in. Run gh auth login, then refresh.'
   )
 })

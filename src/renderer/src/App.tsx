@@ -57,8 +57,11 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   }, [project])
   const listing = maps?.project === project ? maps.listing : null
   const linkedMapId = displayed?.session.wayfinder?.mapId
+  // An unsupported Tracker or one gh cannot read keeps the panel open, to say why it is empty.
   const noMap =
-    listing?.tracker.kind === 'local-markdown' &&
+    !!listing &&
+    listing.tracker.kind !== 'unsupported' &&
+    !listing.problem &&
     !shownMap(listing) &&
     !listing.maps.some((map) => map.id === linkedMapId)
   // The panel collapses on its own without a Map; the user's own setting stays as it was.

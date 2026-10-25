@@ -1,4 +1,4 @@
-import { readdir, utimes, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend } from '../../src/backend'
@@ -39,10 +39,19 @@ describe('Map service', () => {
       expect(listing).toEqual({ tracker: { kind: 'local-markdown' }, maps: [] })
     })
 
-    it('reports any other declared Tracker as unsupported, naming it', async () => {
+    it('reads a GitHub Tracker from the issue-tracker declaration', async () => {
       const listing = await backend.api.map.list(env.projects['harbor-api'])
 
-      expect(listing).toEqual({ tracker: { kind: 'unsupported', name: 'GitHub' }, maps: [] })
+      expect(listing.tracker).toEqual({ kind: 'github' })
+    })
+
+    it('reports any other declared Tracker as unsupported, naming it', async () => {
+      await mkdir(join(env.projects.dotfiles, 'docs', 'agents'), { recursive: true })
+      await writeFile(join(env.projects.dotfiles, 'docs', 'agents', 'issue-tracker.md'), '# Issue tracker: GitLab\n')
+
+      const listing = await backend.api.map.list(env.projects.dotfiles)
+
+      expect(listing).toEqual({ tracker: { kind: 'unsupported', name: 'GitLab' }, maps: [] })
     })
   })
 
