@@ -14,10 +14,20 @@ npm install
 npm run dev
 ```
 
+## Sub-tickets in a Project's Tracker
+
+A Ticket can have Sub-tickets, several levels deep. The Map panel shows a Ticket with open Sub-tickets as a Parent Ticket: a stack with a roll-up of everything beneath it, never on the Frontier, that opens on a click to show its Sub-tickets. A block on a Parent Ticket blocks every Ticket beneath it ([ADR 0004](docs/adr/0004-sub-tickets.md)).
+
+On GitHub, a Ticket's Sub-tickets are its own sub-issues; nothing needs declaring. Wayfinder's local markdown convention has no nesting, so a Project using it declares one: add this paragraph to the "Wayfinding operations" section of its `docs/agents/issue-tracker.md`, which Wayfinder reads. ClaudeForge itself never writes to a Tracker ([ADR 0002](docs/adr/0002-map-viewer-is-read-only.md)).
+
+```markdown
+- **Sub-ticket**: a ticket may be split into sub-tickets, nested as deep as needed. A sub-ticket is an ordinary ticket file in the same flat `issues/` folder, numbered in the map's single sequence, with a `Parent: NN` line next to `Type:`, `Status:` and `Blocked by:`, naming the number of the ticket it belongs to. A ticket with open sub-tickets is a parent ticket: it is never on the frontier (its frontier is its sub-tickets'), and an open blocker on it blocks every ticket beneath it. Once its sub-tickets are all resolved, it is worked like any other ticket. The frontier query drops any ticket with an open sub-ticket or with an open blocker on itself or on any of its parents.
+```
+
 ## Architecture
 
 - `src/main/`: the Electron main process. It creates the frameless window and exposes the backend API over IPC (`ipc.ts`).
-- `src/backend/`: every service of the **typed backend API** in plain Node, with no Electron import. The main process owns all access to the machine through it. `session-host.ts` runs each Hosted session's `claude` in a pseudoconsole (node-pty with the `conpty.dll` and `OpenConsole.exe` it ships), every PTY in that one process. `maps/` is the Map service: Tracker detection, the local markdown adapter, and the Tracker-independent Map model with its derived states, Decided set and transitively reduced edges.
+- `src/backend/`: every service of the **typed backend API** in plain Node, with no Electron import. The main process owns all access to the machine through it. `session-host.ts` runs each Hosted session's `claude` in a pseudoconsole (node-pty with the `conpty.dll` and `OpenConsole.exe` it ships), every PTY in that one process. `maps/` is the Map service: Tracker detection, the local markdown and GitHub adapters, and the Tracker-independent Map model: a tree of Tickets and Sub-tickets with their derived states (Parent Tickets, inherited blocks), roll-ups, Decided set and transitively reduced edges per level.
 - `src/shared/api.ts`: the API's types, the pushed events and the IPC channel names, shared by every side.
 - `src/preload/`: the sandboxed bridge (`window.claudeforge`) carrying only backend API channels.
 - `src/renderer/`: the React interface. `terminal/hosted-terminal.ts` wires one Hosted session to xterm.js (WebGL renderer unless GPU rendering is off, Shift+Enter sent as a newline). The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.

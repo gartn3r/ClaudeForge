@@ -32,6 +32,7 @@ describe('Map service on a GitHub Tracker', () => {
       maps: [
         { id: '40', name: 'Rate limiting', path: issue(40), updatedAt: Date.parse('2026-10-20T09:00:00Z'), open: true },
         { id: '60', name: 'Audit log', path: issue(60), updatedAt: Date.parse('2026-10-15T09:00:00Z'), open: true },
+        { id: '70', name: 'Webhooks', path: issue(70), updatedAt: Date.parse('2026-10-10T09:00:00Z'), open: true },
         { id: '20', name: 'Legacy auth removal', path: issue(20), updatedAt: Date.parse('2026-09-01T09:00:00Z'), open: false }
       ]
     })

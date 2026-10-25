@@ -94,13 +94,17 @@
       "blocked": "Bloqué",
       "closed": "Fermé",
       "blockedBy_one": "Bloqué par {{count}} Ticket ouvert",
-      "blockedBy_other": "Bloqué par {{count}} Tickets ouverts"
+      "blockedBy_other": "Bloqué par {{count}} Tickets ouverts",
+      "parentWaits": "Bloqué : son Ticket parent attend"
     },
     "tooltip": {
       "frontier": "{{name}} · sur la Frontière",
       "claimed": "{{name}} · pris",
       "blocked": "{{name}} · bloqué par {{blockers}}",
-      "closed": "{{name}} · décidé"
+      "closed": "{{name}} · décidé",
+      "parent_one": "{{name}} · {{count}} sous-Ticket. Ouvrez-le pour le voir.",
+      "parent_other": "{{name}} · {{count}} sous-Tickets. Ouvrez-le pour les voir.",
+      "parentWaits": "{{name}} · bloqué : son Ticket parent attend"
     },
     "type": {
       "research": "recherche",
@@ -128,7 +132,20 @@
     },
     "maps": "Cartes",
     "chooseMap": "Afficher une autre Carte de ce Projet",
-    "switchToSession": "{{title}} : afficher cette Session"
+    "switchToSession": "{{title}} : afficher cette Session",
+    "question": "Question",
+    "crumbs": "Où vous êtes dans la Carte",
+    "back": "Revenir à {{name}}",
+    "open": "Ouvrir {{name}}",
+    "subTickets_one": "{{count}} sous",
+    "subTickets_other": "{{count}} sous",
+    "rollup": {
+      "frontier": "<b>{{count}}</b> Frontière",
+      "claimed": "{{count}} pris",
+      "closed": "{{closed}}/{{total}} fermés",
+      "waitsFor": "Attend {{blockers}}",
+      "parentWaits": "Son Ticket parent attend"
+    }
   },
   "firstRun": {
     "checkAgain": "Vérifier à nouveau",
