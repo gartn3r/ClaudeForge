@@ -38,7 +38,7 @@ const row = (menu: Locator, group: string, name: string): Locator =>
 /** Starts a Session with the title bar's "+", names it by sending a prompt, and waits for its tab. */
 async function startSession(window: Page, prompt: string): Promise<void> {
   const runs = (await sessionRuns(env)).length
-  await window.getByRole('button', { name: 'New Session' }).click()
+  await window.getByRole('button', { name: 'New Session', exact: true }).click()
   await expect.poll(async () => (await sessionRuns(env)).length).toBe(runs + 1)
   await window.keyboard.type(prompt)
   await window.keyboard.press('Enter')
