@@ -5,6 +5,7 @@ import {
   clampPanelWidth,
   type AppState,
   type AppStatePatch,
+  type MapPreferences,
   type PanelId,
   type PanelLayout,
   type SessionPreferences
@@ -24,7 +25,8 @@ export function defaultAppState(): AppState {
     },
     claudePath: null,
     gpuRendering: true,
-    sessions: {}
+    sessions: {},
+    maps: {}
   }
 }
 
@@ -68,9 +70,46 @@ function mergeSessions(
   return next
 }
 
+/** One Map's preferences with a patch applied; undefined once none is left. */
+function mergeMap(base: MapPreferences | undefined, patch: unknown): MapPreferences | undefined {
+  if (patch === null) return undefined
+  if (typeof patch !== 'object') return base
+  const { view, hideClosed, folded } = patch as Record<string, unknown>
+  const next: MapPreferences = { ...base }
+  if (view === 'tree') next.view = 'tree'
+  else if (view === 'graph' || view === null) delete next.view
+  if (hideClosed === true) next.hideClosed = true
+  else if (hideClosed === false || hideClosed === null) delete next.hideClosed
+  if (Array.isArray(folded)) {
+    const ids = [...new Set(folded.filter((id): id is string => typeof id === 'string'))]
+    if (ids.length) next.folded = ids
+    else delete next.folded
+  } else if (folded === null) delete next.folded
+  return Object.keys(next).length ? next : undefined
+}
+
+function mergeMaps(
+  base: Record<string, Record<string, MapPreferences>>,
+  patch: Record<string, unknown>
+): Record<string, Record<string, MapPreferences>> {
+  const next = { ...base }
+  for (const [project, maps] of Object.entries(patch)) {
+    if (typeof maps !== 'object' || maps === null) continue
+    const projectMaps = { ...next[project] }
+    for (const [mapId, entry] of Object.entries(maps)) {
+      const merged = mergeMap(projectMaps[mapId], entry)
+      if (merged) projectMaps[mapId] = merged
+      else delete projectMaps[mapId]
+    }
+    if (Object.keys(projectMaps).length) next[project] = projectMaps
+    else delete next[project]
+  }
+  return next
+}
+
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering, sessions } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, sessions, maps } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -86,6 +125,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   if (typeof sessions === 'object' && sessions !== null) {
     next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
   }
+  if (typeof maps === 'object' && maps !== null) next = { ...next, maps: mergeMaps(state.maps, maps) }
   return next
 }
 
