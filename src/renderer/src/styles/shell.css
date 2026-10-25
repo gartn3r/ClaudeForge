@@ -983,6 +983,12 @@ dialog.cf-dialog::backdrop {
 .map-tree__state--closed {
   color: var(--done);
 }
+.map-tree__meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
 .map-tree__claim {
   flex: none;
   font-size: 11px;

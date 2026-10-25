@@ -37,7 +37,7 @@ export interface SessionPreferences {
 }
 
 /** How the Map panel shows a Map: one level as a graph, or the whole hierarchy as a tree. */
-export type MapView = 'graph' | 'tree'
+export type MapPanelView = 'graph' | 'tree'
 
 /** How the user last looked at one Map; a field left out is the default. */
 export interface MapPreferences {
@@ -49,6 +49,9 @@ export interface MapPreferences {
   folded?: string[]
 }
 
+/** A Project's Map preferences, by Map id. */
+export type ProjectMapPreferences = Record<string, MapPreferences>
+
 export interface AppState {
   version: 1
   layout: Record<PanelId, PanelLayout>
@@ -59,7 +62,7 @@ export interface AppState {
   /** By Session id; a Session the user never tidied has no entry. */
   sessions: Record<string, SessionPreferences>
   /** By Project folder, then Map id; a Map the user never changed has no entry. */
-  maps: Record<string, Record<string, MapPreferences>>
+  maps: Record<string, ProjectMapPreferences>
 }
 
 /** A partial update of the app state; nested objects merge. */
@@ -70,7 +73,7 @@ export interface AppStatePatch {
   /** By Session id: a null field drops that preference, a null entry every one of them. */
   sessions?: Record<string, { title?: string | null; hidden?: boolean | null } | null>
   /** By Project folder, then Map id: a default value or null drops that preference, a null entry every one of them. */
-  maps?: Record<string, Record<string, { view?: MapView | null; hideClosed?: boolean | null; folded?: string[] | null } | null>>
+  maps?: Record<string, Record<string, { view?: MapPanelView | null; hideClosed?: boolean | null; folded?: string[] | null } | null>>
 }
 
 export interface SystemInfo {

@@ -3,9 +3,9 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { Trans, useTranslation } from 'react-i18next'
 import type {
   MapListing,
-  MapPreferences,
+  MapPanelView,
   MapSummary,
-  MapView,
+  ProjectMapPreferences,
   SessionSummary,
   Ticket,
   TrackerProblem,
@@ -27,20 +27,8 @@ const PROBLEM_MESSAGES = {
   'gh-failed': 'map.problem.ghFailed'
 } as const satisfies Record<TrackerProblem, string>
 
-/** A change to how one Map is shown, as the user makes it. */
-type PreferenceChange = { view?: MapView; hideClosed?: boolean; folded?: string[] }
-
-/** A Map's preferences with a change applied, the defaults left out as app state keeps them. */
-function changePreferences(base: MapPreferences, change: PreferenceChange): MapPreferences {
-  const next: MapPreferences = { ...base }
-  if (change.view === 'tree') next.view = 'tree'
-  else if (change.view === 'graph') delete next.view
-  if (change.hideClosed === true) next.hideClosed = true
-  else if (change.hideClosed === false) delete next.hideClosed
-  if (change.folded?.length) next.folded = change.folded
-  else if (change.folded) delete next.folded
-  return next
-}
+/** How the panel shows one Map, as the user changed it. */
+type MapDisplay = { view: MapPanelView; hideClosed: boolean; folded: string[] }
 
 /** A load of one Map of one Project, and how it went. */
 type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap } | { error: true })
@@ -53,8 +41,8 @@ interface MapPanelProps {
   sessions: SessionSummary[]
   /** The Session shown in the centre, whose Map the panel follows; null when none is. */
   displayedSession: SessionSummary | null
-  /** How the user last looked at each of the Project's Maps, by Map id. */
-  preferences: Record<string, MapPreferences>
+  /** How the user last looked at each of the Project's Maps. */
+  preferences: ProjectMapPreferences
   onDisplaySession(id: string): void
   onCollapse(): void
 }
@@ -112,18 +100,25 @@ ${mapId ?? ''}`
     (opened?.mapKey === mapKey && map?.tickets.find((ticket) => ticket.id === opened.ticketId && ticket.rollup)) || null
   const openLevel = (ticketId: string | null): void => setOpened(ticketId === null ? null : { mapKey, ticketId })
 
-  // The user's latest change shows at once; app state keeps it for the next time the Map is shown.
-  const [changed, setChanged] = useState<{ mapKey: string; preferences: MapPreferences } | null>(null)
-  const shown = changed?.mapKey === mapKey ? changed.preferences : ((mapId ? preferences[mapId] : undefined) ?? {})
-  const changeShown = (change: PreferenceChange): void => {
+  // The user's changes show at once; app state keeps them for the next time the Map is shown.
+  const [changed, setChanged] = useState<{ mapKey: string; display: Partial<MapDisplay> } | null>(null)
+  const stored = (mapId ? preferences[mapId] : undefined) ?? {}
+  const { view, hideClosed, folded }: MapDisplay = {
+    view: stored.view ?? 'graph',
+    hideClosed: !!stored.hideClosed,
+    folded: stored.folded ?? [],
+    ...(changed?.mapKey === mapKey ? changed.display : {})
+  }
+  const changeShown = (change: Partial<MapDisplay>): void => {
     if (!mapId) return
-    setChanged({ mapKey, preferences: changePreferences(shown, change) })
+    setChanged({ mapKey, display: { ...(changed?.mapKey === mapKey ? changed.display : {}), ...change } })
     void api.appState.write({ maps: { [project]: { [mapId]: change } } })
   }
-  const view: MapView = shown.view ?? 'graph'
-  const folded = shown.folded ?? []
-  const fold = (ticketId: string, fold: boolean): void =>
-    changeShown({ folded: fold ? [...folded, ticketId] : folded.filter((id) => id !== ticketId) })
+  // Folding forgets the Tickets the Map no longer has.
+  const fold = (ticketId: string, fold: boolean): void => {
+    const kept = folded.filter((id) => id !== ticketId && map?.tickets.some((ticket) => ticket.id === id))
+    changeShown({ folded: fold ? [...kept, ticketId] : kept })
+  }
   const openInGraph = (ticketId: string): void => {
     openLevel(ticketId)
     changeShown({ view: 'graph' })
@@ -152,7 +147,7 @@ ${mapId ?? ''}`
           view === 'tree' && (
             <MapTree
               map={map}
-              hideClosed={!!shown.hideClosed}
+              hideClosed={hideClosed}
               onHideClosed={(hideClosed) => changeShown({ hideClosed })}
               folded={folded}
               onFold={fold}

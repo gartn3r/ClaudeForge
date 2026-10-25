@@ -6,6 +6,7 @@ import {
   type AppState,
   type AppStatePatch,
   type MapPreferences,
+  type ProjectMapPreferences,
   type PanelId,
   type PanelLayout,
   type SessionPreferences
@@ -89,9 +90,9 @@ function mergeMap(base: MapPreferences | undefined, patch: unknown): MapPreferen
 }
 
 function mergeMaps(
-  base: Record<string, Record<string, MapPreferences>>,
+  base: Record<string, ProjectMapPreferences>,
   patch: Record<string, unknown>
-): Record<string, Record<string, MapPreferences>> {
+): Record<string, ProjectMapPreferences> {
   const next = { ...base }
   for (const [project, maps] of Object.entries(patch)) {
     if (typeof maps !== 'object' || maps === null) continue

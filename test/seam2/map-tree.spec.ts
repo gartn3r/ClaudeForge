@@ -53,12 +53,16 @@ test('switches to the Tree view, hides closed Tickets, then opens a Parent Ticke
   await expect(hideClosed).toHaveAttribute('aria-checked', 'true')
   await expect(row('Retry schedule')).toHaveCount(0)
 
-  // The twisty only folds.
-  const twisty = row('Dead-letter queue').getByRole('button', { name: 'Sub-tickets of Dead-letter queue' })
-  await twisty.click()
-  await expect(twisty).toHaveAttribute('aria-expanded', 'false')
+  // The twisty only folds; the arrow keys fold and unfold too.
+  await row('Dead-letter queue').getByRole('button', { name: 'Sub-tickets of Dead-letter queue' }).click()
+  await expect(row('Dead-letter queue')).toHaveAttribute('aria-expanded', 'false')
   await expect(row('Replay tool')).toHaveCount(0)
   await expect(tree).toBeVisible()
+  await row('Dead-letter queue').focus()
+  await claudeforge.window.keyboard.press('ArrowRight')
+  await expect(row('Replay tool')).toBeVisible()
+  await claudeforge.window.keyboard.press('ArrowLeft')
+  await expect(row('Replay tool')).toHaveCount(0)
 
   // The view, hidden closed Tickets and folded rows are the Map's own.
   await chooseMap('Webhooks', /Rate limiting/)
