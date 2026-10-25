@@ -1,8 +1,7 @@
 import { useEffect, useEffectEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, onEvent } from '../api'
-import { tabTitle } from '../components/SessionTabs'
-import type { HostedSessions } from './hosted-sessions'
+import { tabTitle, type HostedSessions } from './hosted-sessions'
 
 /**
  * Raises a Windows notification when a Hosted session in the background, one not on show or in a
@@ -27,5 +26,12 @@ export function useSessionNotifications(
   }, [sessions, activeKey, enabled, t])
 
   const show = useEffectEvent(onShow)
-  useEffect(() => onEvent('window.notificationClicked', ({ tag }) => show(tag)), [])
+  useEffect(
+    () =>
+      onEvent('window.notificationClicked', ({ tag }) => {
+        // The Session's tab may have been closed since.
+        if (sessions.snapshot().tabs.some((tab) => tab.key === tag)) show(tag)
+      }),
+    [sessions]
+  )
 }

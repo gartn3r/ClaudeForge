@@ -30,7 +30,10 @@ function claudeHome(): string {
 // (development, tests), that is the binary's path.
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'ClaudeForge' : process.execPath)
 
-/** The notifications on screen, held so that garbage collection does not drop their click handlers. */
+/**
+ * The notifications not yet clicked, held so that garbage collection does not drop their click
+ * handlers: a toast that left the screen can still be clicked in the notification center.
+ */
 const shownNotifications = new Set<Notification>()
 
 function windowHost(win: BrowserWindow): WindowHost {
@@ -53,7 +56,6 @@ function windowHost(win: BrowserWindow): WindowHost {
       if (!Notification.isSupported()) return
       const notification = new Notification({ title, body })
       shownNotifications.add(notification)
-      notification.on('close', () => shownNotifications.delete(notification))
       notification.on('click', () => {
         shownNotifications.delete(notification)
         if (win.isDestroyed()) return

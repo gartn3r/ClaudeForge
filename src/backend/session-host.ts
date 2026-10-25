@@ -39,7 +39,7 @@ interface HostedProcess {
 }
 
 /** The status each reported state gives a Hosted session: blocked waits for the user; a failed turn is over too. */
-const STATUS_OF: Record<ProgramStatusState, HostedSessionStatus> = {
+const STATUS_OF_REPORT: Record<ProgramStatusState, HostedSessionStatus> = {
   idle: 'idle',
   working: 'working',
   blocked: 'waiting',
@@ -47,6 +47,14 @@ const STATUS_OF: Record<ProgramStatusState, HostedSessionStatus> = {
   error: 'done',
   // Clears what it reported, as when `claude` exits.
   clear: 'idle'
+}
+
+/** Whether a Session in this status is in the middle of a turn. */
+const midTurn = (status: HostedSessionStatus): boolean => status === 'working' || status === 'waiting'
+
+function stopFollowingHistory(session: HostedProcess): void {
+  session.history?.stop()
+  session.history = undefined
 }
 
 const windowsPty = (): HostedSession['windowsPty'] =>
@@ -97,22 +105,23 @@ export class SessionHost {
 
     const id = randomUUID()
     const session: HostedProcess = { id, project, pty, status: 'idle', reader: new ProgramStatusReader() }
-    session.history = new HistoryStatus(this.options.claudeHome, sessionId, (status) => this.setStatus(session, status))
+    session.history = new HistoryStatus(this.options.claudeHome, project, sessionId, (status) =>
+      this.setStatus(session, status)
+    )
     this.sessions.set(id, session)
     pty.onData((data) => {
       for (const signal of session.reader.read(data)) {
         if (signal.kind === 'probe') {
           pty.write(PROBE_REPLY)
         } else {
-          session.history?.stop()
-          session.history = undefined
-          this.setStatus(session, STATUS_OF[signal.state])
+          stopFollowingHistory(session)
+          this.setStatus(session, STATUS_OF_REPORT[signal.state])
         }
       }
       this.options.onOutput(id, data)
     })
     pty.onExit(({ exitCode }) => {
-      session.history?.stop()
+      stopFollowingHistory(session)
       this.sessions.delete(id)
       this.options.onExit(id, exitCode)
     })
@@ -135,9 +144,9 @@ export class SessionHost {
 
   /** Ends every Hosted session, as when ClaudeForge closes. */
   dispose(): void {
-    for (const { pty, history } of this.sessions.values()) {
-      history?.stop()
-      pty.kill()
+    for (const session of this.sessions.values()) {
+      stopFollowingHistory(session)
+      session.pty.kill()
     }
     this.sessions.clear()
   }
@@ -148,7 +157,6 @@ export class SessionHost {
     if (status === previous) return
     session.status = status
     this.options.onStatus(session.id, status)
-    const inTurn = (s: HostedSessionStatus): boolean => s === 'working' || s === 'waiting'
-    if (inTurn(previous) && !inTurn(status)) this.options.onTurnEnd(session.id, session.project)
+    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.project)
   }
 }

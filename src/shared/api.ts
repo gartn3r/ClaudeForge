@@ -290,9 +290,9 @@ export interface ExtensionListing {
 }
 
 /**
- * What a Hosted session's `claude` is doing: idle at its prompt with nothing new to show, working
- * through a turn, waiting for the user mid-turn (a permission prompt or a question), done once the
- * turn is over and its result not yet seen.
+ * What a Hosted session's `claude` is doing: idle at its prompt, working through a turn, waiting for
+ * the user mid-turn (a permission prompt or a question), or done: its last turn is over, until
+ * Claude Code says it is back at rest or starts another turn.
  */
 export type HostedSessionStatus = 'idle' | 'working' | 'waiting' | 'done'
 

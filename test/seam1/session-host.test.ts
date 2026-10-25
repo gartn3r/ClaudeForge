@@ -181,6 +181,33 @@ describe('the Session host', () => {
     await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
   })
 
+  it('reports a Hosted session waiting on a permission prompt too, and a failed turn as over', async () => {
+    const { api } = await start()
+    const id = await startSession()
+
+    await api.sessionHost.write(id, '/permission\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting']), { timeout: 15_000 })
+    await api.sessionHost.write(id, 'yes\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
+    await api.sessionHost.write(id, '/fail\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done', 'working', 'done']), { timeout: 15_000 })
+  })
+
+  it('is back at rest once claude exits and clears its status', async () => {
+    const { api } = await start()
+    const id = await startSession()
+    await api.sessionHost.write(id, '/ask\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting']), { timeout: 15_000 })
+
+    await api.sessionHost.write(id, 'blue\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
+    await api.sessionHost.write(id, '/exit\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done', 'idle']), { timeout: 15_000 })
+    await vi.waitFor(() => expect(exits.map((exit) => exit.id)).toEqual([id]), { timeout: 15_000 })
+  })
+
   it('tells when a turn ends, finished or interrupted by the user, with its Project', async () => {
     const { api } = await start()
     const turnEnds: Array<{ id: string; project: string }> = []

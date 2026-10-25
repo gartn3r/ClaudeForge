@@ -21,6 +21,12 @@ export interface HostedTabs {
   activeKey: string | null
 }
 
+/** The last part of a Project's path: a tab's name until Claude Code names its terminal. */
+const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
+
+/** A tab's name: the one Claude Code gave its terminal, else its Project's folder name. */
+export const tabTitle = (tab: HostedTab): string => tab.title ?? folderName(tab.project)
+
 const tabOf = (key: string, project: string, terminal: HostedTerminal): HostedTab => ({
   key,
   project,

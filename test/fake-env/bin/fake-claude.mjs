@@ -61,14 +61,17 @@ if (args[0] === 'plugin' && args[1] === 'list' && args.includes('--json')) {
 // Interactive: a stand-in for Claude Code's prompt. Like Claude Code it reads its terminal in raw
 // mode, so Enter (\r) submits and Ctrl+J (\n) inserts a newline. It reports its terminal's size at
 // start and on every resize, echoes each submitted prompt, and exits on `/exit`. Like Claude Code it
-// names its terminal after the first prompt (`✳ <prompt>`). Two prompts stand in for a turn:
+// names its terminal after the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
 // - `/work <ms>`: a spinner redrawn every 100 ms for that long, then `Done.`; any key interrupts it.
 // - `/ask [<ms>]`: works that long first, if given, then asks `Red or blue?` and waits for the user;
 //   the next prompt answers it, then `Done.`.
+// - `/permission`: asks `Allow Bash(npm test)?` as a permission prompt, answered like `/ask`.
+// - `/fail`: works briefly, then fails with `API Error`.
 //
 // Status signals: like Claude Code 2.1.295 and later, it asks its terminal whether it reads OSC 7501
-// Program Status reports, and once the terminal says so, reports working, blocked (kind question,
-// while `/ask` waits) and done for each turn, idle when one is interrupted, and clear when it exits.
+// Program Status reports, and once the terminal says so, reports working, blocked (kind question or
+// permission, while it waits for the user), then done or error for each turn, idle when one is
+// interrupted, and clear when it exits.
 // Older versions send none. Every version keeps the Session history Claude Code keeps, when started
 // with `--session-id`: the user's prompt as a turn starts, Claude's answer as it ends.
 const write = (text) => process.stdout.write(text)
@@ -87,7 +90,7 @@ const reportsStatus = major > 2 || (major === 2 && (minor > 1 || (minor === 1 &&
 /** Set once the terminal answers the support probe. */
 let terminalReadsStatus = false
 // eslint-disable-next-line no-control-regex -- the reply starts with ESC and ends with BEL or ESC
-const PROBE_REPLY =/\x1b\]7501;\?[^\x07\x1b]*(?:\x07|\x1b\\)/g
+const PROBE_REPLY = /\x1b\]7501;\?[^\x07\x1b]*(?:\x07|\x1b\\)/g
 
 function report(state, extra = '') {
   if (terminalReadsStatus) write(`\x1b]7501;state=${state}:app=claude-code${extra}\x1b\\`)
@@ -118,11 +121,19 @@ function finishTurn() {
   report('done')
 }
 
-function ask() {
+/** Waits for the user to answer a question or a permission prompt. */
+function ask(question = 'Red or blue?', kind = 'question') {
   asking = true
-  write('\r\nRed or blue?\r\n> ')
-  rememberAnswer('Red or blue?', 'tool_use')
-  report('blocked', `:kind=question:msg=${Buffer.from('Red or blue?').toString('base64')}`)
+  write(`\r\n${question}\r\n> `)
+  rememberAnswer(question, 'tool_use')
+  report('blocked', `:kind=${kind}:msg=${Buffer.from(question).toString('base64')}`)
+}
+
+function fail() {
+  write('\r\nAPI Error\r\n> ')
+  // Claude Code records a failed request as Claude's message, ending the turn.
+  rememberAnswer('API Error', 'stop_sequence')
+  report('error')
 }
 
 /** Works for a while, then goes on as told: by default, the turn is done. */
@@ -159,7 +170,7 @@ function submit() {
   }
   const answer = asking
   write(`\r\nYou ${answer ? 'answered' : 'wrote'}: ${JSON.stringify(prompt)}\r\n`)
-  const [, command, ms] = /^\/(work|ask)(?: (\d+))?$/.exec(prompt) ?? []
+  const [, command, ms] = /^\/(work|ask|permission|fail)(?: (\d+))?$/.exec(prompt) ?? []
   const text = prompt
   prompt = ''
   if (answer) {
@@ -173,6 +184,12 @@ function submit() {
     rememberPrompt(text)
     if (ms) work(Number(ms), ask)
     else ask()
+  } else if (command === 'permission') {
+    rememberPrompt(text)
+    ask('Allow Bash(npm test)?', 'permission')
+  } else if (command === 'fail') {
+    rememberPrompt(text)
+    work(300, fail)
   } else {
     write('> ')
   }
