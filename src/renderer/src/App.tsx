@@ -37,7 +37,8 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   const displayed = catalog
     ?.flatMap((group) => group.sessions.map((session) => ({ group, session })))
     .find(({ session }) => session.id === displayedSessionId)
-  const project = displayed?.group.path ?? startProject
+  // The start folder keeps its own spelling while the displayed Session runs in it.
+  const project = displayed && !samePath(displayed.group.path, startProject) ? displayed.group.path : startProject
   const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
@@ -54,7 +55,11 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     }
   }, [project])
   const listing = maps?.project === project ? maps.listing : null
-  const noMap = listing?.tracker.kind === 'local-markdown' && !shownMap(listing)
+  const linkedMapId = displayed?.session.wayfinder?.mapId
+  const noMap =
+    listing?.tracker.kind === 'local-markdown' &&
+    !shownMap(listing) &&
+    !listing.maps.some((map) => map.id === linkedMapId)
   // The panel collapses on its own without a Map; the user's own setting stays as it was.
   const mapLayout = noMap && mapOpenedAnyway !== project ? { ...state.layout.map, collapsed: true } : state.layout.map
   const expandMap = (): void => {

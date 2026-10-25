@@ -429,6 +429,9 @@ body {
   color: var(--text);
   font-weight: 500;
 }
+.cf-decided .cf-chip[aria-current="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--brass);
+}
 .explorer__wayfinder {
   min-width: 0;
   overflow: hidden;

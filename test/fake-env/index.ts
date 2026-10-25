@@ -19,6 +19,12 @@ export type FakeTool = 'claude' | 'gh'
 /** What the fake `claude` answers to `--version` unless told otherwise. */
 export const FAKE_CLAUDE_VERSION = '2.1.300'
 
+/** A `/wayfinder` invocation as Claude Code records a slash command in a history's user message; `plugin` namespaces it. */
+export const wayfinderCommand = (args: string, plugin?: string): string => {
+  const name = plugin ? `${plugin}:wayfinder` : 'wayfinder'
+  return `<command-message>${name}</command-message>\n<command-name>/${name}</command-name>\n<command-args>${args}</command-args>`
+}
+
 export interface Invocation {
   args: string[]
   cwd: string

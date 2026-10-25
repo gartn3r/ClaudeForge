@@ -70,7 +70,9 @@ function typedMessage(entry: Entry): string | null {
   return text === null ? null : titleFrom(text)
 }
 
-// `/wayfinder`, or `/<plugin>:wayfinder` when Wayfinder comes with a plugin.
+// `/wayfinder`, or `/<plugin>:wayfinder` when Wayfinder comes with a plugin. Like the title,
+// it is read from the two ends only: Wayfinder runs each Ticket in a fresh Session, so the
+// invocation is the first message or a recent one; one buried mid-way in a long history is missed.
 const WAYFINDER_COMMAND = /<command-name>\/(?:[^<:\s]+:)?wayfinder<\/command-name>/
 
 /** The arguments of a `/wayfinder` invocation in a history entry, or null when it holds none. */

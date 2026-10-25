@@ -117,7 +117,7 @@ function SessionRow({ session, now, displayed, onDisplay }: SessionRowProps): Re
   const link = session.wayfinder
   const hasSubtitle = external || session.worktree !== null || link !== null
   // An External session runs elsewhere: it cannot be displayed here.
-  const display = external
+  const displayHandlers = external
     ? {}
     : {
         tabIndex: 0,
@@ -134,7 +134,7 @@ function SessionRow({ session, now, displayed, onDisplay }: SessionRowProps): Re
       title={tooltip}
       aria-disabled={external || undefined}
       aria-current={displayed || undefined}
-      {...display}
+      {...displayHandlers}
     >
       {external ? (
         <span className="cf-status cf-status--external">

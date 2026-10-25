@@ -39,9 +39,9 @@ export function MapPanel({
 }: MapPanelProps): ReactNode {
   const { t } = useTranslation()
   // A Map the user chose holds until the displayed Session or Project changes.
-  const following = `${project}\n${displayedSession?.id ?? ''}`
-  const [chosen, setChosen] = useState<{ following: string; mapId: string } | null>(null)
-  const chosenId = chosen?.following === following ? chosen.mapId : undefined
+  const followKey = `${project}\n${displayedSession?.id ?? ''}`
+  const [chosen, setChosen] = useState<{ followKey: string; mapId: string } | null>(null)
+  const chosenId = chosen?.followKey === followKey ? chosen.mapId : undefined
   const linkedId = displayedSession?.wayfinder?.mapId
   const summary =
     listing &&
@@ -95,7 +95,7 @@ export function MapPanel({
             <MapSelector
               maps={listing.maps}
               shown={map}
-              onChoose={(mapId) => setChosen({ following, mapId })}
+              onChoose={(mapId) => setChosen({ followKey, mapId })}
             />
           </h2>
         )}
@@ -221,7 +221,12 @@ function MapView({ map, sessions, displayedSessionId, onDisplaySession }: MapVie
             </div>
             <ul className="cf-decided" aria-labelledby="map-decided-label">
               {decided.map((ticket) => (
-                <li key={ticket.id} className="cf-chip" title={ticket.name}>
+                <li
+                  key={ticket.id}
+                  className="cf-chip"
+                  title={ticket.name}
+                  aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
+                >
                   <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
                   <span>{ticket.name}</span>
                 </li>

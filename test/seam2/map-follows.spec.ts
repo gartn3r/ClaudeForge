@@ -1,5 +1,7 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
-import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { createFakeEnvironment, wayfinderCommand, type FakeEnvironment } from '../fake-env'
 import { launchClaudeForge, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
@@ -13,10 +15,7 @@ async function wayfinderSession(id: string, args: string, title: string, timesta
       type: 'user',
       cwd,
       timestamp,
-      message: {
-        role: 'user',
-        content: `<command-message>wayfinder</command-message>\n<command-name>/wayfinder</command-name>\n<command-args>${args}</command-args>`
-      }
+      message: { role: 'user', content: wayfinderCommand(args) }
     },
     { type: 'ai-title', aiTitle: title }
   ])
@@ -70,6 +69,24 @@ test('the Map panel follows the displayed Session, its Ticket highlighted and ot
   // A Session of another Project brings that Project's Map panel.
   await explorer.getByRole('list', { name: 'harbor-api' }).getByRole('listitem').filter({ hasText: 'Add an OpenAPI export' }).click()
   await expect(panel).toContainText('This Project’s Tracker, GitHub, is not supported yet.')
+})
+
+test('a Session’s Map shows even when every Ticket on it is decided, without the panel collapsing', async () => {
+  const project = env.projects.dotfiles
+  await mkdir(join(project, '.scratch', 'shell-setup', 'issues'), { recursive: true })
+  await writeFile(join(project, '.scratch', 'shell-setup', 'map.md'), '# Shell setup\n\n## Destination\n\nOne shell everywhere.\n')
+  await writeFile(join(project, '.scratch', 'shell-setup', 'issues', '01-which-shell.md'), '# Which shell\n\nStatus: resolved\n')
+  await env.writeHistory(project, '8f90a1b2-c3d4-4e5f-a6b7-c8d9e0f1a2b3', [
+    { type: 'user', cwd: project, timestamp: '2026-10-22T09:00:00.000Z', message: { role: 'user', content: wayfinderCommand('shell-setup 01') } }
+  ])
+  claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
+  const { window } = claudeforge
+  const panel = window.getByRole('complementary', { name: 'Map' })
+
+  await window.getByRole('list', { name: 'dotfiles' }).getByRole('listitem').click()
+
+  await expect(panel.getByRole('heading', { name: 'Shell setup' })).toBeVisible()
+  await expect(panel.getByRole('list', { name: 'Decided' }).getByRole('listitem').filter({ hasText: 'Which shell' })).toHaveAttribute('aria-current', 'true')
 })
 
 test('the Map selector shows another Map of the Project until another Session is displayed', async () => {

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
 import type { ProjectSessions, SessionSummary } from '../../src/shared/api'
-import { createFakeEnvironment, encodeProjectPath, type FakeEnvironment } from '../fake-env'
+import { createFakeEnvironment, encodeProjectPath, wayfinderCommand, type FakeEnvironment } from '../fake-env'
 import { startBackend } from './backend'
 
 const WEEK_VIEW_SESSION = 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f'
@@ -14,8 +14,7 @@ const AUDIT_SESSION = '6d7e8f90-a1b2-4c3d-94e5-f6a7b8c9d0e1'
 const user = (timestamp: string, content: unknown): object => ({ type: 'user', timestamp, message: { role: 'user', content } })
 
 /** A `/wayfinder` invocation, as Claude Code records the slash command. */
-const wayfinder = (timestamp: string, args: string): object =>
-  user(timestamp, `<command-message>wayfinder</command-message>\n<command-name>/wayfinder</command-name>\n<command-args>${args}</command-args>`)
+const wayfinder = (timestamp: string, args: string): object => user(timestamp, wayfinderCommand(args))
 
 describe('the Session ↔ Ticket link', () => {
   let env: FakeEnvironment
@@ -49,9 +48,7 @@ describe('the Session ↔ Ticket link', () => {
 
   it('links a Session to a whole Map when its invocation, from a plugin, names no Ticket', async () => {
     await writeHistory(AUDIT_SESSION, [
-      user('2026-10-24T09:00:00.000Z', [
-        { type: 'text', text: '<command-message>mattpocock-skills:wayfinder</command-message>\n<command-name>/mattpocock-skills:wayfinder</command-name>\n<command-args>pantry-audit</command-args>' }
-      ])
+      user('2026-10-24T09:00:00.000Z', [{ type: 'text', text: wayfinderCommand('pantry-audit', 'mattpocock-skills') }])
     ])
     backend = startBackend(env)
 
