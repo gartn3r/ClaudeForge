@@ -240,7 +240,13 @@
   "closing": {
     "title_one": "Claude travaille encore dans une Session. Fermer ClaudeForge ?",
     "title_other": "Claude travaille encore dans {{count}} Sessions. Fermer ClaudeForge ?",
+    "titleUnsaved_one": "Un skill ou sous-agent a des modifications non enregistrées. Fermer ClaudeForge ?",
+    "titleUnsaved_other": "{{count}} skills et sous-agents ont des modifications non enregistrées. Fermer ClaudeForge ?",
+    "titleBoth": "Claude travaille encore, et des modifications ne sont pas enregistrées. Fermer ClaudeForge ?",
+    "workingList": "Sessions où Claude travaille :",
+    "unsavedList": "Modifications non enregistrées :",
     "body": "La fermeture arrête chaque processus claude démarré par ClaudeForge. Chaque Session revient en onglet au prochain démarrage de ClaudeForge, et la conversation jusqu’ici reste dans l’historique de Claude Code.",
+    "bodyUnsaved": "La fermeture abandonne les modifications non enregistrées : chaque fichier reste tel qu’il a été enregistré pour la dernière fois.",
     "action": "Fermer quand même"
   },
   "map": {

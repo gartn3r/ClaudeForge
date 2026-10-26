@@ -102,7 +102,7 @@ describe('closing ClaudeForge', () => {
   let win: ReturnType<typeof fakeWindow>
   /** What happened, oldest first: each Hosted session's exit, and the window closing. */
   let happened: string[]
-  let closeRequests: Array<{ working: string[] }>
+  let closeRequests: Array<{ working: string[]; unsavedEditors: string[] }>
   let statusEvents: Array<{ id: string; status: HostedSessionStatus }>
   let outputs: Map<string, string>
 
@@ -160,7 +160,7 @@ describe('closing ClaudeForge', () => {
 
     await backend.api.window.close()
 
-    expect(closeRequests).toEqual([{ working: [working] }])
+    expect(closeRequests).toEqual([{ working: [working], unsavedEditors: [] }])
     expect(happened).toEqual([])
 
     await backend.api.window.closeAnyway()
@@ -175,7 +175,7 @@ describe('closing ClaudeForge', () => {
 
     win.requestClose()
 
-    await vi.waitFor(() => expect(closeRequests).toEqual([{ working: [working] }]))
+    await vi.waitFor(() => expect(closeRequests).toEqual([{ working: [working], unsavedEditors: [] }]))
     expect(happened).toEqual([])
 
     await backend.api.sessionHost.stop(working)
@@ -183,5 +183,41 @@ describe('closing ClaudeForge', () => {
     win.requestClose()
 
     await vi.waitFor(() => expect(happened).toEqual([`exit ${working}`, 'closed']))
+  })
+
+  it('with an editor tab unsaved, asks the interface to warn the user, and closes only once they agree', async () => {
+    await start()
+    const idle = await startSession()
+    await backend.api.window.setUnsavedEditors(['editor-1', 'editor-3'])
+
+    await backend.api.window.close()
+
+    expect(closeRequests).toEqual([{ working: [], unsavedEditors: ['editor-1', 'editor-3'] }])
+    expect(happened).toEqual([])
+
+    // Alt+F4 warns the same way, naming the Hosted session that started working meanwhile too.
+    await backend.api.sessionHost.write(idle, '/work 60000\r')
+    await vi.waitFor(() => expect(statusEvents).toContainEqual({ id: idle, status: 'working' }), { timeout: 15_000 })
+    win.requestClose()
+
+    await vi.waitFor(() =>
+      expect(closeRequests.at(-1)).toEqual({ working: [idle], unsavedEditors: ['editor-1', 'editor-3'] })
+    )
+    expect(happened).toEqual([])
+
+    await backend.api.window.closeAnyway()
+
+    expect(happened).toEqual([`exit ${idle}`, 'closed'])
+  })
+
+  it('closes at once once every editor tab is saved again', async () => {
+    await start()
+    await backend.api.window.setUnsavedEditors(['editor-1'])
+    await backend.api.window.setUnsavedEditors([])
+
+    win.requestClose()
+
+    await vi.waitFor(() => expect(happened).toEqual(['closed']))
+    expect(closeRequests).toEqual([])
   })
 })
