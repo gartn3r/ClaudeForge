@@ -1,4 +1,13 @@
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Map as MapIcon,
+  PanelRightClose,
+  PanelRightOpen,
+  SquareTerminal
+} from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type {
@@ -8,17 +17,35 @@ import type {
   ProjectMapPreferences,
   SessionSummary,
   Ticket,
+  Tracker,
   TrackerProblem,
   WayfinderMap
 } from '../../../shared/api'
 import { api } from '../api'
+import type { TypedCommand } from '../terminal/hosted-terminal'
 import { IconButton } from './IconButton'
 import { MapGraph, Rollup, openBlockerNames } from './MapGraph'
 import { MapText, itemCount } from './MapText'
 import { MapTree } from './MapTree'
+import { TicketDetails } from './TicketDetails'
 
 /** The Map the panel shows when no Session names one: the most recently updated open one. */
 export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
+
+/** How `/wayfinder` names a Map or Ticket: an issue of the Project's GitHub repository as `#12`, else by its id. */
+const reference = (tracker: Tracker, id: string): string => (tracker.kind === 'github' && /^\d+$/.test(id) ? `#${id}` : id)
+
+/**
+ * How `/wayfinder` names a Ticket to run as a Map of its own: its GitHub issue, or its markdown
+ * file, from the Project's folder when it lies inside.
+ */
+function ticketAsMap(tracker: Tracker, project: string, ticket: Ticket): string {
+  if (tracker.kind === 'github') return reference(tracker, ticket.id)
+  const folder = project.replace(/[\\/]+$/, '')
+  const inside =
+    ticket.path.slice(0, folder.length).toLowerCase() === folder.toLowerCase() && /[\\/]/.test(ticket.path[folder.length] ?? '')
+  return (inside ? ticket.path.slice(folder.length + 1) : ticket.path).replace(/\\/g, '/')
+}
 
 const PROBLEM_MESSAGES = {
   'gh-missing': 'map.problem.ghMissing',
@@ -44,6 +71,8 @@ interface MapPanelProps {
   /** How the user last looked at each of the Project's Maps. */
   preferences: ProjectMapPreferences
   onDisplaySession(id: string): void
+  /** Starts a new Hosted session in the Project, with a `/wayfinder` command typed in its prompt. */
+  onStartSession(typed: TypedCommand): void
   onCollapse(): void
 }
 
@@ -58,6 +87,7 @@ export function MapPanel({
   displayedSession,
   preferences,
   onDisplaySession,
+  onStartSession,
   onCollapse
 }: MapPanelProps): ReactNode {
   const { t } = useTranslation()
@@ -124,6 +154,29 @@ ${mapId ?? ''}`
     changeShown({ view: 'graph' })
   }
 
+  // The Ticket whose details show, while the panel shows the same Map of the same Project.
+  const [inDetail, setInDetail] = useState<{ mapKey: string; ticketId: string } | null>(null)
+  const detailed = (inDetail?.mapKey === mapKey && map?.tickets.find((ticket) => ticket.id === inDetail.ticketId)) || null
+  // Only a workable Ticket starts a Session (ADR 0002: ClaudeForge only types the command).
+  const act = (ticketId: string): void => {
+    const ticket = map?.tickets.find((each) => each.id === ticketId)
+    if (!map || !listing || !ticket) return
+    if (!ticket.workable) return setInDetail({ mapKey, ticketId })
+    const { tracker } = listing
+    onStartSession({
+      command: `/wayfinder ${reference(tracker, map.id)} ${reference(tracker, ticket.id)}`,
+      ticket: ticket.name,
+      map: map.name
+    })
+  }
+  // Inside an opened Parent Ticket, Wayfinder can work that Ticket as a Map of its own.
+  // A blocked one cannot be worked yet (ADR 0004).
+  const levelCommand =
+    level?.state === 'parent' && listing ? `/wayfinder ${ticketAsMap(listing.tracker, project, level)}` : null
+  const runLevelAsMap = (): void => {
+    if (level && levelCommand) onStartSession({ command: levelCommand, ticket: level.name, map: null })
+  }
+
   let body: ReactNode = null
   if (listing?.tracker.kind === 'unsupported') {
     const { name } = listing.tracker
@@ -143,6 +196,9 @@ ${mapId ?? ''}`
         map={map}
         level={view === 'graph' ? level : null}
         onOpen={openLevel}
+        onAct={act}
+        levelCommand={levelCommand}
+        onRunLevelAsMap={runLevelAsMap}
         tree={
           view === 'tree' && (
             <MapTree
@@ -152,6 +208,7 @@ ${mapId ?? ''}`
               folded={folded}
               onFold={fold}
               onOpen={openInGraph}
+              onAct={act}
             />
           )
         }
@@ -188,6 +245,7 @@ ${mapId ?? ''}`
         <IconButton icon={PanelRightClose} label={t('map.collapse')} onClick={onCollapse} />
       </div>
       <div className="map-panel__body">{body}</div>
+      {map && detailed && <TicketDetails map={map} ticket={detailed} onClose={() => setInDetail(null)} />}
     </>
   )
 }
@@ -306,6 +364,11 @@ interface MapViewProps {
   /** The opened Parent Ticket, whose Sub-tickets the panel shows; null for the Map's own level. */
   level: Ticket | null
   onOpen(ticketId: string): void
+  /** Starts a workable Ticket, or shows any other one's details. */
+  onAct(ticketId: string): void
+  /** The `/wayfinder` command that works the opened Parent Ticket as a Map of its own; null while it is blocked. */
+  levelCommand: string | null
+  onRunLevelAsMap(): void
   /** The Tree view, shown in place of the graph; false for the graph. */
   tree: ReactNode
   sessions: SessionSummary[]
@@ -313,7 +376,18 @@ interface MapViewProps {
   onDisplaySession(id: string): void
 }
 
-function MapView({ map, level, onOpen, tree, sessions, displayedSessionId, onDisplaySession }: MapViewProps): ReactNode {
+function MapView({
+  map,
+  level,
+  onOpen,
+  onAct,
+  levelCommand,
+  onRunLevelAsMap,
+  tree,
+  sessions,
+  displayedSessionId,
+  onDisplaySession
+}: MapViewProps): ReactNode {
   const { t } = useTranslation()
   const [showDecided, setShowDecided] = useState(false)
   const levelId = level?.id ?? null
@@ -335,6 +409,14 @@ function MapView({ map, level, onOpen, tree, sessions, displayedSessionId, onDis
       {level ? (
         <Lead key={level.id} label={t('map.question')} text={level.question}>
           <Rollup ticket={level} blockers={openBlockerNames(map, level)} />
+          <button
+            type="button"
+            className="cf-btn cf-btn--ghost map-link-button map-issue-link"
+            // The Tracker's own path for it, which the backend opens: nothing to tell the user if it fails.
+            onClick={() => void api.map.openIssue(level.path).catch(() => undefined)}
+          >
+            {t('map.openIssue')}
+          </button>
         </Lead>
       ) : (
         <Lead key="" label={t('map.destination')} text={map.destination} />
@@ -366,12 +448,12 @@ function MapView({ map, level, onOpen, tree, sessions, displayedSessionId, onDis
                 {decided.map((ticket) => (
                   <li
                     key={ticket.id}
-                    className="cf-chip"
-                    title={ticket.name}
                     aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
                   >
-                    <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
-                    <span>{ticket.name}</span>
+                    <button type="button" className="cf-chip" title={ticket.name} onClick={() => onAct(ticket.id)}>
+                      <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
+                      <span>{ticket.name}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -385,7 +467,23 @@ function MapView({ map, level, onOpen, tree, sessions, displayedSessionId, onDis
             displayedSessionId={displayedSessionId}
             onDisplaySession={onDisplaySession}
             onOpen={onOpen}
+            onAct={onAct}
           />
+        </div>
+      )}
+      {level && levelCommand && (
+        <div className="map-run-level">
+          <button type="button" className="cf-btn map-run-level__button" onClick={onRunLevelAsMap}>
+            <SquareTerminal className="cf-icon cf-icon--sm" aria-hidden="true" />
+            {t('map.runAsMap')}
+          </button>
+          <p className="map-run-level__hint">
+            <Trans
+              i18nKey="map.runAsMapHint"
+              values={{ name: level.name, command: levelCommand }}
+              components={{ code: <code className="cf-mono" /> }}
+            />
+          </p>
         </div>
       )}
       {!level && (

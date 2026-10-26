@@ -12,8 +12,11 @@ interface TrackerAdapter {
   readMap(project: string, mapId: string): Promise<MapRecord>
 }
 
+/** What reads a Project's Maps; opening an issue is the desktop's. */
+export type MapReader = Pick<BackendApi['map'], 'list' | 'load'>
+
 /** The Map service: reads a Project's Maps from its Tracker, never writing to it (ADR 0002). */
-export function createMapService(env: Environment): BackendApi['map'] {
+export function createMapService(env: Environment): MapReader {
   const adapters: Record<'local-markdown' | 'github', TrackerAdapter> = {
     'local-markdown': { listMaps, readMap },
     github: createGitHubTracker(createGh(env))

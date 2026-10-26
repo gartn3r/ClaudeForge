@@ -199,4 +199,43 @@ describe('Map service', () => {
       await expect(backend.api.map.load(env.projects['recipe-box'], '../recipe-box/.scratch/meal-planner')).rejects.toThrow()
     })
   })
+
+  describe('opening an issue', () => {
+    /** What the desktop was asked to open, oldest first. */
+    let opened: Array<{ url: string } | { file: string }>
+
+    beforeEach(() => {
+      backend.dispose()
+      opened = []
+      backend = startBackend(env, undefined, undefined, {
+        openUrl: async (url) => void opened.push({ url }),
+        openFile: async (file) => void opened.push({ file })
+      })
+    })
+
+    it("opens a local markdown Ticket's file in its default app", async () => {
+      const ticket = (await backend.api.map.load(env.projects['recipe-box'], 'meal-planner')).tickets[2]!
+
+      await backend.api.map.openIssue(ticket.path)
+
+      expect(opened).toEqual([{ file: ticket.path }])
+    })
+
+    it("opens a GitHub Ticket's issue in the browser", async () => {
+      const ticket = (await backend.api.map.load(env.projects['harbor-api'], '40')).tickets[0]!
+
+      await backend.api.map.openIssue(ticket.path)
+
+      expect(opened).toEqual([{ url: ticket.path }])
+    })
+
+    it('refuses anything but a web address or a markdown file', async () => {
+      const issues = join(env.projects['recipe-box'], '.scratch', 'meal-planner', 'issues')
+
+      for (const path of ['file:///C:/Windows/notepad.exe', 'http://example.com/1', join(issues, '..', '..', '..', 'README'), 'issues/01-recipe-storage.md', join(issues, '99-missing.md')]) {
+        await expect(backend.api.map.openIssue(path)).rejects.toThrow()
+      }
+      expect(opened).toEqual([])
+    })
+  })
 })

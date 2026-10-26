@@ -643,7 +643,7 @@ dialog.cf-dialog::backdrop {
   color: var(--text);
   font-weight: 500;
 }
-.cf-decided .cf-chip[aria-current="true"] {
+.cf-decided [aria-current="true"] .cf-chip {
   box-shadow: inset 0 0 0 1.5px var(--brass);
 }
 .explorer__wayfinder {
@@ -965,8 +965,8 @@ dialog.cf-dialog::backdrop {
   align-items: center;
   gap: var(--space-1);
 }
-/* The whole card opens a Parent Ticket; Session badges stay clickable above it. */
-.map-ticket__open {
+/* The whole card opens a Parent Ticket, starts a workable Ticket or shows its details; Session badges stay clickable above it. */
+.map-ticket__act {
   position: absolute;
   inset: 0;
   padding: 0;
@@ -976,7 +976,7 @@ dialog.cf-dialog::backdrop {
   cursor: pointer;
   pointer-events: auto;
 }
-.map-ticket__open:focus-visible {
+.map-ticket__act:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -1051,8 +1051,11 @@ dialog.cf-dialog::backdrop {
   padding: 6px 4px 6px 8px;
   list-style: none;
 }
-/* Only the twisty and a Parent Ticket's name act; the row itself does not. */
+/* A Parent Ticket's row: only its twisty and its name act. Any other row acts on its Ticket. */
 .map-tree__row {
+  cursor: pointer;
+}
+.map-tree__row--parent {
   cursor: default;
 }
 .map-tree__row--parent .cf-tree-name {
@@ -1122,4 +1125,68 @@ dialog.cf-dialog::backdrop {
 .explorer__projects .cf-project:hover .cf-btn--icon,
 .explorer__projects .cf-project:focus-within .cf-btn--icon {
   opacity: 1;
+}
+
+/* Starting a Ticket from the Map */
+.terminal-typed {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin: var(--space-3) 20px 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.terminal-typed > .cf-icon {
+  flex: none;
+  color: var(--brass);
+}
+.terminal-typed > span {
+  flex: 1;
+}
+.terminal-typed strong {
+  font-weight: 600;
+}
+.map-decided .cf-decided .cf-chip {
+  border: 0;
+  font-family: inherit;
+}
+.map-decided .cf-decided .cf-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.map-issue-link {
+  align-self: flex-start;
+}
+.map-run-level {
+  flex: none;
+  padding: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.map-run-level__button {
+  width: 100%;
+}
+.map-run-level__hint {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+.map-run-level__hint code {
+  overflow-wrap: anywhere;
+}
+.ticket-details__state,
+.ticket-details__reason,
+.ticket-details__error {
+  margin: 0;
+}
+.ticket-details__error {
+  color: var(--danger);
+}
+.ticket-details__part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }

@@ -155,7 +155,12 @@
     "empty": "Open a folder to start a Session in it.",
     "openFolder": "Open folder",
     "exited": "Claude Code exited with code {{code}}.",
-    "failed": "Claude Code could not start in this folder."
+    "failed": "Claude Code could not start in this folder.",
+    "typed": {
+      "label": "Typed, not sent",
+      "ticket": "Ready to start <b>{{ticket}}</b> from <m>{{map}}</m>. Check the command below, then press Enter.",
+      "map": "Ready to run Wayfinder on <b>{{ticket}}</b> as a Map of its own. Check the command below, then press Enter."
+    }
   },
   "tabs": {
     "newSession": "New Session",
@@ -213,7 +218,8 @@
       "closed": "Closed",
       "blockedBy_one": "Blocked by {{count}} open Ticket",
       "blockedBy_other": "Blocked by {{count}} open Tickets",
-      "parentWaits": "Blocked: its Parent Ticket waits"
+      "parentWaits": "Blocked: its Parent Ticket waits",
+      "parent": "Parent Ticket"
     },
     "tooltip": {
       "frontier": "{{name}} · on the Frontier",
@@ -255,6 +261,21 @@
     "crumbs": "Where you are in the Map",
     "back": "Back to {{name}}",
     "open": "Open {{name}}",
+    "start": "Start {{name}} in a new Session",
+    "showDetails": "Show the details of {{name}}",
+    "openIssue": "Open the issue",
+    "runAsMap": "Run Wayfinder on this Ticket in a new Session",
+    "runAsMapHint": "Treats {{name}} as a Map of its own: <code>{{command}}</code> is typed in a new Session, not sent.",
+    "details": {
+      "answer": "Answer",
+      "blockedBy": "Blocked by {{blockers}}.",
+      "blockedOutside_one": "Blocked by {{count}} open issue outside this Map.",
+      "blockedOutside_other": "Blocked by {{count}} open issues outside this Map.",
+      "parentWaits": "Blocked: its Parent Ticket waits for what blocks it.",
+      "claimedBy": "Claimed by {{assignee}}.",
+      "claimed": "Claimed by someone else.",
+      "openFailed": "The issue could not be opened."
+    },
     "subTickets_one": "{{count}} sub",
     "subTickets_other": "{{count}} sub",
     "rollup": {

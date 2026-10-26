@@ -257,6 +257,16 @@ export interface TerminalSize {
   rows: number
 }
 
+/** How a new Hosted session starts. */
+export interface SessionStartOptions {
+  /**
+   * Text Claude Code types in its prompt once the prompt is ready, without sending it
+   * (`--prefill`): the user checks it, then presses Enter. Refused with a `"`, `%` or line break
+   * when `claude` is a batch file, as cmd.exe, which runs it, would change it.
+   */
+  prefill?: string
+}
+
 /** A Hosted session as the Session host started it. */
 export interface HostedSession {
   /** ClaudeForge's id for the Hosted session, not Claude Code's session id. */
@@ -405,7 +415,7 @@ export interface BackendApi {
      * Starts `claude` in a Project, as a new Session with an id ClaudeForge picks (`--session-id`);
      * its output, status and exit arrive as events.
      */
-    start(project: string, size: TerminalSize): Promise<HostedSession>
+    start(project: string, size: TerminalSize, options?: SessionStartOptions): Promise<HostedSession>
     /**
      * Continues a past Session (`claude --resume <id>`) in the folder it ran in; refused for an
      * unknown Session or one whose `claude` still runs outside ClaudeForge.
@@ -423,6 +433,11 @@ export interface BackendApi {
     /** Detects the Project's Tracker and lists its Maps. */
     list(project: string): Promise<MapListing>
     load(project: string, mapId: string): Promise<WayfinderMap>
+    /**
+     * Opens a Map's or Ticket's issue where its Tracker keeps it (its `path`): a web address in the
+     * browser, a markdown file in its default app; refused for anything else.
+     */
+    openIssue(path: string): Promise<void>
   }
   extensions: {
     /** Lists the Extensions of a Project, through Claude Code's CLI for MCP servers and plugins. */

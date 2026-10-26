@@ -188,13 +188,15 @@ if (args[0] === 'mcp' || args[0] === 'plugin') refuse(`The fake claude does not 
 
 // Interactive: a stand-in for Claude Code's prompt. Like Claude Code it reads its terminal in raw
 // mode, so Enter (\r) submits and Ctrl+J (\n) inserts a newline. It reports its terminal's size at
-// start and on every resize, echoes each submitted prompt, and exits on `/exit`. Like Claude Code it
-// names its terminal after the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
+// start and on every resize, echoes each submitted prompt, and exits on `/exit`. With `--prefill
+// <text>`, its prompt starts holding the text, unsent. Like Claude Code it names its terminal after
+// the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
 // - `/work <ms>`: a spinner redrawn every 100 ms for that long, then `Done.`; any key interrupts it.
 // - `/ask [<ms>]`: works that long first, if given, then asks `Red or blue?` and waits for the user;
 //   the next prompt answers it, then `Done.`.
 // - `/permission`: asks `Allow Bash(npm test)?` as a permission prompt, answered like `/ask`.
 // - `/fail`: works briefly, then fails with `API Error`.
+// - `/wayfinder <args>`: recorded as Claude Code records the slash command, then works briefly.
 //
 // Status signals: like Claude Code 2.1.295 and later, it asks its terminal whether it reads OSC 7501
 // Program Status reports, and once the terminal says so, reports working, blocked (kind question or
@@ -319,6 +321,11 @@ function submit() {
   } else if (command === 'fail') {
     rememberPrompt(text)
     work(300, fail)
+  } else if (text.startsWith('/wayfinder ')) {
+    // Recorded as Claude Code records a slash command, then worked on like any skill.
+    const args = text.slice('/wayfinder '.length)
+    rememberPrompt(`<command-message>wayfinder</command-message>\n<command-name>/wayfinder</command-name>\n<command-args>${args}</command-args>`)
+    work(300)
   } else {
     write('> ')
   }
@@ -357,4 +364,7 @@ process.stdin.on('end', () => process.exit(0))
 // comes before anything the user types once the banner shows.
 if (reportsStatus) write('\x1b]7501;?\x1b\\')
 write(`Fake Claude Code\r\nTerminal ${size()}\r\n> `)
+// Like Claude Code's `--prefill`, its prompt starts holding that text, unsent.
+prompt = optionValue('--prefill') ?? ''
+write(prompt)
 process.stdout.on('resize', () => write(`\r\nTerminal resized to ${size()}\r\n> ${prompt.replaceAll('\n', '\r\n  ')}`))

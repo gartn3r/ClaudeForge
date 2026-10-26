@@ -1,9 +1,9 @@
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, SquareTerminal } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { HostedTab } from '../terminal/hosted-sessions'
-import type { HostedTerminal } from '../terminal/hosted-terminal'
+import type { HostedTerminal, TypedCommand } from '../terminal/hosted-terminal'
 import { panelId, tabId } from './SessionTabs'
 
 interface TerminalAreaProps {
@@ -13,6 +13,8 @@ interface TerminalAreaProps {
   gpuRendering: boolean
   /** Starts a Session in the folder the user opened. */
   onStart(project: string): void
+  /** Closes a tab, stopping its `claude`. */
+  onClose(key: string): void
 }
 
 /**
@@ -20,7 +22,7 @@ interface TerminalAreaProps {
  * mounted, so a Session in the background keeps running and keeps its
  * scrollback; only the active tab's is on show.
  */
-export function TerminalArea({ tabs, activeKey, gpuRendering, onStart }: TerminalAreaProps): ReactNode {
+export function TerminalArea({ tabs, activeKey, gpuRendering, onStart, onClose }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
 
@@ -42,6 +44,7 @@ export function TerminalArea({ tabs, activeKey, gpuRendering, onStart }: Termina
 
   return (
     <main className="terminal-area" aria-label={t('terminal.label')}>
+      {active?.typed && <TypedBanner typed={active.typed} onCancel={() => onClose(active.key)} />}
       {tabs.map((tab) => (
         <TerminalView
           key={tab.key}
@@ -68,6 +71,33 @@ export function TerminalArea({ tabs, activeKey, gpuRendering, onStart }: Termina
         </div>
       )}
     </main>
+  )
+}
+
+/**
+ * Over a Session whose prompt holds a command ClaudeForge typed: what it starts, for the user to
+ * check before pressing Enter, or to cancel, closing the Session with nothing sent.
+ */
+function TypedBanner({ typed, onCancel }: { typed: TypedCommand; onCancel(): void }): ReactNode {
+  const { t } = useTranslation()
+  return (
+    <div className="terminal-typed" role="status" aria-label={t('terminal.typed.label')}>
+      <SquareTerminal className="cf-icon" aria-hidden="true" />
+      <span>
+        {typed.map === null ? (
+          <Trans i18nKey="terminal.typed.map" values={{ ticket: typed.ticket }} components={{ b: <strong /> }} />
+        ) : (
+          <Trans
+            i18nKey="terminal.typed.ticket"
+            values={{ ticket: typed.ticket, map: typed.map }}
+            components={{ b: <strong />, m: <span className="cf-muted" /> }}
+          />
+        )}
+      </span>
+      <button type="button" className="cf-btn cf-btn--ghost" onClick={onCancel}>
+        {t('dialog.cancel')}
+      </button>
+    </div>
   )
 }
 
