@@ -11,6 +11,7 @@ const MAIN = resolve(__dirname, '../../out/main/index.js')
 export interface RunningClaudeForge {
   app: ElectronApplication
   window: Page
+  /** Ends ClaudeForge without asking, even with a Session working; a journey drives the user's own close itself. */
   close(): Promise<void>
 }
 
@@ -34,7 +35,21 @@ export async function launchClaudeForge(
     BrowserWindow.getAllWindows()[0]!.setBounds({ x: 0, y: 0, width, height })
   }, WINDOW_SIZE)
   await window.waitForFunction((width) => innerWidth === width, WINDOW_SIZE.width)
-  return { app, window, close: () => app.close() }
+  return { app, window, close: () => quit(app) }
+}
+
+/**
+ * Ends ClaudeForge as if its window were gone: closing it asks first while a Session works, and
+ * Playwright's own close would wait for that forever.
+ */
+async function quit(app: ElectronApplication): Promise<void> {
+  await app
+    .evaluate(({ BrowserWindow }) => {
+      for (const win of BrowserWindow.getAllWindows()) win.destroy()
+    })
+    // ClaudeForge may have closed already.
+    .catch(() => undefined)
+  await app.close()
 }
 
 /** Makes the next folder dialogs answer as if the user picked this folder. */

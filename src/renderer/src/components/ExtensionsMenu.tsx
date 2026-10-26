@@ -25,7 +25,7 @@ import type {
   McpServerStatus
 } from '../../../shared/api'
 import { api } from '../api'
-import type { HostedTab } from '../terminal/hosted-sessions'
+import { tabsHosting, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
 import { AddMcpServerDialog, InstallPluginDialog } from './ExtensionDialogs'
 
@@ -312,9 +312,7 @@ function ExtensionsPopover({
   const projectName = folderName(project)
   const scopeName = scope === 'project' ? projectName : null
   const outdated = typeof listing === 'object' ? listing.outdatedSessions : []
-  const outdatedTabs = hostedTabs.filter(
-    ({ end, terminal }) => !end && terminal.sessionId !== null && outdated.includes(terminal.sessionId)
-  )
+  const outdatedTabs = tabsHosting(hostedTabs, outdated).filter(({ end }) => !end)
   const removing = asking?.kind === 'remove' ? asking.extension : null
   const removingChange = removing && removal(removing)
 

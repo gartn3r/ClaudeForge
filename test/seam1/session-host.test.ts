@@ -99,12 +99,13 @@ describe('the Session host', () => {
     const { api } = await start()
     const project = env!.projects['recipe-box']
 
-    const { id } = await api.sessionHost.start(project, SIZE)
+    const { id, sessionId } = await api.sessionHost.start(project, SIZE)
 
     await waitForText(id, 'Fake Claude Code')
+    expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
     expect(await sessionRuns()).toEqual([
       {
-        args: ['--session-id', expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)],
+        args: ['--session-id', sessionId],
         cwd: project,
         env: expect.objectContaining({ CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT: '1', TERM_PROGRAM: 'ClaudeForge' })
       }
@@ -114,9 +115,10 @@ describe('the Session host', () => {
   it('resumes a past Session with claude --resume <id> in its Project', async () => {
     const { api } = await start()
 
-    const { id } = await api.sessionHost.resume(PAST_SESSION, SIZE)
+    const { id, sessionId } = await api.sessionHost.resume(PAST_SESSION, SIZE)
 
     await waitForText(id, 'Fake Claude Code')
+    expect(sessionId).toBe(PAST_SESSION)
     expect(await sessionRuns()).toEqual([
       expect.objectContaining({ args: ['--resume', PAST_SESSION], cwd: env!.projects['harbor-api'] })
     ])
@@ -125,12 +127,13 @@ describe('the Session host', () => {
   it('forks a past Session into a new one with claude --resume <id> --fork-session, in its Project', async () => {
     const { api } = await start()
 
-    const { id } = await api.sessionHost.fork(PAST_SESSION, SIZE)
+    const { id, sessionId } = await api.sessionHost.fork(PAST_SESSION, SIZE)
 
     await waitForText(id, 'Fake Claude Code')
+    expect(sessionId).not.toBe(PAST_SESSION)
     expect(await sessionRuns()).toEqual([
       expect.objectContaining({
-        args: ['--resume', PAST_SESSION, '--fork-session', '--session-id', expect.any(String)],
+        args: ['--resume', PAST_SESSION, '--fork-session', '--session-id', sessionId],
         cwd: env!.projects['harbor-api']
       })
     ])

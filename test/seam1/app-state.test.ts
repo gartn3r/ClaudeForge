@@ -107,6 +107,46 @@ describe('app state', () => {
     expect(ignored.maps).toEqual({ [recipes]: { 'meal-planner': { view: 'tree', folded: ['01'] } } })
   })
 
+  it('starts with no tabs to restore, then keeps the saved Hosted session tabs, in order, across a restart', async () => {
+    const harbor = env.projects['harbor-api']
+    const recipes = env.projects['recipe-box']
+    expect((await start().api.appState.read()).tabs).toEqual([])
+
+    await start().api.appState.write({
+      tabs: [
+        { sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11', project: harbor, title: 'Add an OpenAPI export' },
+        { sessionId: '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7', project: recipes, title: null }
+      ]
+    })
+
+    expect((await start().api.appState.read()).tabs).toEqual([
+      { sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11', project: harbor, title: 'Add an OpenAPI export' },
+      { sessionId: '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7', project: recipes, title: null }
+    ])
+  })
+
+  it('replaces the saved tabs with each write of them, leaving out malformed ones', async () => {
+    const recipes = env.projects['recipe-box']
+    const { api } = start()
+    await api.appState.write({ tabs: [{ sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11', project: recipes, title: null }] })
+
+    const written = await api.appState.write({
+      tabs: [
+        { sessionId: '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7', project: recipes, title: 'Plan the week' },
+        { sessionId: '', project: recipes, title: null },
+        { sessionId: 'c3d2a8f1-1b7e-4c59-9e64-7f0a1d2b3c4d', title: null },
+        { sessionId: 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f', project: recipes, title: 42 },
+        'not a tab'
+      ]
+    } as never)
+
+    expect(written.tabs).toEqual([
+      { sessionId: '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7', project: recipes, title: 'Plan the week' },
+      { sessionId: 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f', project: recipes, title: null }
+    ])
+    expect((await api.appState.write({ tabs: [] })).tabs).toEqual([])
+  })
+
   it('pushes the new state to the interface after every write', async () => {
     const backend = start()
     const pushed: unknown[] = []

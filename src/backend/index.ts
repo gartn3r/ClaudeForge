@@ -29,7 +29,13 @@ import { SessionHost } from './session-host'
 export interface WindowHost {
   minimize(): void
   toggleMaximize(): void
+  /** Closes the window for good: the user's request to close it has been dealt with. */
   close(): void
+  /**
+   * Calls back when Windows asks to close the window (Alt+F4, the taskbar's "Close window"), which
+   * stays open until `close`; returns an unsubscribe.
+   */
+  onCloseRequest(listener: () => void): () => void
   isMaximized(): boolean
   /** Calls back whenever the window is maximized or restored; returns an unsubscribe. */
   onMaximizedChange(listener: (maximized: boolean) => void): () => void
@@ -106,7 +112,7 @@ export function createBackend(options: BackendOptions): Backend {
   const startFolder = options.startFolder ?? process.cwd()
   const win = options.window
 
-  const unsubscribeWindow = win?.onMaximizedChange((maximized) =>
+  const unsubscribeMaximized = win?.onMaximizedChange((maximized) =>
     events.emit('window.maximizedChanged', { maximized })
   )
 
@@ -165,6 +171,22 @@ export function createBackend(options: BackendOptions): Backend {
     return sessionHost.start(session.cwd, size, ['--resume', id, ...args])
   }
 
+  /** Set once the window is closing, from then on resolving once it has. */
+  let closing: Promise<void> | undefined
+  /** Stops every Hosted session, then closes the window once their `claude` have ended; once only. */
+  const stopSessionsAndClose = (): Promise<void> => {
+    closing ??= sessionHost.stopAll().then(() => win?.close())
+    return closing
+  }
+
+  /** The user asked to close the window: warn them first about the Hosted sessions still working. */
+  const requestClose = async (): Promise<void> => {
+    const working = sessionHost.working()
+    if (working.length && !closing) events.emit('window.closeRequested', { working })
+    else await stopSessionsAndClose()
+  }
+  const unsubscribeClose = win?.onCloseRequest(() => void requestClose())
+
   const api: BackendApi = {
     sessionHost: {
       chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
@@ -215,7 +237,8 @@ export function createBackend(options: BackendOptions): Backend {
     window: {
       minimize: async () => win?.minimize(),
       toggleMaximize: async () => win?.toggleMaximize(),
-      close: async () => win?.close(),
+      close: requestClose,
+      closeAnyway: stopSessionsAndClose,
       isMaximized: async () => win?.isMaximized() ?? false,
       notify: async (notification) =>
         win?.notify(notification, () => events.emit('window.notificationClicked', { tag: notification.tag }))
@@ -226,7 +249,8 @@ export function createBackend(options: BackendOptions): Backend {
     api,
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
-      unsubscribeWindow?.()
+      unsubscribeMaximized?.()
+      unsubscribeClose?.()
       sessionHost.dispose()
       sessions.dispose()
       events.clear()

@@ -9,6 +9,7 @@ import {
   type ProjectMapPreferences,
   type PanelId,
   type PanelLayout,
+  type SavedTab,
   type SessionPreferences
 } from '../shared/api'
 
@@ -28,7 +29,8 @@ export function defaultAppState(): AppState {
     gpuRendering: true,
     notifications: true,
     sessions: {},
-    maps: {}
+    maps: {},
+    tabs: []
   }
 }
 
@@ -109,9 +111,19 @@ function mergeMaps(
   return next
 }
 
+/** The well-formed saved tabs of a patch, in order. */
+function savedTabs(tabs: unknown[]): SavedTab[] {
+  return tabs.flatMap((tab) => {
+    if (typeof tab !== 'object' || tab === null) return []
+    const { sessionId, project, title } = tab as Record<string, unknown>
+    if (typeof sessionId !== 'string' || !sessionId || typeof project !== 'string' || !project) return []
+    return [{ sessionId, project, title: typeof title === 'string' && title ? title : null }]
+  })
+}
+
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering, notifications, sessions, maps } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, notifications, sessions, maps, tabs } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -129,6 +141,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
     next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
   }
   if (typeof maps === 'object' && maps !== null) next = { ...next, maps: mergeMaps(state.maps, maps) }
+  if (Array.isArray(tabs)) next = { ...next, tabs: savedTabs(tabs) }
   return next
 }
 

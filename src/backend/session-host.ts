@@ -26,6 +26,9 @@ function withVariables(env: Environment, variables: Environment): Environment {
   return result
 }
 
+/** How long closing ClaudeForge waits for a stopped `claude` to end before it closes anyway. */
+const STOP_TIMEOUT_MS = 5_000
+
 /** One running `claude`, with what it last said it is doing. */
 interface HostedProcess {
   id: string
@@ -37,6 +40,8 @@ interface HostedProcess {
   reader: ProgramStatusReader
   /** Follows its Session history until `claude` shows it reports its status itself. */
   history?: HistoryStatus
+  /** Resolves once `claude` has ended. */
+  ended: Promise<void>
 }
 
 /** The status each reported state gives a Hosted session: blocked waits for the user; a failed turn is over too. */
@@ -127,7 +132,15 @@ export class SessionHost {
       : spawn(claude, claudeArgs, ptyOptions)
 
     const id = randomUUID()
-    const session: HostedProcess = { id, folder, pty, status: 'idle', reader: new ProgramStatusReader() }
+    let ended!: () => void
+    const session: HostedProcess = {
+      id,
+      folder,
+      pty,
+      status: 'idle',
+      reader: new ProgramStatusReader(),
+      ended: new Promise((resolve) => (ended = resolve))
+    }
     session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
       this.setStatus(session, status)
     )
@@ -145,13 +158,19 @@ export class SessionHost {
       stopFollowingHistory(session)
       this.sessions.delete(id)
       this.options.onExit(id, exitCode)
+      ended()
     })
-    return { id, windowsPty: windowsPty() }
+    return { id, sessionId, windowsPty: windowsPty() }
   }
 
   /** The Hosted sessions whose `claude` still runs, oldest first. */
   running(): Array<{ id: string; folder: string }> {
     return [...this.sessions.values()].map(({ id, folder }) => ({ id, folder }))
+  }
+
+  /** The Hosted sessions in the middle of a turn Claude is working through, oldest first. */
+  working(): string[] {
+    return [...this.sessions.values()].filter(({ status }) => status === 'working').map(({ id }) => id)
   }
 
   // A Hosted session that has ended ignores input, resizes and stops.
@@ -168,7 +187,17 @@ export class SessionHost {
     this.sessions.get(id)?.pty.kill()
   }
 
-  /** Ends every Hosted session, as when ClaudeForge closes. */
+  /** Stops every Hosted session's `claude`; resolves once each has ended, or a few seconds later at most. */
+  async stopAll(): Promise<void> {
+    const sessions = [...this.sessions.values()]
+    for (const session of sessions) session.pty.kill()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, STOP_TIMEOUT_MS)))
+    await Promise.race([Promise.all(sessions.map(({ ended }) => ended)), timeout])
+    clearTimeout(timer)
+  }
+
+  /** Ends every Hosted session at once, as when ClaudeForge's window is gone. */
   dispose(): void {
     for (const session of this.sessions.values()) {
       stopFollowingHistory(session)

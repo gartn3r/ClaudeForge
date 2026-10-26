@@ -153,6 +153,7 @@
   "terminal": {
     "label": "Terminal",
     "empty": "Open a folder to start a Session in it.",
+    "dormant": "Select a tab to resume its Session.",
     "openFolder": "Open folder",
     "exited": "Claude Code exited with code {{code}}.",
     "failed": "Claude Code could not start in this folder.",
@@ -170,7 +171,8 @@
       "working": "Working",
       "waiting": "Waiting for you",
       "done": "Done",
-      "ended": "Ended"
+      "ended": "Ended",
+      "dormant": "Not started"
     },
     "notification": {
       "waiting": "Claude is waiting for you.",
@@ -181,6 +183,12 @@
       "body": "Its claude process ends and the tab closes. The conversation so far stays in Claude Code’s history.",
       "action": "Stop it"
     }
+  },
+  "closing": {
+    "title_one": "Claude is still working in a Session. Close ClaudeForge?",
+    "title_other": "Claude is still working in {{count}} Sessions. Close ClaudeForge?",
+    "body": "Closing stops every claude process ClaudeForge started. Each Session comes back as a tab the next time you open ClaudeForge, and the conversation so far stays in Claude Code’s history.",
+    "action": "Close anyway"
   },
   "map": {
     "label": "Map",
