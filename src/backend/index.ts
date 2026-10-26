@@ -171,9 +171,10 @@ export function createBackend(options: BackendOptions): Backend {
     return sessionHost.start(session.cwd, size, ['--resume', id, ...args])
   }
 
-  /** Stops every Hosted session, then closes the window once their `claude` have ended; once only. */
+  /** Set once the window is closing, from then on resolving once it has. */
   let closing: Promise<void> | undefined
-  const closeWindow = (): Promise<void> => {
+  /** Stops every Hosted session, then closes the window once their `claude` have ended; once only. */
+  const stopSessionsAndClose = (): Promise<void> => {
     closing ??= sessionHost.stopAll().then(() => win?.close())
     return closing
   }
@@ -182,7 +183,7 @@ export function createBackend(options: BackendOptions): Backend {
   const requestClose = async (): Promise<void> => {
     const working = sessionHost.working()
     if (working.length && !closing) events.emit('window.closeRequested', { working })
-    else await closeWindow()
+    else await stopSessionsAndClose()
   }
   const unsubscribeClose = win?.onCloseRequest(() => void requestClose())
 
@@ -237,7 +238,7 @@ export function createBackend(options: BackendOptions): Backend {
       minimize: async () => win?.minimize(),
       toggleMaximize: async () => win?.toggleMaximize(),
       close: requestClose,
-      closeAnyway: closeWindow,
+      closeAnyway: stopSessionsAndClose,
       isMaximized: async () => win?.isMaximized() ?? false,
       notify: async (notification) =>
         win?.notify(notification, () => events.emit('window.notificationClicked', { tag: notification.tag }))

@@ -262,8 +262,12 @@ export class HostedTerminal {
     }
   }
 
-  /** Applies a Session host event if it is this Hosted session's, holding it back until `claude` has started. */
+  /**
+   * Applies a Session host event if it is this Hosted session's, holding it back while `claude`
+   * starts. Before that (a dormant tab), none can be its own.
+   */
   private handleEvent(id: string, apply: () => void): void {
+    if (!this.opened) return
     if (!this.session) this.eventsBeforeStart.push({ id, apply })
     else if (id === this.session.id) apply()
   }

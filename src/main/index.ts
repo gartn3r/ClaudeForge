@@ -48,6 +48,10 @@ const shownNotifications = new Set<Notification>()
 function windowHost(win: BrowserWindow): WindowHost {
   // Set once the backend has dealt with the user's request to close, so the window really closes.
   let closing = false
+  // An interface that hangs cannot warn the user either.
+  let hung = false
+  win.on('unresponsive', () => (hung = true))
+  win.on('responsive', () => (hung = false))
   return {
     minimize: () => win.minimize(),
     toggleMaximize: () => (win.isMaximized() ? win.unmaximize() : win.maximize()),
@@ -57,8 +61,8 @@ function windowHost(win: BrowserWindow): WindowHost {
     },
     onCloseRequest: (listener) => {
       const onClose = (event: Electron.Event): void => {
-        // An interface that is gone cannot warn the user: the window just closes.
-        if (closing || win.webContents.isCrashed()) return
+        // An interface that is gone or hangs cannot warn the user: the window just closes.
+        if (closing || hung || win.webContents.isCrashed()) return
         event.preventDefault()
         listener()
       }

@@ -2,7 +2,7 @@ import { X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, onEvent } from '../api'
-import { tabTitle, type HostedTab } from '../terminal/hosted-sessions'
+import { tabsHosting, tabTitle, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
 
 /**
@@ -18,11 +18,11 @@ export function CloseWarning({ tabs }: { tabs: HostedTab[] }): ReactNode {
   useEffect(() => onEvent('window.closeRequested', ({ working }) => setWorking(working)), [])
 
   if (!working) return null
-  const workingTabs = tabs.filter(({ terminal }) => terminal.hostedId !== null && working.includes(terminal.hostedId))
+  const workingTabs = tabsHosting(tabs, working)
 
   return (
     <ConfirmDialog
-      title={t('closing.title', { count: workingTabs.length })}
+      title={t('closing.title', { count: working.length })}
       actionLabel={t('closing.action')}
       actionIcon={X}
       busy={closing}

@@ -49,6 +49,10 @@ const tabOf = (
   dormant
 })
 
+/** The tabs whose Hosted session is one of these, by the Session host's ids. */
+export const tabsHosting = (tabs: HostedTab[], hostedIds: readonly string[]): HostedTab[] =>
+  tabs.filter(({ terminal }) => terminal.hostedId !== null && hostedIds.includes(terminal.hostedId))
+
 /** Calls back when a tab's Hosted session changes status, with the tab as it now is. */
 export type StatusListener = (tab: HostedTab) => void
 
@@ -161,16 +165,17 @@ export function useHostedSessions(
 /**
  * Keeps the open tabs saved in app state as they change, so they come back dormant on the next
  * start, however ClaudeForge closes. Only a tab whose Session Claude Code keeps a history of (in the
- * Session catalog) can resume, so the others are left out: one never prompted, one that never started.
+ * Session catalog) can resume, so the others are left out: one never prompted, one that never started,
+ * one whose resume failed.
  */
 export function useSavedTabs(tabs: HostedTab[], catalog: ProjectSessions[] | null, saved: readonly SavedTab[]): void {
   useEffect(() => {
     // Until the catalog is read, nothing says which Sessions can resume.
     if (!catalog) return
     const known = new Set(catalog.flatMap((group) => group.sessions.map(({ id }) => id)))
-    const next = tabs.flatMap(({ terminal, project, title }): SavedTab[] => {
+    const next = tabs.flatMap(({ terminal, project, title, end }): SavedTab[] => {
       const sessionId = terminal.sessionId
-      return sessionId && known.has(sessionId) ? [{ sessionId, project, title }] : []
+      return sessionId && known.has(sessionId) && end?.exitCode !== null ? [{ sessionId, project, title }] : []
     })
     if (JSON.stringify(next) !== JSON.stringify(saved)) void api.appState.write({ tabs: next })
   }, [tabs, catalog, saved])

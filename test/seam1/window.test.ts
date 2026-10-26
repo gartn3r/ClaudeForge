@@ -75,6 +75,7 @@ describe('window controls', () => {
 
     expect(win.closed).toBe(true)
   })
+
   it('raise a Windows notification, and tell the interface the user clicked it', async () => {
     env = await createFakeEnvironment()
     const win = fakeWindow()
