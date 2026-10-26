@@ -24,7 +24,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { SessionSummary, Ticket, TicketRollup, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
 import { TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
-import { RELAYOUT_MS, prefersReducedMotion, useNewcomers } from '../map/transitions'
+import { RELAYOUT_MS, prefersReducedMotion, useNewcomers, useRelayout } from '../map/transitions'
 import { IconButton } from './IconButton'
 
 export type TFunction = ReturnType<typeof useTranslation>['t']
@@ -219,18 +219,22 @@ interface EdgesProps {
   layout: MapLayout
   /** Changes whenever the Tickets or edges move. */
   signature: string
+  /** The Map changed under the same level: the edges fade in while the Tickets glide to their places. */
+  relayout: boolean
   names: Map<string, string>
 }
 
-/**
- * The edges, drawn in the graph's own coordinates under the pan and zoom. A relayout draws them
- * anew, fading in while the Tickets move to their new places.
- */
-function Edges({ layout, signature, names }: EdgesProps): ReactNode {
+/** The edges, drawn in the graph's own coordinates under the pan and zoom. */
+function Edges({ layout, signature, relayout, names }: EdgesProps): ReactNode {
   const { t } = useTranslation()
   return (
     <ViewportPortal>
-      <svg key={signature} className="map-edges" width={layout.width} height={layout.height}>
+      <svg
+        key={signature}
+        className={relayout ? 'map-edges map-edges--relayout' : 'map-edges'}
+        width={layout.width}
+        height={layout.height}
+      >
         {layout.edges.map((edge) => (
           <g
             key={`${edge.from}-${edge.to}`}
@@ -247,8 +251,6 @@ function Edges({ layout, signature, names }: EdgesProps): ReactNode {
 }
 
 interface PlacementProps {
-  /** The level of the Map the graph shows. */
-  levelKey: string
   /** Changes only when the Tickets or edges move, so a refresh that changed nothing keeps the user's pan and zoom. */
   signature: string
   graphWidth: number
@@ -257,23 +259,22 @@ interface PlacementProps {
 /**
  * Places a new layout at full size from the top: centred when it fits the
  * panel, from the left when a rank holds more Tickets than the panel shows.
- * Text never shrinks on its own; zoom and fit are the user's. A relayout of
- * the same level glides there with the Tickets.
+ * Text never shrinks on its own; zoom and fit are the user's. A relayout
+ * glides there with the Tickets.
  */
-function Placement({ levelKey, signature, graphWidth }: PlacementProps): null {
+function Placement({ signature, graphWidth }: PlacementProps): null {
   const flow = useReactFlow()
   const width = useStore((state) => state.width)
-  const placed = useRef<{ levelKey: string; signature: string } | null>(null)
+  const placedSignature = useRef<string | null>(null)
   useEffect(() => {
     if (width === 0) return
-    const before = placed.current
-    const relayout = before?.levelKey === levelKey && before.signature !== signature
-    placed.current = { levelKey, signature }
+    const relayout = placedSignature.current !== null && placedSignature.current !== signature
+    placedSignature.current = signature
     void flow.setViewport(
       { x: Math.max(PADDING, (width - graphWidth) / 2), y: PADDING, zoom: 1 },
       relayout && !prefersReducedMotion() ? { duration: RELAYOUT_MS } : undefined
     )
-  }, [flow, levelKey, signature, graphWidth, width])
+  }, [flow, signature, graphWidth, width])
   return null
 }
 
@@ -359,8 +360,9 @@ export function MapGraph({
   }, [map, level, showDecided])
   const counted = useMemo(() => ticketsBeneath(map, level), [map, level])
 
-  // What changed since this level of the Map was last drawn, to animate it.
-  const levelKey = `${map.path}\n${level ?? ''}`
+  // What changed since this view of the Map was last drawn, to animate it. Another Map, level or
+  // view (closed Tickets shown or not) is drawn afresh: nothing glides from one to the other.
+  const levelKey = `${map.path}\n${level ?? ''}\n${showDecided}`
   const entering = useNewcomers(levelKey, layout.tickets.map(({ ticket }) => ticket.id))
   const reachedFrontier = useNewcomers(
     levelKey,
@@ -374,6 +376,7 @@ export function MapGraph({
       ].join(' '),
     [layout]
   )
+  const relayout = useRelayout(levelKey, signature)
 
   const nodes = useMemo(() => {
     return layout.tickets.map(({ ticket, x, y }): TicketCardNode => {
@@ -409,6 +412,7 @@ export function MapGraph({
         <p className="empty">{t('map.allDecided')}</p>
       ) : (
         <ReactFlow
+          key={levelKey}
           nodes={nodes}
           edges={[]}
           nodeTypes={NODE_TYPES}
@@ -423,8 +427,8 @@ export function MapGraph({
           maxZoom={2}
           attributionPosition="top-right"
         >
-          <Edges layout={layout} signature={signature} names={names} />
-          <Placement levelKey={levelKey} signature={signature} graphWidth={layout.width} />
+          <Edges layout={layout} signature={signature} relayout={relayout} names={names} />
+          <Placement signature={signature} graphWidth={layout.width} />
           <ZoomControls />
         </ReactFlow>
       )}

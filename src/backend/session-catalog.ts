@@ -1,6 +1,6 @@
 import { watch, type FSWatcher, type Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { basename, join } from 'node:path'
 import type {
   ProjectSessions,
   SessionDeletion,
@@ -11,7 +11,7 @@ import type {
 import { readLiveSessions, type LiveSession } from './live-sessions'
 import type { TrashItem } from './recycle-bin'
 import { readHistory, type HistorySummary } from './session-history'
-import { placeFolder, type FolderPlace } from './worktree'
+import { pathKey, placeFolder, type FolderPlace } from './worktree'
 
 /** How long to let a burst of file changes settle before re-reading. */
 const SETTLE_MS = 150
@@ -41,12 +41,6 @@ interface CachedHistory {
   size: number
   mtimeMs: number
   summary: HistorySummary
-}
-
-/** Windows paths compare without regard to case. */
-const pathKey = (path: string): string => {
-  const resolved = resolve(path)
-  return process.platform === 'win32' ? resolved.toLowerCase() : resolved
 }
 
 /**

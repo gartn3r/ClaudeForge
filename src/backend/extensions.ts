@@ -17,6 +17,7 @@ import type {
   McpServerStatus
 } from '../shared/api'
 import { runClaude, type Environment } from './claude-code'
+import { pathKey } from './worktree'
 
 /** How long `claude mcp list` may take: it starts and health-checks every server. */
 const MCP_LIST_TIMEOUT_MS = 120_000
@@ -175,12 +176,6 @@ async function readManifest(installPath: string): Promise<PluginManifest> {
     skills: paths(manifest.skills),
     agents: paths(manifest.agents)
   }
-}
-
-/** Windows paths compare without regard to case. */
-const pathKey = (path: string): string => {
-  const resolved = resolve(path)
-  return process.platform === 'win32' ? resolved.toLowerCase() : resolved
 }
 
 /** Where Claude Code keeps what ClaudeForge adds at a scope: for the Project, the user's own there. */

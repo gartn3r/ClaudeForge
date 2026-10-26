@@ -9,7 +9,7 @@ import {
   RotateCw,
   SquareTerminal
 } from 'lucide-react'
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type {
   MapListing,
@@ -23,7 +23,7 @@ import type {
   WayfinderMap
 } from '../../../shared/api'
 import { api } from '../api'
-import { useNewcomers } from '../map/transitions'
+import { RELAYOUT_EASING, RELAYOUT_MS, prefersReducedMotion, useNewcomers } from '../map/transitions'
 import type { TypedCommand } from '../terminal/hosted-terminal'
 import { IconButton } from './IconButton'
 import { MapGraph, Rollup, openBlockerNames } from './MapGraph'
@@ -438,6 +438,8 @@ function MapView({
   const decided = map.tickets.filter((ticket) => ticket.parent === levelId && map.decided.includes(ticket.id))
   // A Ticket that closes leaves the graph and slides up into the strip.
   const justDecided = useNewcomers(`${map.path}\n${levelId ?? ''}`, decided.map((ticket) => ticket.id))
+  const area = useRef<HTMLDivElement>(null)
+  useSlideIntoDecided(area, justDecided)
   const ticketSessions = useMemo(() => {
     const byTicket = new Map<string, SessionSummary[]>()
     for (const session of sessions) {
@@ -468,7 +470,7 @@ function MapView({
         <Lead key="" label={t('map.destination')} text={map.destination} />
       )}
       {tree || (
-        <div className="cf-map map-area">
+        <div className="cf-map map-area" ref={area}>
           <svg className="cf-map__contours" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
             {[70, 150, 230, 310, 390, 470, 550].map((y, i) => (
               <path key={y} d={`M-20 ${y} C ${80 + i * 10} ${y - 40}, ${180 + i * 10} ${y + 50}, 420 ${y - 20}`} />
@@ -495,6 +497,7 @@ function MapView({
                   <li
                     key={ticket.id}
                     className={justDecided.has(ticket.id) ? 'map-decided__arrived' : undefined}
+                    data-ticket-id={ticket.id}
                     aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
                   >
                     <button type="button" className="cf-chip" title={ticket.name} onClick={() => onAct(ticket.id)}>
@@ -542,6 +545,45 @@ function MapView({
       )}
     </>
   )
+}
+
+/** Where each Ticket of the graph is on screen, by Ticket id. */
+function ticketBoxes(area: HTMLElement): Map<string, DOMRect> {
+  const boxes = new Map<string, DOMRect>()
+  for (const node of area.querySelectorAll<HTMLElement>('.react-flow__node[data-id]')) {
+    boxes.set(node.dataset.id!, node.getBoundingClientRect())
+  }
+  return boxes
+}
+
+/**
+ * Slides each newly decided Ticket's chip up into the Decided strip from where its node was in
+ * the graph; at once under reduced motion.
+ */
+function useSlideIntoDecided(area: RefObject<HTMLDivElement | null>, justDecided: ReadonlySet<string>): void {
+  // Where the graph last drew each Ticket, for one that has just left it.
+  const drawn = useRef(new Map<string, DOMRect>())
+  useLayoutEffect(() => {
+    const element = area.current
+    if (!element || justDecided.size === 0 || prefersReducedMotion()) return
+    // The graph may still show the node in this commit; else where it was last drawn.
+    const boxes = new Map([...drawn.current, ...ticketBoxes(element)])
+    for (const id of justDecided) {
+      const from = boxes.get(id)
+      const chip = element.querySelector<HTMLElement>(`[data-ticket-id="${CSS.escape(id)}"]`)
+      if (!from || !chip) continue
+      const to = chip.getBoundingClientRect()
+      const dx = from.left + from.width / 2 - (to.left + to.width / 2)
+      const dy = from.top + from.height / 2 - (to.top + to.height / 2)
+      chip.animate([{ transform: `translate(${dx}px, ${dy}px)`, opacity: 0.4 }, { transform: 'none', opacity: 1 }], {
+        duration: RELAYOUT_MS,
+        easing: RELAYOUT_EASING
+      })
+    }
+  }, [area, justDecided])
+  useLayoutEffect(() => {
+    if (area.current) drawn.current = ticketBoxes(area.current)
+  })
 }
 
 interface LeadProps {

@@ -9,7 +9,7 @@ interface IconButtonProps {
   onClick(): void
 }
 
-/** A ghost icon button whose label is its accessible name and tooltip. */
+/** A ghost icon button whose label is its accessible name, and its tooltip unless a title says more. */
 export function IconButton({ icon: Icon, label, title, onClick }: IconButtonProps): ReactNode {
   return (
     <button

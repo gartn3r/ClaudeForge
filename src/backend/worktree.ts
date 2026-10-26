@@ -33,6 +33,12 @@ async function fromGit(folder: string): Promise<string | null> {
   return basename(repoGitDir).toLowerCase() === '.git' ? dirname(repoGitDir) : null
 }
 
+/** A path as Windows compares it: resolved, without regard to case. */
+export const pathKey = (path: string): string => {
+  const resolved = resolve(path)
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved
+}
+
 /** Finds the Project of the folder a Session runs in, even once its worktree is removed. */
 export async function placeFolder(folder: string): Promise<FolderPlace> {
   const project = await fromGit(folder)

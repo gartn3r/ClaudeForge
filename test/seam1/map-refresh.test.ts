@@ -136,6 +136,24 @@ describe('Live Map refresh', () => {
       expect(changes).toEqual([])
     })
 
+    it('watches a Map charted in a Project that had none', async () => {
+      await start()
+      const project = env.projects.dotfiles
+      await backend.api.map.watch(project, false)
+
+      const changed = nextMapChange(backend)
+      await mkdir(join(project, '.scratch', 'shell-setup', 'issues'), { recursive: true })
+      await writeFile(join(project, '.scratch', 'shell-setup', 'map.md'), '# Shell setup\n')
+
+      expect(await changed).toEqual({ project })
+      expect((await backend.api.map.list(project)).maps.map((map) => map.name)).toEqual(['Shell setup'])
+      // Everything in the new folder is watched in turn.
+      await settle()
+      const again = nextMapChange(backend)
+      await writeFile(join(project, '.scratch', 'shell-setup', 'issues', '01-prompt.md'), '# Prompt\n')
+      expect(await again).toEqual({ project })
+    })
+
     it('pushes map-changed when the user presses refresh', async () => {
       const project = await start()
       await backend.api.map.watch(project, true)
@@ -222,6 +240,38 @@ describe('Live Map refresh', () => {
 
       expect(await changed).toEqual({ project })
       expect(await isOpen(project, '42')).toBe(false)
+    })
+
+    it('reads nothing again when the user comes back with the Map panel collapsed, or just came back', async () => {
+      const project = await start()
+      await backend.api.map.watch(project, false)
+      const changes = recordMapChanges(backend)
+      win.focus()
+      await settle(50)
+      expect(changes).toEqual([])
+
+      await backend.api.map.watch(project, true)
+      win.focus()
+      win.focus()
+      await settle(50)
+
+      expect(changes).toEqual([project])
+    })
+
+    it('follows a new Tracker declaration once the user presses refresh', async () => {
+      const project = await start()
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+      await backend.api.map.watch(project, true)
+      await writeFile(join(project, 'docs', 'agents', 'issue-tracker.md'), '# Issue tracker: Local Markdown\n')
+      await backend.api.map.refresh(project)
+      const changes = recordMapChanges(backend)
+
+      vi.advanceTimersByTime(3 * GITHUB_REFRESH_INTERVAL_MS)
+      expect(changes).toEqual([])
+      await mkdir(join(project, '.scratch', 'burst'), { recursive: true })
+      await writeFile(join(project, '.scratch', 'burst', 'map.md'), '# Burst\n')
+
+      await vi.waitFor(() => expect(changes).toEqual([project]))
     })
 
     it('reads the Map again when the user presses refresh', async () => {

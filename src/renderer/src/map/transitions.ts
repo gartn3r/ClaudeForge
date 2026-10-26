@@ -6,6 +6,9 @@ import { useState } from 'react'
 /** The graph relayout, as the design system's motion rules set it: 320ms, ease-out. */
 export const RELAYOUT_MS = 320
 
+/** The relayout's ease-out curve, for motion run from script. */
+export const RELAYOUT_EASING = 'cubic-bezier(0.2, 0, 0, 1)'
+
 /** The user asked Windows for less motion: positions and states then change at once. */
 export const prefersReducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -16,6 +19,19 @@ interface Drawn {
 }
 
 const NONE: ReadonlySet<string> = new Set()
+
+/**
+ * Whether the drawing changed (its signature) since it was last drawn under the same key: a
+ * relayout of the same level, not a level, Map or view opened. It holds until the next change.
+ */
+export function useRelayout(key: string, signature: string): boolean {
+  const [drawn, setDrawn] = useState({ key, signature, relayout: false })
+  if (drawn.key === key && drawn.signature === signature) return drawn.relayout
+  const relayout = drawn.key === key
+  // Adjusting state while rendering, as React advises for a value derived from the previous props.
+  setDrawn({ key, signature, relayout })
+  return relayout
+}
 
 /**
  * The ids that joined a set since it was last drawn under the same key (a Map's level, say).
