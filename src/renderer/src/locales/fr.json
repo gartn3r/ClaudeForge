@@ -7,7 +7,9 @@
     "minimize": "Réduire",
     "maximize": "Agrandir",
     "restore": "Restaurer",
-    "close": "Fermer la fenêtre"
+    "close": "Fermer la fenêtre",
+    "updateReady": "Mise à jour {{version}} prête",
+    "updateReadyHint": "ClaudeForge {{version}} est téléchargé. Il s’installe quand vous fermez ClaudeForge."
   },
   "settings": {
     "label": "Paramètres",

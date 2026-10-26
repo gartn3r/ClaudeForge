@@ -1,7 +1,8 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
-import { createBackend, type DesktopShell, type Dialogs, type WindowHost } from '../backend'
+import { autoUpdater } from 'electron-updater'
+import { createBackend, type DesktopShell, type Dialogs, type Updater, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
@@ -35,9 +36,36 @@ function claudeHome(): string {
   return process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 }
 
-// Windows shows a notification under the app's AppUserModelID; run from the Electron binary
-// (development, tests), that is the binary's path.
-if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'ClaudeForge' : process.execPath)
+// Windows shows a notification under the app's AppUserModelID: installed, the `appId` the installer
+// gives its shortcuts (electron-builder.config.mjs); run from the Electron binary (development,
+// tests), the binary's path.
+if (process.platform === 'win32')
+  app.setAppUserModelId(app.isPackaged ? 'io.github.gartn3r.claudeforge' : process.execPath)
+
+/**
+ * The installed ClaudeForge updates itself from GitHub releases: the installer writes where to look
+ * (`app-update.yml`), and a downloaded update installs once ClaudeForge closes. A development build
+ * does not. Tests set `CLAUDEFORGE_UPDATE_FEED` to the address of a release folder to update from,
+ * or to `none` not to update at all.
+ */
+function updater(): Updater | undefined {
+  const feed = process.env.CLAUDEFORGE_UPDATE_FEED
+  if (feed === 'none' || (!feed && !app.isPackaged)) return undefined
+  // Releases carry the full installer, never the web installer that downloads the app.
+  autoUpdater.disableWebInstaller = true
+  if (feed) {
+    autoUpdater.forceDevUpdateConfig = true
+    autoUpdater.setFeedURL({ provider: 'generic', url: feed })
+  }
+  return {
+    check: async () => void (await autoUpdater.checkForUpdates()),
+    onDownloaded: (listener) => {
+      const onDownloaded = ({ version }: { version: string }): void => listener(version)
+      autoUpdater.on('update-downloaded', onDownloaded)
+      return () => autoUpdater.off('update-downloaded', onDownloaded)
+    }
+  }
+}
 
 /**
  * The notifications not yet clicked, held so that garbage collection does not drop their click
@@ -158,7 +186,8 @@ function createWindow(): void {
     window: windowHost(win),
     dialogs: dialogs(win),
     trashItem: trashItem(),
-    shell: desktopShell
+    shell: desktopShell,
+    updater: updater()
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {

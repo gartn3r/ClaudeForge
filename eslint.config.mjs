@@ -4,7 +4,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['out/', 'node_modules/', 'test-results/', 'playwright-report/'] },
+  { ignores: ['out/', 'dist/', 'node_modules/', 'test-results/', 'playwright-report/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -14,7 +14,7 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules
   },
   {
-    files: ['src/main/**', 'src/preload/**', 'src/backend/**', 'test/**', 'scripts/**', '*.mts'],
+    files: ['src/main/**', 'src/preload/**', 'src/backend/**', 'test/**', 'scripts/**', '*.mts', '*.mjs'],
     languageOptions: { globals: globals.node }
   }
 )

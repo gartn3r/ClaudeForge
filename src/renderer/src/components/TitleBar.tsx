@@ -1,6 +1,7 @@
-import { Copy, Minus, Square, X } from 'lucide-react'
+import { Copy, Download, Minus, Square, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { UpdateStatus } from '../../../shared/api'
 import { api, onEvent } from '../api'
 
 interface TitleBarProps {
@@ -14,10 +15,16 @@ interface TitleBarProps {
 export function TitleBar({ tabs, settings }: TitleBarProps): ReactNode {
   const { t } = useTranslation()
   const [maximized, setMaximized] = useState(false)
+  const [update, setUpdate] = useState<UpdateStatus>({ state: 'current' })
 
   useEffect(() => {
     void api.window.isMaximized().then(setMaximized)
     return onEvent('window.maximizedChanged', ({ maximized }) => setMaximized(maximized))
+  }, [])
+
+  useEffect(() => {
+    void api.updates.status().then(setUpdate)
+    return onEvent('updates.changed', setUpdate)
   }, [])
 
   const MaximizeIcon = maximized ? Copy : Square
@@ -27,6 +34,12 @@ export function TitleBar({ tabs, settings }: TitleBarProps): ReactNode {
     <header className="titlebar">
       <div className="brand">{t('app.name')}</div>
       {tabs}
+      {update.state === 'ready' && (
+        <span className="cf-chip titlebar__update" role="status" title={t('titleBar.updateReadyHint', update)}>
+          <Download className="cf-icon cf-icon--sm" aria-hidden="true" />
+          {t('titleBar.updateReady', update)}
+        </span>
+      )}
       {settings}
       <div className="wincontrols">
         <button

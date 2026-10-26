@@ -1,0 +1,90 @@
+name: Release
+
+# Publishes ClaudeForge's installer to GitHub releases, where the installed app looks for its
+# updates. Only a version tag the maintainer pushes publishes (`git tag v0.2.0 && git push origin
+# v0.2.0`, matching package.json's version). Running it by hand from the Actions tab builds and
+# signs the installer without publishing it, to check signing.
+#
+# Code signing switches on when its secrets are set (see electron-builder.config.mjs) and is
+# skipped, with a notice, when they are not.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign and publish the installer (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: The tag names package.json's version
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match package.json's version ${version}: bump the version, or tag v${version}."
+          }
+
+      - name: Lint, typecheck and Seam 1
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:seam1
+
+      - name: Build
+        run: npm run build
+
+      - name: Package, sign and publish
+        shell: pwsh
+        run: |
+          $publish = if ($env:GITHUB_EVENT_NAME -eq 'push') { 'always' } else { 'never' }
+          npx electron-builder --config electron-builder.config.mjs --win --publish $publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Azure Artifact Signing: an app registration allowed to sign, and where to sign.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+          AZURE_SIGNING_PUBLISHER: ${{ vars.AZURE_SIGNING_PUBLISHER }}
+          # Or a certificate file (.pfx, base64) and its password.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Signatures
+        shell: pwsh
+        run: |
+          $files = @(Get-Item dist/ClaudeForge-Setup-*.exe, dist/win-unpacked/ClaudeForge.exe,
+            dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node)
+          Get-AuthenticodeSignature $files | Format-Table Status, @{ n = 'Signer'; e = { $_.SignerCertificate.Subject } }, Path -AutoSize -Wrap
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer
+          path: |
+            dist/ClaudeForge-Setup-*.exe
+            dist/latest.yml
+          retention-days: 30

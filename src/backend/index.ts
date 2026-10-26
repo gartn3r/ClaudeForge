@@ -25,6 +25,9 @@ import { MapRefresh } from './maps/refresh'
 import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
+import { Updates, type Updater } from './updates'
+
+export type { Updater } from './updates'
 
 /** The window the interface runs in, as the backend sees it. */
 export interface WindowHost {
@@ -69,6 +72,8 @@ export interface BackendOptions {
   trashItem: TrashItem
   /** Opens issues on the desktop; absent in Seam 1 tests unless one stands in for it. */
   shell?: DesktopShell
+  /** ClaudeForge's own updater; absent when it does not update itself (development builds, tests). */
+  updater?: Updater
 }
 
 /** Where the desktop opens what the interface links to. */
@@ -129,6 +134,8 @@ export function createBackend(options: BackendOptions): Backend {
   })
   const unsubscribeVisibility = win?.onVisibilityChange((visible) => mapRefresh.visibilityChanged(visible))
   const unsubscribeFocus = win?.onFocus(() => mapRefresh.focused())
+
+  const updates = new Updates(options.updater, (status) => events.emit('updates.changed', status))
 
   // The last status found, so starting a Session does not run `claude --version` again.
   let claudeCode: ClaudeCodeStatus | undefined
@@ -245,6 +252,9 @@ export function createBackend(options: BackendOptions): Backend {
     system: {
       info: async () => ({ language, startFolder })
     },
+    updates: {
+      status: async () => updates.current()
+    },
     claudeCode: {
       locate: locateWithChosenPath,
       choose: async () => {
@@ -272,6 +282,7 @@ export function createBackend(options: BackendOptions): Backend {
       unsubscribeVisibility?.()
       unsubscribeFocus?.()
       mapRefresh.dispose()
+      updates.dispose()
       unsubscribeClose?.()
       sessionHost.dispose()
       sessions.dispose()

@@ -81,6 +81,13 @@ body {
   flex: none;
   margin-left: var(--space-1);
 }
+/* A downloaded update of ClaudeForge, which installs when the window closes. */
+.titlebar__update {
+  align-self: center;
+  flex: none;
+  margin: 0 var(--space-2);
+  color: var(--brass);
+}
 .wincontrols {
   display: flex;
   align-self: flex-start;
