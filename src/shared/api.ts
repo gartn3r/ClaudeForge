@@ -329,6 +329,8 @@ export interface Extension {
   install?: InstalledPlugin
   /** MCP servers only: false for those `claude mcp remove` cannot remove, a plugin's or a claude.ai connector. */
   removable?: boolean
+  /** The user's and the Project's own skills and subagents only: the Markdown file the editor opens. */
+  file?: string
 }
 
 /**
@@ -408,6 +410,57 @@ export interface NewMcpServer {
 /** What came of a change: Claude Code's own words when it refused or failed. */
 export type ExtensionChangeResult = { ok: true } | { ok: false; error: string }
 
+/** The Extensions that are plain Markdown files, which ClaudeForge creates and edits itself (ADR 0003). */
+export type ExtensionFileKind = Extract<ExtensionKind, 'skill' | 'subagent'>
+
+/**
+ * A skill or subagent to create from ClaudeForge's template: a skill as `skills/<name>/SKILL.md`, a
+ * subagent as `agents/<name>.md`, in the Claude Code home (global) or the Project's `.claude/`.
+ */
+export interface NewExtensionFile {
+  kind: ExtensionFileKind
+  /** Lowercase letters, numbers and hyphens, 64 at most, as Claude Code names skills and subagents. */
+  name: string
+  scope: ExtensionScope
+}
+
+/** What came of creating a file: refused for a name Claude Code would not take, or one already taken there. */
+export type ExtensionFileCreation = { ok: true; file: string } | { ok: false; problem: 'bad-name' | 'exists' }
+
+/** A skill's or subagent's file, as the editor opens it. */
+export interface ExtensionFile {
+  file: string
+  kind: ExtensionFileKind
+  scope: ExtensionScope
+  text: string
+}
+
+/**
+ * Why Claude Code would not read a skill's or subagent's frontmatter as meant, by the rules its
+ * documentation gives; `line` counts from the file's first line, 1.
+ */
+export type FrontmatterProblem =
+  /** A subagent's file does not open with a block of fields between two `---` lines (a skill needs none). */
+  | { code: 'no-frontmatter' }
+  /** The `---` line opening the file has no second one ending the fields. */
+  | { code: 'unclosed-frontmatter' }
+  /** The yaml parser's words, without the position. */
+  | { code: 'not-yaml'; line: number; detail: string }
+  /** The block is YAML, but not `field: value` pairs. */
+  | { code: 'not-fields' }
+  /** A subagent's `name` or `description`; a skill requires neither. */
+  | { code: 'missing'; field: string }
+  | { code: 'not-text'; field: string }
+  /**
+   * A skill's `name` holds `<`, `>`, a control or invisible character, or a blank other than one
+   * space between words; a subagent's starts with `-` or holds `:`.
+   */
+  | { code: 'bad-name' }
+  | { code: 'too-long'; field: string; max: number }
+
+/** What came of saving: nothing is written while the frontmatter has problems. */
+export type ExtensionFileSave = { ok: true } | { ok: false; problems: FrontmatterProblem[] }
+
 /**
  * What a Hosted session's `claude` is doing: idle at its prompt, working through a turn, waiting for
  * the user mid-turn (a permission prompt or a question), or done: its last turn is over, until
@@ -462,6 +515,15 @@ export interface BackendApi {
     available(project: string): Promise<AvailablePluginListing>
     /** Makes one change through Claude Code's CLI, run in the Project's folder. */
     change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult>
+    /** Writes a new skill or subagent from ClaudeForge's template, for the user or in the Project. */
+    create(project: string, file: NewExtensionFile): Promise<ExtensionFileCreation>
+    /**
+     * Reads a skill's or subagent's file: one in the `skills/` or `agents/` of the Claude Code home
+     * or of the Project's `.claude/`; refused for any other.
+     */
+    read(project: string, file: string): Promise<ExtensionFile>
+    /** Writes a file `read` would open, once its frontmatter is valid, keeping its line endings. */
+    save(project: string, file: string, text: string): Promise<ExtensionFileSave>
   }
   appState: {
     read(): Promise<AppState>

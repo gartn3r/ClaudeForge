@@ -1,7 +1,8 @@
 import { Download, Plus } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AvailablePluginListing, McpTransport, NewMcpServer } from '../../../shared/api'
+import type { AvailablePluginListing, ExtensionFileKind, McpTransport, NewMcpServer } from '../../../shared/api'
+import { isExtensionName } from '../../../shared/frontmatter'
 import { api } from '../api'
 
 /** How many matching plugins the install dialog lists; a search narrows the rest down. */
@@ -284,6 +285,76 @@ export function InstallPluginDialog({
           {t('dialog.close')}
         </button>
       </div>
+    </Modal>
+  )
+}
+
+interface NewExtensionFileDialogProps {
+  kind: ExtensionFileKind
+  /** The Project it is created in; null for the user's own, in every Project. */
+  scopeName: string | null
+  busy: boolean
+  error: string | null
+  onCreate(name: string): void
+  onCancel(): void
+}
+
+/** Asks for a new skill's or subagent's name, which names its file too, then creates it from the template. */
+export function NewExtensionFileDialog({
+  kind,
+  scopeName,
+  busy,
+  error,
+  onCreate,
+  onCancel
+}: NewExtensionFileDialogProps): ReactNode {
+  const { t } = useTranslation()
+  const id = useId()
+  const [name, setName] = useState('')
+  const ready = isExtensionName(name.trim())
+
+  return (
+    <Modal
+      title={
+        scopeName
+          ? t(`extensions.newFile.${kind}.titleProject`, { project: scopeName })
+          : t(`extensions.newFile.${kind}.titleGlobal`)
+      }
+      busy={busy}
+      error={error}
+      onCancel={onCancel}
+    >
+      <form
+        className="extdialog__form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (ready && !busy) onCreate(name.trim())
+        }}
+      >
+        <label htmlFor={`${id}-name`}>{t('extensions.newFile.name')}</label>
+        <input
+          id={`${id}-name`}
+          className="extdialog__input cf-mono"
+          value={name}
+          autoFocus
+          spellCheck={false}
+          placeholder={kind === 'skill' ? 'menu-planner' : 'api-tester'}
+          aria-describedby={`${id}-name-hint`}
+          onChange={(event) => setName(event.target.value)}
+        />
+        <span className="extdialog__hint" id={`${id}-name-hint`}>
+          {t('extensions.newFile.nameHint')}
+        </span>
+        <div className="cf-dialog__actions">
+          <button type="button" className="cf-btn" disabled={busy} onClick={onCancel}>
+            {t('dialog.cancel')}
+          </button>
+          <button type="submit" className="cf-btn cf-btn--primary" disabled={busy || !ready}>
+            <Plus className="cf-icon" aria-hidden="true" />
+            {t('extensions.newFile.action')}
+          </button>
+        </div>
+      </form>
     </Modal>
   )
 }

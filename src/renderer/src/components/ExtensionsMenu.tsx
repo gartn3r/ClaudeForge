@@ -5,6 +5,7 @@ import {
   CircleHelp,
   CirclePause,
   CircleSlash,
+  Pencil,
   Plug,
   Plus,
   Puzzle,
@@ -19,15 +20,17 @@ import type {
   Extension,
   ExtensionChange,
   ExtensionChangeResult,
+  ExtensionFileKind,
   ExtensionKind,
   ExtensionListing,
   ExtensionScope,
   McpServerStatus
 } from '../../../shared/api'
 import { api } from '../api'
+import type { EditorTarget } from '../editor/editor-tabs'
 import { tabsHosting, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
-import { AddMcpServerDialog, InstallPluginDialog } from './ExtensionDialogs'
+import { AddMcpServerDialog, InstallPluginDialog, NewExtensionFileDialog } from './ExtensionDialogs'
 
 /** The Extensions of a Project: undefined while they are read, 'failed' when they could not be. */
 type Loaded = ExtensionListing | 'failed' | undefined
@@ -63,7 +66,8 @@ function useExtensions(project: string): { listing: Loaded; refresh(): Promise<v
   return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
-const ICONS: Record<ExtensionKind, LucideIcon> = { skill: Sparkles, subagent: Bot, 'mcp-server': Plug, plugin: Puzzle }
+/** Each kind's glyph, wherever an Extension shows: the bar, the menu, an editor and its tab. */
+export const ICONS: Record<ExtensionKind, LucideIcon> = { skill: Sparkles, subagent: Bot, 'mcp-server': Plug, plugin: Puzzle }
 
 /** The kinds as the bar counts them, and as the menu groups them. */
 const BAR_ORDER: ExtensionKind[] = ['skill', 'subagent', 'mcp-server', 'plugin']
@@ -123,10 +127,12 @@ interface ExtensionsBarProps {
   /** The Hosted sessions' tabs, for the notice naming those still on the previous setup. */
   hostedTabs: HostedTab[]
   onShowHostedSession(key: string): void
+  /** Opens a skill's or subagent's file in an editor tab. */
+  onEdit(target: EditorTarget): void
 }
 
 /** Docked under the explorer: one count per kind of Extension, opening the Extensions menu. */
-export function ExtensionsBar({ project, hostedTabs, onShowHostedSession }: ExtensionsBarProps): ReactNode {
+export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit }: ExtensionsBarProps): ReactNode {
   const { t } = useTranslation()
   const { listing, refresh } = useExtensions(project)
   /** Where the open menu sits; null while it is closed. */
@@ -189,6 +195,11 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession }: Exte
           refresh={refresh}
           hostedTabs={hostedTabs}
           onShowHostedSession={onShowHostedSession}
+          onEdit={(target) => {
+            // The editor goes on show in the centre, and takes the focus.
+            close(false)
+            onEdit(target)
+          }}
           placement={placement}
           anchor={button}
           onClose={close}
@@ -205,6 +216,7 @@ interface ExtensionsPopoverProps {
   refresh(): Promise<void>
   hostedTabs: HostedTab[]
   onShowHostedSession(key: string): void
+  onEdit(target: EditorTarget): void
   placement: CSSProperties
   /** The bar's button, which toggles the menu itself. */
   anchor: RefObject<HTMLButtonElement | null>
@@ -212,8 +224,12 @@ interface ExtensionsPopoverProps {
   onClose(refocus: boolean): void
 }
 
-/** What asks the user before a change: removing or uninstalling one Extension, adding, installing. */
-type Asking = { kind: 'remove'; extension: Extension } | { kind: 'add-mcp-server' } | { kind: 'install-plugin' }
+/** What asks the user before a change: removing or uninstalling one Extension, adding, installing, creating. */
+type Asking =
+  | { kind: 'remove'; extension: Extension }
+  | { kind: 'add-mcp-server' }
+  | { kind: 'install-plugin' }
+  | { kind: 'new-file'; fileKind: ExtensionFileKind }
 
 /** The change that removes an Extension: uninstalling a plugin, or removing an MCP server. */
 function removal(extension: Extension): ExtensionChange | null {
@@ -221,6 +237,9 @@ function removal(extension: Extension): ExtensionChange | null {
   if (extension.removable) return { action: 'remove-mcp-server', name: extension.name, scope: extension.scope }
   return null
 }
+
+/** Under `extensions.newFile`: why a skill or subagent was not created, besides its name being taken. */
+const NOT_CREATED = { 'bad-name': 'badName', failed: 'failed' } as const
 
 /** Under `extensions.remove`: what removing it is called. */
 const removalKey = (extension: Extension): 'plugin' | 'mcpServer' => (extension.install ? 'plugin' : 'mcpServer')
@@ -235,6 +254,7 @@ function ExtensionsPopover({
   refresh,
   hostedTabs,
   onShowHostedSession,
+  onEdit,
   placement,
   anchor,
   onClose
@@ -263,6 +283,27 @@ function ExtensionsPopover({
         await refresh()
       }
       return result
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Writes a skill or subagent from the template, then opens it in an editor; the dialog says why not otherwise. */
+  const createFile = async (kind: ExtensionFileKind, name: string): Promise<void> => {
+    setAskError(null)
+    setBusy(true)
+    try {
+      const created = await api.extensions
+        .create(project, { kind, name, scope })
+        .catch(() => ({ ok: false, problem: 'failed' }) as const)
+      if (!created.ok) {
+        const reason = created.problem === 'exists' ? (`exists.${kind}` as const) : NOT_CREATED[created.problem]
+        setAskError(t(`extensions.newFile.${reason}`, { name }))
+        return
+      }
+      await refresh()
+      setAsking(null)
+      onEdit({ project, file: created.file, kind, scope, name })
     } finally {
       setBusy(false)
     }
@@ -307,6 +348,15 @@ function ExtensionsPopover({
       window.removeEventListener('resize', onResize)
     }
   }, [anchor, onClose, busy])
+
+  const edit = (extension: Extension): void =>
+    onEdit({
+      project,
+      file: extension.file!,
+      kind: extension.kind as ExtensionFileKind,
+      scope: extension.scope,
+      name: extension.name
+    })
 
   const inScope = typeof listing === 'object' ? listing.extensions.filter((extension) => extension.scope === scope) : []
   const projectName = folderName(project)
@@ -372,6 +422,7 @@ function ExtensionsPopover({
                       busy={busy}
                       onToggle={() => void toggle(extension)}
                       onRemove={() => ask({ kind: 'remove', extension })}
+                      onEdit={() => edit(extension)}
                     />
                   ))}
                 </ul>
@@ -413,6 +464,17 @@ function ExtensionsPopover({
             >
               {t('extensions.installPlugin.open')}
             </button>
+            {(['skill', 'subagent'] as const).map((fileKind) => (
+              <button
+                key={fileKind}
+                type="button"
+                className="cf-btn cf-btn--ghost"
+                disabled={busy}
+                onClick={() => ask({ kind: 'new-file', fileKind })}
+              >
+                {t(`extensions.newFile.${fileKind}.open`)}
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -446,6 +508,16 @@ function ExtensionsPopover({
           onCancel={() => setAsking(null)}
         />
       )}
+      {asking?.kind === 'new-file' && (
+        <NewExtensionFileDialog
+          kind={asking.fileKind}
+          scopeName={scopeName}
+          busy={busy}
+          error={askError}
+          onCreate={(name) => void createFile(asking.fileKind, name)}
+          onCancel={() => setAsking(null)}
+        />
+      )}
       {asking?.kind === 'install-plugin' && (
         <InstallPluginDialog
           project={project}
@@ -469,9 +541,11 @@ interface ExtensionRowProps {
   onToggle(): void
   /** Asks to remove an MCP server or uninstall a plugin. */
   onRemove(): void
+  /** Opens a skill's or subagent's file in an editor tab. */
+  onEdit(): void
 }
 
-function ExtensionRow({ extension, busy, onToggle, onRemove }: ExtensionRowProps): ReactNode {
+function ExtensionRow({ extension, busy, onToggle, onRemove, onEdit }: ExtensionRowProps): ReactNode {
   const { t } = useTranslation()
   const Icon = ICONS[extension.kind]
   const { mcp } = extension
@@ -488,6 +562,17 @@ function ExtensionRow({ extension, busy, onToggle, onRemove }: ExtensionRowProps
         <span className={`cf-row__title${off ? ' cf-muted' : ''}`}>{extension.name}</span>
         {sub && <span className={`cf-row__sub${failing(extension) ? ' extmenu__problem' : ''}`}>{sub}</span>}
       </span>
+      {extension.file && (
+        <button
+          type="button"
+          className="cf-btn cf-btn--ghost cf-btn--icon extmenu__action"
+          aria-label={t('extensions.edit', { name: extension.name })}
+          title={t('extensions.edit', { name: extension.name })}
+          onClick={onEdit}
+        >
+          <Pencil className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </button>
+      )}
       {removal(extension) && (
         <button
           type="button"

@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Mous
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
+import type { EditorTarget } from '../editor/editor-tabs'
 import type { HostedTab } from '../terminal/hosted-sessions'
 import type { SessionLaunch } from '../terminal/hosted-terminal'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -39,6 +40,8 @@ interface ExplorerProps {
   /** The Hosted sessions' tabs, which the Extensions menu names after a change. */
   hostedTabs: HostedTab[]
   onShowHostedSession(key: string): void
+  /** Opens a skill's or subagent's file in an editor tab. */
+  onEditExtension(target: EditorTarget): void
   onCollapse(): void
 }
 
@@ -100,6 +103,7 @@ export function Explorer({
   project,
   hostedTabs,
   onShowHostedSession,
+  onEditExtension,
   onCollapse
 }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
@@ -171,7 +175,12 @@ export function Explorer({
           </ul>
         )}
       </div>
-      <ExtensionsBar project={project} hostedTabs={hostedTabs} onShowHostedSession={onShowHostedSession} />
+      <ExtensionsBar
+        project={project}
+        hostedTabs={hostedTabs}
+        onShowHostedSession={onShowHostedSession}
+        onEdit={onEditExtension}
+      />
       {tidying?.kind === 'menu' && (
         <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project)} onClose={closeMenu} />
       )}

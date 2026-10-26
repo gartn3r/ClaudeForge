@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend } from '../../src/backend'
 import type { Extension, ExtensionKind } from '../../src/shared/api'
@@ -29,14 +30,16 @@ describe('Extension service', () => {
       name: 'release-notes',
       scope: 'global',
       plugin: null,
-      description: 'Drafts release notes from the commits since the last tag.'
+      description: 'Drafts release notes from the commits since the last tag.',
+      file: join(env.claudeHome, 'skills', 'release-notes', 'SKILL.md')
     })
     expect(skills).toContainEqual({
       kind: 'skill',
       name: 'seed-data',
       scope: 'project',
       plugin: null,
-      description: 'Fills the recipe box with demo recipes.'
+      description: 'Fills the recipe box with demo recipes.',
+      file: join(env.projects['recipe-box'], '.claude', 'skills', 'seed-data', 'SKILL.md')
     })
   })
 
@@ -48,7 +51,8 @@ describe('Extension service', () => {
       name: 'code-reviewer',
       scope: 'global',
       plugin: null,
-      description: 'Reviews a diff for correctness and style.'
+      description: 'Reviews a diff for correctness and style.',
+      file: join(env.claudeHome, 'agents', 'code-reviewer.md')
     })
     expect(subagents).toContainEqual(
       expect.objectContaining({ name: 'migration-reviewer', scope: 'project', plugin: null })
