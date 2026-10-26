@@ -18,10 +18,10 @@ import type {
   ProjectMapPreferences,
   SessionSummary,
   Ticket,
-  Tracker,
   TrackerProblem,
   WayfinderMap
 } from '../../../shared/api'
+import { commandForLevel, commandForTicket } from '../../../shared/wayfinder-reference'
 import { api } from '../api'
 import { RELAYOUT_EASING, RELAYOUT_MS, prefersReducedMotion, useNewcomers } from '../map/transitions'
 import type { TypedCommand } from '../terminal/hosted-terminal'
@@ -33,21 +33,6 @@ import { TicketDetails } from './TicketDetails'
 
 /** The Map the panel shows when no Session names one: the most recently updated open one. */
 export const shownMap = (listing: MapListing): MapSummary | undefined => listing.maps.find((map) => map.open)
-
-/** How `/wayfinder` names a Map or Ticket: an issue of the Project's GitHub repository as `#12`, else by its id. */
-const reference = (tracker: Tracker, id: string): string => (tracker.kind === 'github' && /^\d+$/.test(id) ? `#${id}` : id)
-
-/**
- * How `/wayfinder` names a Ticket to run as a Map of its own: its GitHub issue, or its markdown
- * file, from the Project's folder when it lies inside.
- */
-function ticketAsMap(tracker: Tracker, project: string, ticket: Ticket): string {
-  if (tracker.kind === 'github') return reference(tracker, ticket.id)
-  const folder = project.replace(/[\\/]+$/, '')
-  const inside =
-    ticket.path.slice(0, folder.length).toLowerCase() === folder.toLowerCase() && /[\\/]/.test(ticket.path[folder.length] ?? '')
-  return (inside ? ticket.path.slice(folder.length + 1) : ticket.path).replace(/\\/g, '/')
-}
 
 const PROBLEM_MESSAGES = {
   'gh-missing': 'map.problem.ghMissing',
@@ -175,18 +160,13 @@ ${mapId ?? ''}`
   const act = (ticketId: string): void => {
     const ticket = map?.tickets.find((each) => each.id === ticketId)
     if (!map || !listing || !ticket) return
-    if (!ticket.workable) return setInDetail({ mapKey, ticketId })
-    const { tracker } = listing
-    onStartSession({
-      command: `/wayfinder ${reference(tracker, map.id)} ${reference(tracker, ticket.id)}`,
-      ticket: ticket.name,
-      map: map.name
-    })
+    const command = commandForTicket(listing.tracker, map.id, ticket)
+    if (!command) return setInDetail({ mapKey, ticketId })
+    onStartSession({ command, ticket: ticket.name, map: map.name })
   }
   // Inside an opened Parent Ticket, Wayfinder can work that Ticket as a Map of its own.
   // A blocked one cannot be worked yet (ADR 0004).
-  const levelCommand =
-    level?.state === 'parent' && listing ? `/wayfinder ${ticketAsMap(listing.tracker, project, level)}` : null
+  const levelCommand = level && listing ? commandForLevel(listing.tracker, project, level) : null
   const runLevelAsMap = (): void => {
     if (level && levelCommand) onStartSession({ command: levelCommand, ticket: level.name, map: null })
   }

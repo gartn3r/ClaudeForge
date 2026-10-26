@@ -9,6 +9,7 @@
 // folder so `gh` finds its repository.
 
 import type { MapSummary, TicketType } from '../../shared/api'
+import type { WayfinderReference } from '../../shared/wayfinder-reference'
 import { GhError, type Gh } from './gh'
 import { questionOf, sectionsOf } from './markdown'
 import type { MapRecord, TicketRecord } from './model'
@@ -262,6 +263,41 @@ export function createGitHubTracker(gh: Gh) {
     return { ...summaryOf(map), sections: sectionsOf(map.body ?? ''), tickets, openOutside: [...openOutside] }
   }
 
+  /**
+   * The Map holding the issue a reference names: its parent, its parent's parent and so on, up to
+   * the first issue labelled `wayfinder:map`. Null when there is none, or it is not one of the
+   * Project's own repository, where its Maps are.
+   */
+  async function mapHolding(project: string, reference: WayfinderReference): Promise<string | null> {
+    const named =
+      reference.kind === 'issue'
+        ? reference
+        : reference.kind === 'name' && /^\d+$/.test(reference.name)
+          ? { repository: null, number: Number(reference.name) }
+          : null
+    if (!named) return null
+    const repository = await repositoryOf(project)
+    const { get } = reader(project, repository)
+    let issue: Reference = { repository: named.repository ?? repository.name, number: named.number }
+    const seen = new Set<string>()
+    while (!seen.has(`${issue.repository.toLowerCase()}#${issue.number}`)) {
+      seen.add(`${issue.repository.toLowerCase()}#${issue.number}`)
+      let parent: Issue
+      try {
+        parent = await get<Issue>(`${issueRoute(issue)}/parent`)
+      } catch (error) {
+        // An issue without a parent, or a GitHub host without sub-issues.
+        if (isNotFound(error)) return null
+        throw error
+      }
+      issue = referenceOf(parent)
+      if (parent.labels.some((label) => label.name === MAP_LABEL)) {
+        return issue.repository.toLowerCase() === repository.name.toLowerCase() ? String(issue.number) : null
+      }
+    }
+    return null
+  }
+
   return {
     async listMaps(project: string): Promise<MapSummary[]> {
       const repository = await repositoryOf(project)
@@ -274,6 +310,7 @@ export function createGitHubTracker(gh: Gh) {
         .map(summaryOf)
         .sort((a, b) => b.updatedAt - a.updatedAt)
     },
-    readMap
+    readMap,
+    mapHolding
   }
 }

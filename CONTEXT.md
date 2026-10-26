@@ -43,6 +43,10 @@ _Avoid_: child task, subtask, nested issue
 **Frontier**:
 The open, unclaimed Tickets with no open blocker on themselves or any ancestor and no open Sub-tickets: what can be worked now.
 
+**Wayfinder reference**:
+How a `/wayfinder` invocation names a Map or Ticket: a GitHub issue (`#12`, `owner/repo#12` or its URL), or a local effort, Ticket id or markdown path. A Parent Ticket's reference can stand where a Map's does, to work that Ticket as a Map of its own.
+_Avoid_: ref, slug, link (a Session's link is what its reference resolves to)
+
 **Tracker**:
 Where a project keeps its Maps and Tickets, as declared in its `docs/agents/issue-tracker.md` (GitHub Issues or local markdown under `.scratch/`).
 _Avoid_: backend, provider

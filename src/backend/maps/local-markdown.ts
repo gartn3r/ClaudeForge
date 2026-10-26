@@ -7,6 +7,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { MapSummary, TicketType } from '../../shared/api'
+import type { WayfinderReference } from '../../shared/wayfinder-reference'
 import { questionOf, sectionsOf } from './markdown'
 import type { MapRecord, TicketRecord } from './model'
 
@@ -119,6 +120,31 @@ async function readEffort(project: string, effort: string): Promise<MapRecord> {
     sections: sectionsOf(text),
     tickets
   }
+}
+
+/**
+ * The effort holding the Ticket a reference names: the one its path gives, else the one effort
+ * whose `issues/` folder files a Ticket of that number; null when none does, or several do.
+ */
+export async function mapHolding(project: string, reference: WayfinderReference): Promise<string | null> {
+  const efforts = await effortsOf(project)
+  if (reference.kind === 'path' && reference.effort !== null) {
+    const wanted = reference.effort.toLowerCase()
+    return efforts.find((effort) => effort.toLowerCase() === wanted) ?? null
+  }
+  const number = reference.kind === 'path' ? reference.ticket : reference.kind === 'name' ? /^\d+/.exec(reference.name)?.[0] : null
+  if (!number) return null
+  const holding: string[] = []
+  for (const effort of efforts) {
+    let files: string[] = []
+    try {
+      files = await readdir(join(project, SCRATCH, effort, 'issues'))
+    } catch {
+      // A Map charted without Tickets yet.
+    }
+    if (files.some((file) => Number(TICKET_FILE.exec(file)?.[1]) === Number(number))) holding.push(effort)
+  }
+  return holding.length === 1 ? holding[0]! : null
 }
 
 export async function listMaps(project: string): Promise<MapSummary[]> {
