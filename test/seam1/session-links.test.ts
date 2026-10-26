@@ -263,7 +263,20 @@ describe('a /wayfinder reference, from the command the Map panel types to the li
       plugin: 'mattpocock-skills',
       link: { ...WEBHOOKS, ticket: { id: '72', name: 'Signing secrets' } }
     },
+    {
+      invocation: 'a Ticket worked as a Map, then one its Map does not hold',
+      project: 'harbor-api',
+      command: () => '/wayfinder #71 #99',
+      link: { ...WEBHOOKS, ticket: { id: '71', name: 'Delivery guarantees' } }
+    },
+    {
+      invocation: 'a Map, then a path into another effort',
+      project: 'recipe-box',
+      command: () => '/wayfinder meal-planner .scratch/pantry-audit/issues/01-shelf-labels.md',
+      link: { ...MEAL_PLANNER, ticket: null }
+    },
     { invocation: 'plan a meal app', project: 'recipe-box', command: () => '/wayfinder plan a meal app', link: null },
+    { invocation: '3 ideas for dinner', project: 'recipe-box', command: () => '/wayfinder 3 ideas for dinner', link: null },
     { invocation: 'plan webhook retries', project: 'harbor-api', command: () => '/wayfinder plan webhook retries', link: null }
   ]
 

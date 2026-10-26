@@ -279,9 +279,11 @@ export function createGitHubTracker(gh: Gh) {
     const repository = await repositoryOf(project)
     const { get } = reader(project, repository)
     let issue: Reference = { repository: named.repository ?? repository.name, number: named.number }
+    const keyOf = (ref: Reference): string => `${ref.repository.toLowerCase()}#${ref.number}`
+    // Issues already climbed through, so a cycle of parents ends.
     const seen = new Set<string>()
-    while (!seen.has(`${issue.repository.toLowerCase()}#${issue.number}`)) {
-      seen.add(`${issue.repository.toLowerCase()}#${issue.number}`)
+    while (!seen.has(keyOf(issue))) {
+      seen.add(keyOf(issue))
       let parent: Issue
       try {
         parent = await get<Issue>(`${issueRoute(issue)}/parent`)

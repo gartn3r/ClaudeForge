@@ -13,16 +13,22 @@ export async function resolveWayfinderLink(
   project: string,
   args: string
 ): Promise<WayfinderLink | null> {
-  const [first, second] = parseWayfinderArgs(args)
+  const references = parseWayfinderArgs(args)
+  const [first, second] = references
   if (!first) return null
   const summaries = (await maps.list(project)).maps
   const named = summaries.find((map) => namesMap(first, map))
-  const holding = named ? null : await maps.mapHolding(project, first)
+  // More words than `<Map> [<Ticket>]` are a charting idea, `3 ideas for dinner`, not a Ticket worked as a Map.
+  const holding = named || references.length > 2 ? null : await maps.mapHolding(project, first)
   const summary = named ?? summaries.find((map) => map.id === holding)
   if (!summary) return null
   const link: WayfinderLink = { mapId: summary.id, mapName: summary.name, ticket: null }
-  const ticketRef = named ? second : (second ?? first)
-  if (!ticketRef) return link
-  const ticket = (await maps.load(project, summary.id)).tickets.find((t) => namesTicket(ticketRef, t))
-  return ticket ? { ...link, ticket: { id: ticket.id, name: ticket.name } } : link
+  // The most specific Ticket named: the second reference, else the Ticket worked as a Map.
+  const candidates = named ? [second] : [second, first]
+  const { tickets } = await maps.load(project, summary.id)
+  for (const reference of candidates) {
+    const ticket = reference && tickets.find((t) => namesTicket(reference, t))
+    if (ticket) return { ...link, ticket: { id: ticket.id, name: ticket.name } }
+  }
+  return link
 }

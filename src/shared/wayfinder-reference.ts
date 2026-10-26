@@ -18,7 +18,8 @@ export type WayfinderReference =
 
 const ISSUE_URL = /^https?:\/\/[^/\s]+\/([\w.-]+\/[\w.-]+)\/issues\/(\d+)\/?(?:[?#].*)?$/i
 const ISSUE = /^(?:([\w.-]+\/[\w.-]+))?#(\d+)$/
-const TICKET_FILE = /^(\d+)(?:-.*)?\.md$/i
+/** A local markdown Ticket's file, `NN-<slug>.md`, as the local markdown Tracker files it. */
+const TICKET_FILE = /^(\d+)-.+\.md$/i
 
 /** A reference written into a command: quoted when it holds a blank, which would end it. */
 const quoted = (reference: string): string => (/\s/.test(reference) ? `"${reference}"` : reference)
@@ -48,7 +49,9 @@ export function commandForLevel(tracker: Tracker, project: string, ticket: Ticke
 
 /** The words of an invocation's arguments, a quoted one holding its blanks. */
 function wordsOf(args: string): string[] {
-  return [...args.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)].map((match) => match[1] ?? match[2] ?? match[3] ?? '').filter(Boolean)
+  return [...args.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)]
+    .map((match) => match[1] ?? match[2] ?? (match[3] ?? '').replace(/^["']+|["']+$/g, ''))
+    .filter(Boolean)
 }
 
 function parseWord(word: string): WayfinderReference {
@@ -98,8 +101,12 @@ export function namesTicket(reference: WayfinderReference, ticket: Pick<Ticket, 
       return reference.repository === null
         ? sameNumber(String(reference.number))
         : isIssue(ticket.path, reference.repository, reference.number)
-    case 'path':
-      return sameNumber(reference.ticket ?? undefined)
+    case 'path': {
+      // A path into another effort names a Ticket of that effort's Map, whatever its number.
+      const effort = ticket.path.split(/[\\/]+/).at(-3)
+      const sameEffort = reference.effort === null || reference.effort.toLowerCase() === effort?.toLowerCase()
+      return sameEffort && sameNumber(reference.ticket ?? undefined)
+    }
     case 'name':
       return reference.name.toLowerCase() === ticket.id.toLowerCase() || sameNumber(/^\d+/.exec(reference.name)?.[0])
   }
