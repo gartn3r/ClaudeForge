@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 // page.evaluate callbacks run in the window, so this file needs the DOM types.
-import { execFileSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import {
@@ -123,15 +124,57 @@ test('gives only the terminal on show a WebGL renderer, and keeps it through man
   }
 })
 
-/** The names of the processes ClaudeForge's main process started, as Windows lists them. */
-const childProcessNames = (pid: number): string[] =>
-  execFileSync(
-    'powershell.exe',
-    ['-NoProfile', '-Command', `Get-CimInstance Win32_Process -Filter "ParentProcessId=${pid}" | ForEach-Object Name`],
-    { encoding: 'utf8' }
-  )
-    .split(/\r?\n/)
-    .filter(Boolean)
+const run = promisify(execFile)
+
+/**
+ * Defines `[ChildProcesses]::Print(parent, self)`, which prints the image names of a process's
+ * children, other than `self`, from a Toolhelp snapshot of the process table. Not WMI
+ * (Get-CimInstance Win32_Process): its first query on a fresh CI machine can take over a minute.
+ */
+const CHILD_PROCESSES_SCRIPT = `
+Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+public static class ChildProcesses {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  struct ProcessEntry {
+    public uint Size, Usage, ProcessId; public IntPtr DefaultHeapId; public uint ModuleId, Threads, ParentProcessId;
+    public int PriorityClassBase; public uint Flags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string ExeFile;
+  }
+  [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+  [DllImport("kernel32.dll", SetLastError = true)] static extern bool Process32FirstW(IntPtr snapshot, ref ProcessEntry entry);
+  [DllImport("kernel32.dll")] static extern bool Process32NextW(IntPtr snapshot, ref ProcessEntry entry);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+  public static void Print(uint parent, uint self) {
+    IntPtr snapshot = CreateToolhelp32Snapshot(2, 0);
+    if (snapshot == new IntPtr(-1)) throw new Win32Exception();
+    try {
+      var entry = new ProcessEntry { Size = (uint)Marshal.SizeOf(typeof(ProcessEntry)) };
+      if (!Process32FirstW(snapshot, ref entry)) throw new Win32Exception();
+      do {
+        if (entry.ParentProcessId == parent && entry.ProcessId != self) Console.WriteLine(entry.ExeFile);
+      } while (Process32NextW(snapshot, ref entry));
+    } finally {
+      CloseHandle(snapshot);
+    }
+  }
+}
+'@
+`
+
+/**
+ * The names of the processes ClaudeForge's main process started, as Windows lists them. Asked
+ * without blocking, so a slow answer counts against the test's timeouts instead of stalling them.
+ */
+const childProcessNames = async (pid: number): Promise<string[]> => {
+  const script = `${CHILD_PROCESSES_SCRIPT}[ChildProcesses]::Print(${pid}, $PID)`
+  const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    windowsHide: true,
+    timeout: 10_000
+  })
+  return stdout.split(/\r?\n/).filter(Boolean)
+}
 
 test('asks before closing a Session Claude is working in, and closes an idle one at once', async () => {
   const window = await launch()

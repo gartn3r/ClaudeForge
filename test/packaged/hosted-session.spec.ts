@@ -1,9 +1,10 @@
 // Journeys against a packaged ClaudeForge (CLAUDEFORGE_EXECUTABLE), as `npm run test:packaged` runs
 // them: CI installs the installer it just built on a fresh Windows machine first.
 
-import { execFileSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { launchClaudeForge, pickFolderInDialogs, type RunningClaudeForge } from '../seam2/claudeforge'
@@ -25,11 +26,20 @@ test.afterEach(async () => {
   await env.dispose()
 })
 
-/** The paths of the OpenConsole.exe processes running now. */
-function runningOpenConsoles(): string[] {
-  const query = `(Get-CimInstance Win32_Process -Filter "Name = 'OpenConsole.exe'").ExecutablePath`
-  const output = execFileSync('powershell.exe', ['-NoProfile', '-Command', query], { encoding: 'utf8' })
-  return output.split(/\r?\n/).filter(Boolean)
+const run = promisify(execFile)
+
+/**
+ * The paths of the OpenConsole.exe processes running now. Not from WMI (Get-CimInstance
+ * Win32_Process), whose first query on a fresh CI machine can take over a minute, and asked
+ * without blocking, so a slow answer counts against the test's timeout instead of stalling it.
+ */
+async function runningOpenConsoles(): Promise<string[]> {
+  const query = 'Get-Process -Name OpenConsole -ErrorAction SilentlyContinue | ForEach-Object Path; exit 0'
+  const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', query], {
+    windowsHide: true,
+    timeout: 10_000
+  })
+  return stdout.split(/\r?\n/).filter(Boolean)
 }
 
 test('ships the ConPTY it hosts Sessions in', () => {
@@ -53,5 +63,5 @@ test('starts a Hosted session in its own ConPTY and takes what the user types', 
   await window.keyboard.press('Enter')
 
   await expect(terminal).toContainText('You wrote: "hello"')
-  expect(runningOpenConsoles().map((path) => path.toLowerCase())).toContain(join(CONPTY, 'OpenConsole.exe').toLowerCase())
+  expect((await runningOpenConsoles()).map((path) => path.toLowerCase())).toContain(join(CONPTY, 'OpenConsole.exe').toLowerCase())
 })
