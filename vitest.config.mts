@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: ['test/seam1/**/*.test.ts'],
-    testTimeout: 20_000
+    testTimeout: 20_000,
+    // Setting up the fake environment (fixture copies, git worktrees) can outlast 10 s on a busy machine.
+    hookTimeout: 20_000
   }
 })

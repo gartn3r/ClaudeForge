@@ -8,6 +8,8 @@
 //   registration allowed to sign), plus AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT,
 //   AZURE_SIGNING_PROFILE and AZURE_SIGNING_PUBLISHER (the certificate's subject name);
 // - or a certificate file: CSC_LINK (the .pfx, base64 or a path) and CSC_KEY_PASSWORD.
+// A release sets CLAUDEFORGE_REQUIRE_SIGNING=true: it fails rather than ship unsigned, since a signed
+// ClaudeForge refuses updates its publisher did not sign.
 
 /** Read once, so that the variable GitHub Actions sets empty for a missing secret counts as unset. */
 const env = (name) => process.env[name] || undefined
@@ -47,6 +49,9 @@ function signing() {
   if (env('CSC_LINK') || env('WIN_CSC_LINK')) {
     notice('Code signing: on, with the certificate in CSC_LINK.')
     return { forceCodeSigning: true }
+  }
+  if (env('CLAUDEFORGE_REQUIRE_SIGNING') === 'true') {
+    throw new Error('Code signing: required, but no certificate is configured (see electron-builder.config.mjs).')
   }
   notice('Code signing: skipped, no certificate configured. The installer and the app are unsigned.')
   return {}
@@ -91,5 +96,6 @@ export default {
     uninstallDisplayName: 'ClaudeForge',
     deleteAppDataOnUninstall: false
   },
-  publish: [{ provider: 'github', owner: 'gartn3r', repo: 'ClaudeForge', releaseType: 'release' }]
+  // A draft, until the release workflow has checked the installer it uploaded and publishes it.
+  publish: [{ provider: 'github', owner: 'gartn3r', repo: 'ClaudeForge', releaseType: 'draft' }]
 }

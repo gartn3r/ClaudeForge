@@ -81,6 +81,7 @@ jobs:
       - name: Package a later version for the installed app to update to
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $true
           Move-Item dist dist-current
           npm version patch --no-git-tag-version
           npx electron-builder --config electron-builder.config.mjs --win --publish never

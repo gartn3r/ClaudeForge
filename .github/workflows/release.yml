@@ -2,11 +2,12 @@ name: Release
 
 # Publishes ClaudeForge's installer to GitHub releases, where the installed app looks for its
 # updates. Only a version tag the maintainer pushes publishes (`git tag v0.2.0 && git push origin
-# v0.2.0`, matching package.json's version). Running it by hand from the Actions tab builds and
-# signs the installer without publishing it, to check signing.
+# v0.2.0`, matching package.json's version): the installer is uploaded to a draft release, installed
+# here and checked to start a Hosted session, then the release is published. Running it by hand
+# from the Actions tab builds, signs and checks the installer without publishing anything.
 #
-# Code signing switches on when its secrets are set (see electron-builder.config.mjs) and is
-# skipped, with a notice, when they are not.
+# Code signing switches on when its secrets are set (see electron-builder.config.mjs). A tag release
+# fails without them, unless the repository variable ALLOW_UNSIGNED_RELEASE is `true`.
 
 on:
   push:
@@ -45,22 +46,26 @@ jobs:
             throw "Tag $env:GITHUB_REF_NAME does not match package.json's version ${version}: bump the version, or tag v${version}."
           }
 
-      - name: Lint, typecheck and Seam 1
-        run: |
-          npm run lint
-          npm run typecheck
-          npm run test:seam1
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Seam 1 (backend API, Vitest)
+        run: npm run test:seam1
 
       - name: Build
         run: npm run build
 
-      - name: Package, sign and publish
+      - name: Package and sign, then upload to a draft release
         shell: pwsh
         run: |
           $publish = if ($env:GITHUB_EVENT_NAME -eq 'push') { 'always' } else { 'never' }
           npx electron-builder --config electron-builder.config.mjs --win --publish $publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLAUDEFORGE_REQUIRE_SIGNING: ${{ github.event_name == 'push' && vars.ALLOW_UNSIGNED_RELEASE != 'true' }}
           # Azure Artifact Signing: an app registration allowed to sign, and where to sign.
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -80,7 +85,26 @@ jobs:
             dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty.node)
           Get-AuthenticodeSignature $files | Format-Table Status, @{ n = 'Signer'; e = { $_.SignerCertificate.Subject } }, Path -AutoSize -Wrap
 
+      - name: Install it on this fresh machine, as a user would
+        shell: pwsh
+        run: |
+          $installer = Get-Item dist/ClaudeForge-Setup-*.exe
+          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\claudeforge\ClaudeForge.exe'
+          if (-not (Test-Path $exe)) { throw "The installer did not install ClaudeForge at $exe" }
+          "CLAUDEFORGE_EXECUTABLE=$exe" >> $env:GITHUB_ENV
+
+      - name: Journeys against the installed app
+        run: npm run test:packaged
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        run: gh release edit "$env:GITHUB_REF_NAME" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload the installer
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: installer

@@ -1,7 +1,8 @@
+import { appendFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import { autoUpdater, type Logger } from 'electron-updater'
 import { createBackend, type DesktopShell, type Dialogs, type Updater, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
@@ -42,20 +43,40 @@ function claudeHome(): string {
 if (process.platform === 'win32')
   app.setAppUserModelId(app.isPackaged ? 'io.github.gartn3r.claudeforge' : process.execPath)
 
+/** Writes how ClaudeForge's updates went to `updates.log` in its logs folder, since an installed app has no console. */
+function updateLog(): Logger {
+  const write =
+    (level: string) =>
+    (message?: unknown): void => {
+      try {
+        mkdirSync(app.getPath('logs'), { recursive: true })
+        const line = `${new Date().toISOString()} ${level} ${String(message)}\n`
+        appendFileSync(join(app.getPath('logs'), 'updates.log'), line)
+      } catch {
+        // Logging must never stop an update.
+      }
+    }
+  return { info: write('info'), warn: write('warn'), error: write('error') }
+}
+
 /**
  * The installed ClaudeForge updates itself from GitHub releases: the installer writes where to look
  * (`app-update.yml`), and a downloaded update installs once ClaudeForge closes. A development build
- * does not. Tests set `CLAUDEFORGE_UPDATE_FEED` to the address of a release folder to update from,
- * or to `none` not to update at all.
+ * does not. Tests set `CLAUDEFORGE_UPDATE_FEED` to a release folder served on this machine to update
+ * from, or to `none` not to update at all.
  */
 function updater(): Updater | undefined {
   const feed = process.env.CLAUDEFORGE_UPDATE_FEED
-  if (feed === 'none' || (!feed && !app.isPackaged)) return undefined
+  const localFeed = feed && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(feed) ? feed : undefined
+  if (feed === 'none' || (!localFeed && !app.isPackaged)) return undefined
+  autoUpdater.logger = updateLog()
   // Releases carry the full installer, never the web installer that downloads the app.
   autoUpdater.disableWebInstaller = true
-  if (feed) {
+  // Without a listener, a failed download would end ClaudeForge; the next check tries again.
+  autoUpdater.on('error', (error) => autoUpdater.logger?.error(error.stack ?? error))
+  if (localFeed) {
     autoUpdater.forceDevUpdateConfig = true
-    autoUpdater.setFeedURL({ provider: 'generic', url: feed })
+    autoUpdater.setFeedURL({ provider: 'generic', url: localFeed })
   }
   return {
     check: async () => void (await autoUpdater.checkForUpdates()),

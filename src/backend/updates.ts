@@ -30,10 +30,12 @@ export class Updates {
     this.check()
   }
 
+  /** Where the update stands now. */
   current(): UpdateStatus {
     return this.status
   }
 
+  /** Stops looking for releases, as ClaudeForge closes. */
   dispose(): void {
     clearInterval(this.timer)
     this.unsubscribe?.()

@@ -47,7 +47,7 @@ Seam 1 drives the typed backend API with Vitest (`test/seam1`).
 npm run test:seam2
 ```
 
-Seam 2 builds the app and runs end-to-end journeys with Playwright for Electron (`test/seam2`).
+Seam 2 builds the app and runs end-to-end journeys with Playwright for Electron (`test/seam2`). The same journeys run against a packaged ClaudeForge when `CLAUDEFORGE_EXECUTABLE` names it; `test/packaged` adds those only a packaged one can take (see Package and release).
 
 CI runs both, plus lint, typecheck, the translation-file check and the third-party notices check, on Windows (`.github/workflows/ci.yml`).
 
@@ -65,9 +65,9 @@ npm run test:packaged
 
 runs the packaged journeys (`test/packaged`) against the `ClaudeForge.exe` that `CLAUDEFORGE_EXECUTABLE` names, for instance `dist/win-unpacked/ClaudeForge.exe`. CI builds the installer on every pull request, installs it on a fresh Windows machine, starts a Hosted session in it, and has it update itself to a later build it serves locally.
 
-The installed app looks for a newer release on GitHub releases when it starts and every four hours, downloads it in the background, shows "Update ready" in the title bar, and installs it once the user closes ClaudeForge (electron-updater).
+The installed app looks for a newer release on GitHub releases when it starts and every four hours, downloads it in the background, shows "Update ready" in the title bar, and installs it once the user closes ClaudeForge (electron-updater). How each check went is written to `%APPDATA%\ClaudeForge\logs\updates.log`. Once signed, the app installs only updates signed by the same publisher.
 
-Releases are published by `.github/workflows/release.yml`, only when a version tag is pushed: bump `version` in `package.json`, merge, then `git tag v<version>` and `git push origin v<version>` on that commit. Running the workflow by hand builds and signs the installer without publishing it. Code signing switches on when its secrets are set, with Azure Artifact Signing (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` secrets; `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`, `AZURE_SIGNING_PUBLISHER` variables) or a certificate file (`CSC_LINK`, `CSC_KEY_PASSWORD` secrets); without them the build says it skipped signing and stays unsigned.
+Releases are published by `.github/workflows/release.yml`, only when a version tag is pushed: bump `version` in `package.json`, merge, then `git tag v<version>` and `git push origin v<version>` on that commit. The workflow uploads the installer to a draft release, installs it and starts a Hosted session in it, then publishes the release. Running the workflow by hand builds, signs and checks the installer without publishing anything. Code signing switches on when its secrets are set, with Azure Artifact Signing (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` secrets; `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`, `AZURE_SIGNING_PUBLISHER` variables) or a certificate file (`CSC_LINK`, `CSC_KEY_PASSWORD` secrets). Without them, a pull request's build says it skipped signing and stays unsigned, and a tag release fails, unless the repository variable `ALLOW_UNSIGNED_RELEASE` is `true`.
 
 ## Licence
 

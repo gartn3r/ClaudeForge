@@ -563,6 +563,7 @@ export interface BackendApi {
     info(): Promise<SystemInfo>
   }
   updates: {
+    /** Whether a newer ClaudeForge is downloaded, waiting to install when ClaudeForge closes. */
     status(): Promise<UpdateStatus>
   }
   claudeCode: {

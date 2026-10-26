@@ -60,7 +60,7 @@ describe("ClaudeForge's own update", () => {
     backend.on('updates.changed', (status) => pushed.push(status))
   }
 
-  it('is current, and never looked for, in a build that does not update itself', async () => {
+  it('is current in a build that does not update itself', async () => {
     start(false)
 
     expect(await backend.api.updates.status()).toEqual({ state: 'current' })
