@@ -1,4 +1,11 @@
-import { createBackend, type Backend, type DesktopShell, type Dialogs, type WindowHost } from '../../src/backend'
+import {
+  createBackend,
+  type Backend,
+  type DesktopShell,
+  type Dialogs,
+  type Updater,
+  type WindowHost
+} from '../../src/backend'
 import type { FakeEnvironment } from '../fake-env'
 
 /**
@@ -9,7 +16,8 @@ export function startBackend(
   env: FakeEnvironment,
   window?: WindowHost,
   dialogs?: Partial<Dialogs>,
-  shell?: DesktopShell
+  shell?: DesktopShell,
+  updater?: Updater
 ): Backend {
   return createBackend({
     stateDir: env.userDataDir,
@@ -23,6 +31,7 @@ export function startBackend(
       ...dialogs
     },
     trashItem: env.trashItem,
-    shell
+    shell,
+    updater
   })
 }

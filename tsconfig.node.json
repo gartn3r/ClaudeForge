@@ -21,6 +21,7 @@
     "test/**/*",
     "electron.vite.config.mts",
     "vitest.config.mts",
-    "playwright.config.mts"
+    "playwright.config.mts",
+    "playwright.packaged.config.mts"
   ]
 }

@@ -7,7 +7,9 @@
     "minimize": "Minimize",
     "maximize": "Maximize",
     "restore": "Restore",
-    "close": "Close window"
+    "close": "Close window",
+    "updateReady": "Update {{version}} ready",
+    "updateReadyHint": "ClaudeForge {{version}} is downloaded. It installs when you close ClaudeForge."
   },
   "settings": {
     "label": "Settings",

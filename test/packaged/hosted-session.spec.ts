@@ -1,0 +1,57 @@
+// Journeys against a packaged ClaudeForge (CLAUDEFORGE_EXECUTABLE), as `npm run test:packaged` runs
+// them: CI installs the installer it just built on a fresh Windows machine first.
+
+import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { expect, test } from '@playwright/test'
+import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
+import { launchClaudeForge, pickFolderInDialogs, type RunningClaudeForge } from '../seam2/claudeforge'
+
+const EXECUTABLE = process.env.CLAUDEFORGE_EXECUTABLE!
+/** Where the packaged app keeps node-pty's native module and the ConPTY it ships (ADR 0001). */
+const CONPTY = join(dirname(EXECUTABLE), 'resources/app.asar.unpacked/node_modules/node-pty/prebuilds/win32-x64/conpty')
+
+let env: FakeEnvironment
+let claudeforge: RunningClaudeForge | undefined
+
+test.beforeEach(async () => {
+  env = await createFakeEnvironment()
+})
+
+test.afterEach(async () => {
+  await claudeforge?.close()
+  claudeforge = undefined
+  await env.dispose()
+})
+
+/** The paths of the OpenConsole.exe processes running now. */
+function runningOpenConsoles(): string[] {
+  const query = `(Get-CimInstance Win32_Process -Filter "Name = 'OpenConsole.exe'").ExecutablePath`
+  const output = execFileSync('powershell.exe', ['-NoProfile', '-Command', query], { encoding: 'utf8' })
+  return output.split(/\r?\n/).filter(Boolean)
+}
+
+test('ships the ConPTY it hosts Sessions in', () => {
+  expect(existsSync(join(CONPTY, 'conpty.dll')), 'conpty.dll').toBe(true)
+  expect(existsSync(join(CONPTY, 'OpenConsole.exe')), 'OpenConsole.exe').toBe(true)
+})
+
+test('starts a Hosted session in its own ConPTY and takes what the user types', async () => {
+  claudeforge = await launchClaudeForge(env)
+  const { app, window } = claudeforge
+  // The terminal draws into the page without GPU rendering, where the test can read it.
+  await window.getByRole('button', { name: 'Settings' }).click()
+  await window.getByRole('switch', { name: 'GPU rendering' }).click()
+  await window.keyboard.press('Escape')
+  await pickFolderInDialogs(app, env.projects['harbor-api'])
+
+  await window.getByRole('button', { name: 'Open folder' }).click()
+  const terminal = window.getByRole('main', { name: 'Terminal' })
+  await expect(terminal).toContainText('Fake Claude Code')
+  await window.keyboard.type('hello')
+  await window.keyboard.press('Enter')
+
+  await expect(terminal).toContainText('You wrote: "hello"')
+  expect(runningOpenConsoles().map((path) => path.toLowerCase())).toContain(join(CONPTY, 'OpenConsole.exe').toLowerCase())
+})

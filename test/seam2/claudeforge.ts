@@ -8,6 +8,12 @@ export const sessionRuns = async (env: FakeEnvironment): Promise<Invocation[]> =
 
 const MAIN = resolve(__dirname, '../../out/main/index.js')
 
+/**
+ * A packaged ClaudeForge's `ClaudeForge.exe`, installed or not, to run the journeys against instead
+ * of the build in out/ (`npm run test:packaged`).
+ */
+const PACKAGED = process.env.CLAUDEFORGE_EXECUTABLE
+
 export interface RunningClaudeForge {
   app: ElectronApplication
   window: Page
@@ -21,14 +27,17 @@ export const WINDOW_SIZE = { width: 1024, height: 768 }
 export interface LaunchOptions {
   /** The fixture Project ClaudeForge is started in, the displayed Project until a Session is displayed. */
   project?: FixtureProject
+  /** Variables set on top of the fake environment's. */
+  variables?: Record<string, string>
 }
 
-/** Launches the built ClaudeForge on a fake environment and waits for its window. */
+/** Launches the built (or packaged) ClaudeForge on a fake environment and waits for its window. */
 export async function launchClaudeForge(
   env: FakeEnvironment,
-  { project = 'recipe-box' }: LaunchOptions = {}
+  { project = 'recipe-box', variables }: LaunchOptions = {}
 ): Promise<RunningClaudeForge> {
-  const app = await electron.launch({ args: [MAIN], env: env.processEnv, cwd: env.projects[project] })
+  const launch = PACKAGED ? { executablePath: PACKAGED } : { args: [MAIN] }
+  const app = await electron.launch({ ...launch, env: { ...env.processEnv, ...variables }, cwd: env.projects[project] })
   const window = await app.firstWindow()
   await window.getByRole('main').waitFor()
   await app.evaluate(({ BrowserWindow }, { width, height }) => {

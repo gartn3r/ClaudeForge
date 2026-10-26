@@ -230,6 +230,8 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     CLAUDEFORGE_USER_DATA: userDataDir,
     CLAUDEFORGE_SYSTEM_LANGUAGES: systemLanguages.join(','),
     CLAUDEFORGE_RECYCLE_BIN: recycleBin,
+    // A packaged ClaudeForge would look for its updates on GitHub; a test names a release to update from.
+    CLAUDEFORGE_UPDATE_FEED: 'none',
     FAKE_ENV_LOG_DIR: logDir,
     FAKE_GH_RECORDINGS: ghRecordings,
     FAKE_CLAUDE_STATE: claudeState,

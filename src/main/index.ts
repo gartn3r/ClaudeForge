@@ -1,7 +1,9 @@
+import { appendFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
-import { createBackend, type DesktopShell, type Dialogs, type WindowHost } from '../backend'
+import { autoUpdater, type Logger } from 'electron-updater'
+import { createBackend, type DesktopShell, type Dialogs, type Updater, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
@@ -35,9 +37,56 @@ function claudeHome(): string {
   return process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
 }
 
-// Windows shows a notification under the app's AppUserModelID; run from the Electron binary
-// (development, tests), that is the binary's path.
-if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'ClaudeForge' : process.execPath)
+// Windows shows a notification under the app's AppUserModelID: installed, the `appId` the installer
+// gives its shortcuts (electron-builder.config.mjs); run from the Electron binary (development,
+// tests), the binary's path.
+if (process.platform === 'win32')
+  app.setAppUserModelId(app.isPackaged ? 'io.github.gartn3r.claudeforge' : process.execPath)
+
+/** Writes how ClaudeForge's updates went to `updates.log` in its logs folder, since an installed app has no console. */
+function updateLog(): Logger {
+  const write =
+    (level: string) =>
+    (message?: unknown): void => {
+      try {
+        mkdirSync(app.getPath('logs'), { recursive: true })
+        const line = `${new Date().toISOString()} ${level} ${String(message)}\n`
+        appendFileSync(join(app.getPath('logs'), 'updates.log'), line)
+      } catch {
+        // Logging must never stop an update.
+      }
+    }
+  return { info: write('info'), warn: write('warn'), error: write('error') }
+}
+
+/**
+ * The installed ClaudeForge updates itself from GitHub releases: the installer writes where to look
+ * (`app-update.yml`), and a downloaded update installs once ClaudeForge closes. A development build
+ * does not. Tests set `CLAUDEFORGE_UPDATE_FEED` to a release folder served on this machine to update
+ * from, or to `none` not to update at all.
+ */
+function updater(): Updater | undefined {
+  const feed = process.env.CLAUDEFORGE_UPDATE_FEED
+  const localFeed = feed && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(feed) ? feed : undefined
+  if (feed === 'none' || (!localFeed && !app.isPackaged)) return undefined
+  autoUpdater.logger = updateLog()
+  // Releases carry the full installer, never the web installer that downloads the app.
+  autoUpdater.disableWebInstaller = true
+  // Without a listener, a failed download would end ClaudeForge; the next check tries again.
+  autoUpdater.on('error', (error) => autoUpdater.logger?.error(error.stack ?? error))
+  if (localFeed) {
+    autoUpdater.forceDevUpdateConfig = true
+    autoUpdater.setFeedURL({ provider: 'generic', url: localFeed })
+  }
+  return {
+    check: async () => void (await autoUpdater.checkForUpdates()),
+    onDownloaded: (listener) => {
+      const onDownloaded = ({ version }: { version: string }): void => listener(version)
+      autoUpdater.on('update-downloaded', onDownloaded)
+      return () => autoUpdater.off('update-downloaded', onDownloaded)
+    }
+  }
+}
 
 /**
  * The notifications not yet clicked, held so that garbage collection does not drop their click
@@ -158,7 +207,8 @@ function createWindow(): void {
     window: windowHost(win),
     dialogs: dialogs(win),
     trashItem: trashItem(),
-    shell: desktopShell
+    shell: desktopShell,
+    updater: updater()
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {

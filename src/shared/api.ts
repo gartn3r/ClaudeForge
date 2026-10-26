@@ -476,6 +476,17 @@ export interface WindowNotification {
   body: string
 }
 
+/**
+ * Where ClaudeForge's own update stands. An installed ClaudeForge looks for a newer release on
+ * GitHub releases when it starts and every few hours, and downloads it in the background; the
+ * downloaded version installs once the user closes ClaudeForge.
+ */
+export type UpdateStatus =
+  /** Nothing newer downloaded yet, or a build that does not update itself (development, tests). */
+  | { state: 'current' }
+  /** A newer version is downloaded and installs when ClaudeForge closes. */
+  | { state: 'ready'; version: string }
+
 export interface BackendApi {
   sessionHost: {
     /** Asks the user for a Project folder ("Open folder"); null when they cancel. */
@@ -551,6 +562,10 @@ export interface BackendApi {
   system: {
     info(): Promise<SystemInfo>
   }
+  updates: {
+    /** Whether a newer ClaudeForge is downloaded, waiting to install when ClaudeForge closes. */
+    status(): Promise<UpdateStatus>
+  }
   claudeCode: {
     /** Looks for `claude` (at the path the user chose, then on PATH) and checks its version. */
     locate(): Promise<ClaudeCodeStatus>
@@ -604,6 +619,8 @@ export interface BackendEvents {
   'window.closeRequested': { working: string[]; unsavedEditors: string[] }
   /** The watched Project's Maps may have changed (`map.watch`): list them and load the shown one again. */
   'map.changed': { project: string }
+  /** ClaudeForge's own update moved on: a newer version is downloaded. */
+  'updates.changed': UpdateStatus
 }
 
 export type EventName = keyof BackendEvents
@@ -619,7 +636,8 @@ const EVENTS: Record<EventName, true> = {
   'window.maximizedChanged': true,
   'window.notificationClicked': true,
   'window.closeRequested': true,
-  'map.changed': true
+  'map.changed': true,
+  'updates.changed': true
 }
 
 /** Every pushed event, for the IPC transport. */

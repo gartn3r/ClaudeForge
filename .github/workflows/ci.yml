@@ -58,3 +58,62 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  package:
+    name: Installer, installed and updated (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Never signed here: the signing secrets are for the release workflow only.
+      - name: Package the installer
+        run: npm run package
+
+      - name: Package a later version for the installed app to update to
+        shell: pwsh
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          Move-Item dist dist-current
+          npm version patch --no-git-tag-version
+          npx electron-builder --config electron-builder.config.mjs --win --publish never
+          Move-Item dist dist-next
+
+      - name: Install it on this fresh machine, as a user would
+        shell: pwsh
+        run: |
+          $installer = Get-Item dist-current/ClaudeForge-Setup-*.exe
+          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\claudeforge\ClaudeForge.exe'
+          if (-not (Test-Path $exe)) { throw "The installer did not install ClaudeForge at $exe" }
+          "CLAUDEFORGE_EXECUTABLE=$exe" >> $env:GITHUB_ENV
+
+      - name: Journeys against the installed app
+        run: npm run test:packaged
+        env:
+          CLAUDEFORGE_UPDATE_RELEASE: ${{ github.workspace }}\dist-next
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer
+          path: dist-current/ClaudeForge-Setup-*.exe
+          retention-days: 7
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
