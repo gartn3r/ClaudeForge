@@ -240,7 +240,13 @@
   "closing": {
     "title_one": "Claude is still working in a Session. Close ClaudeForge?",
     "title_other": "Claude is still working in {{count}} Sessions. Close ClaudeForge?",
+    "titleUnsaved_one": "A skill or subagent has unsaved changes. Close ClaudeForge?",
+    "titleUnsaved_other": "{{count}} skills and subagents have unsaved changes. Close ClaudeForge?",
+    "titleBoth": "Claude is still working, and some changes are not saved. Close ClaudeForge?",
+    "workingList": "Sessions where Claude works:",
+    "unsavedList": "Unsaved changes:",
     "body": "Closing stops every claude process ClaudeForge started. Each Session comes back as a tab the next time you open ClaudeForge, and the conversation so far stays in Claude Code’s history.",
+    "bodyUnsaved": "Closing discards the unsaved changes: each file stays as it was last saved.",
     "action": "Close anyway"
   },
   "map": {
