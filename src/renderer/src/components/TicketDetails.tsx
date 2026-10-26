@@ -1,9 +1,9 @@
 import { ExternalLink } from 'lucide-react'
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Ticket, WayfinderMap } from '../../../shared/api'
 import { api } from '../api'
-import { openBlockerNames, waitsOnlyForParent } from './MapGraph'
+import { openBlockerNames, waitsOnlyForParent, type TFunction } from './MapGraph'
 import { MapText } from './MapText'
 
 interface TicketDetailsProps {
@@ -11,8 +11,6 @@ interface TicketDetailsProps {
   ticket: Ticket
   onClose(): void
 }
-
-type TFunction = ReturnType<typeof useTranslation>['t']
 
 /** Why a Ticket cannot be started: what blocks it, or who claimed it; null when nothing does. */
 function blockingReason(t: TFunction, map: WayfinderMap, ticket: Ticket): string | null {
@@ -41,6 +39,11 @@ export function TicketDetails({ map, ticket, onClose }: TicketDetailsProps): Rea
   const answerId = useId()
   const reason = blockingReason(t, map, ticket)
   const state = t(`map.state.${ticket.state}`)
+  const [openFailed, setOpenFailed] = useState(false)
+  const openIssue = (): void => {
+    setOpenFailed(false)
+    api.map.openIssue(ticket.path).catch(() => setOpenFailed(true))
+  }
 
   useEffect(() => {
     const element = dialog.current!
@@ -79,8 +82,13 @@ export function TicketDetails({ map, ticket, onClose }: TicketDetailsProps): Rea
         </section>
       )}
       {reason && <p className="ticket-details__reason">{reason}</p>}
+      {openFailed && (
+        <p className="ticket-details__error" role="alert">
+          {t('map.details.openFailed')}
+        </p>
+      )}
       <div className="cf-dialog__actions">
-        <button type="button" className="cf-btn" onClick={() => void api.map.openIssue(ticket.path)}>
+        <button type="button" className="cf-btn" onClick={openIssue}>
           <ExternalLink className="cf-icon" aria-hidden="true" />
           {t('map.openIssue')}
         </button>

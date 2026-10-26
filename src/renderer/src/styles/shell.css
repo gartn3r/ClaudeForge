@@ -1178,8 +1178,12 @@ dialog.cf-dialog::backdrop {
   overflow-wrap: anywhere;
 }
 .ticket-details__state,
-.ticket-details__reason {
+.ticket-details__reason,
+.ticket-details__error {
   margin: 0;
+}
+.ticket-details__error {
+  color: var(--danger);
 }
 .ticket-details__part {
   display: flex;

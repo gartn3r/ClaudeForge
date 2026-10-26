@@ -42,7 +42,8 @@ const reference = (tracker: Tracker, id: string): string => (tracker.kind === 'g
 function ticketAsMap(tracker: Tracker, project: string, ticket: Ticket): string {
   if (tracker.kind === 'github') return reference(tracker, ticket.id)
   const folder = project.replace(/[\\/]+$/, '')
-  const inside = ticket.path.slice(0, folder.length + 1).toLowerCase() === `${folder}\\`.toLowerCase()
+  const inside =
+    ticket.path.slice(0, folder.length).toLowerCase() === folder.toLowerCase() && /[\\/]/.test(ticket.path[folder.length] ?? '')
   return (inside ? ticket.path.slice(folder.length + 1) : ticket.path).replace(/\\/g, '/')
 }
 
@@ -169,7 +170,9 @@ ${mapId ?? ''}`
     })
   }
   // Inside an opened Parent Ticket, Wayfinder can work that Ticket as a Map of its own.
-  const levelCommand = level && listing && `/wayfinder ${ticketAsMap(listing.tracker, project, level)}`
+  // A blocked one cannot be worked yet (ADR 0004).
+  const levelCommand =
+    level?.state === 'parent' && listing ? `/wayfinder ${ticketAsMap(listing.tracker, project, level)}` : null
   const runLevelAsMap = (): void => {
     if (level && levelCommand) onStartSession({ command: levelCommand, ticket: level.name, map: null })
   }
@@ -194,7 +197,7 @@ ${mapId ?? ''}`
         level={view === 'graph' ? level : null}
         onOpen={openLevel}
         onAct={act}
-        levelCommand={levelCommand || null}
+        levelCommand={levelCommand}
         onRunLevelAsMap={runLevelAsMap}
         tree={
           view === 'tree' && (
@@ -363,7 +366,7 @@ interface MapViewProps {
   onOpen(ticketId: string): void
   /** Starts a workable Ticket, or shows any other one's details. */
   onAct(ticketId: string): void
-  /** The `/wayfinder` command that works the opened Parent Ticket as a Map of its own. */
+  /** The `/wayfinder` command that works the opened Parent Ticket as a Map of its own; null while it is blocked. */
   levelCommand: string | null
   onRunLevelAsMap(): void
   /** The Tree view, shown in place of the graph; false for the graph. */
@@ -409,7 +412,8 @@ function MapView({
           <button
             type="button"
             className="cf-btn cf-btn--ghost map-link-button map-issue-link"
-            onClick={() => void api.map.openIssue(level.path)}
+            // The Tracker's own path for it, which the backend opens: nothing to tell the user if it fails.
+            onClick={() => void api.map.openIssue(level.path).catch(() => undefined)}
           >
             {t('map.openIssue')}
           </button>

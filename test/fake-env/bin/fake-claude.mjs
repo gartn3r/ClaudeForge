@@ -189,8 +189,8 @@ if (args[0] === 'mcp' || args[0] === 'plugin') refuse(`The fake claude does not 
 // Interactive: a stand-in for Claude Code's prompt. Like Claude Code it reads its terminal in raw
 // mode, so Enter (\r) submits and Ctrl+J (\n) inserts a newline. It reports its terminal's size at
 // start and on every resize, echoes each submitted prompt, and exits on `/exit`. With `--prefill
-// <text>`, its prompt starts holding the text, unsent. Like Claude Code it
-// names its terminal after the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
+// <text>`, its prompt starts holding the text, unsent. Like Claude Code it names its terminal after
+// the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
 // - `/work <ms>`: a spinner redrawn every 100 ms for that long, then `Done.`; any key interrupts it.
 // - `/ask [<ms>]`: works that long first, if given, then asks `Red or blue?` and waits for the user;
 //   the next prompt answers it, then `Done.`.

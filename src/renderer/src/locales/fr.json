@@ -273,7 +273,8 @@
       "blockedOutside_other": "Bloqué par {{count}} issues ouvertes hors de cette Carte.",
       "parentWaits": "Bloqué : son Ticket parent attend ce qui le bloque.",
       "claimedBy": "Pris par {{assignee}}.",
-      "claimed": "Pris par quelqu'un d'autre."
+      "claimed": "Pris par quelqu'un d'autre.",
+      "openFailed": "L'issue n'a pas pu être ouverte."
     },
     "subTickets_one": "{{count}} sous",
     "subTickets_other": "{{count}} sous",

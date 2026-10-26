@@ -273,7 +273,8 @@
       "blockedOutside_other": "Blocked by {{count}} open issues outside this Map.",
       "parentWaits": "Blocked: its Parent Ticket waits for what blocks it.",
       "claimedBy": "Claimed by {{assignee}}.",
-      "claimed": "Claimed by someone else."
+      "claimed": "Claimed by someone else.",
+      "openFailed": "The issue could not be opened."
     },
     "subTickets_one": "{{count}} sub",
     "subTickets_other": "{{count}} sub",

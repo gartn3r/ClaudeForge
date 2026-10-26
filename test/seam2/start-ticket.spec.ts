@@ -117,4 +117,10 @@ test('inside an opened Parent Ticket, a button types /wayfinder for that Ticket 
   )
   await expect(shownTerminal(window)).toContainText('> /wayfinder #71')
   expect((await sessionRuns(env)).map(({ args }) => args.slice(0, 2))).toEqual([['--prefill', '/wayfinder #71']])
+
+  // A blocked Parent Ticket cannot be worked yet, as a Map of its own or otherwise.
+  await panel.getByRole('button', { name: 'Back to Webhooks' }).click()
+  await ticket(window, 'Signing secrets').getByRole('button', { name: 'Open Signing secrets' }).click()
+  await expect(panel.getByRole('region', { name: 'Question' })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Run Wayfinder on this Ticket in a new Session' })).toHaveCount(0)
 })

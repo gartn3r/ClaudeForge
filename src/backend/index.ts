@@ -81,8 +81,9 @@ export interface Backend {
 }
 
 /**
- * Opens a Map's or Ticket's issue: a GitHub issue's web address, or a local markdown file. Anything
- * else is refused, so the interface cannot have the desktop run a program.
+ * Opens a Map's or Ticket's issue: a web address (a GitHub issue's, on github.com or a GitHub
+ * Enterprise host), or a local markdown file. Anything else is refused, so the interface cannot
+ * have the desktop run a program.
  */
 async function openIssue(shell: DesktopShell | undefined, path: string): Promise<void> {
   if (/^https:\/\//i.test(path)) return shell?.openUrl(path)

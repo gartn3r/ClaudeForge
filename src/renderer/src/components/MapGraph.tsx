@@ -26,7 +26,7 @@ import type { SessionSummary, Ticket, TicketRollup, TicketState, TicketType, Way
 import { TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
 import { IconButton } from './IconButton'
 
-type TFunction = ReturnType<typeof useTranslation>['t']
+export type TFunction = ReturnType<typeof useTranslation>['t']
 
 const TYPE_ICONS: Record<TicketType, typeof Search> = {
   research: Search,
