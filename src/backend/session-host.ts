@@ -50,6 +50,9 @@ const STATUS_OF_REPORT: Record<ProgramStatusState, HostedSessionStatus> = {
   clear: 'idle'
 }
 
+/** What cmd.exe changes in a quoted argument: `%` expands a variable, `"` ends the quotes, a line break the command. */
+const CMD_CHANGES = /["%\r\n]/
+
 /** Whether a Session in this status is in the middle of a turn. */
 const midTurn = (status: HostedSessionStatus): boolean => status === 'working' || status === 'waiting'
 
@@ -111,8 +114,11 @@ export class SessionHost {
     const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
     const { sessionId, args: claudeArgs } = withSessionId(args)
     // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
-    // Each option is quoted as is: they are ClaudeForge's own flags and Session ids, never user text.
-    const pty = /^\.(cmd|bat)$/i.test(extname(claude))
+    // Each option is quoted as is, so one that cmd.exe would expand or cut short is refused.
+    const batch = /^\.(cmd|bat)$/i.test(extname(claude))
+    const changed = batch ? claudeArgs.find((arg) => CMD_CHANGES.test(arg)) : undefined
+    if (changed !== undefined) throw new Error(`cmd.exe cannot pass ${JSON.stringify(changed)} to ${claude} as it is`)
+    const pty = batch
       ? spawn(
           envVar(env, 'COMSPEC') ?? 'cmd.exe',
           `/d /s /c ""${claude}"${claudeArgs.map((arg) => ` "${arg}"`).join('')}"`,

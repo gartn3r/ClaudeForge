@@ -155,7 +155,12 @@
     "empty": "Ouvrez un dossier pour y démarrer une Session.",
     "openFolder": "Ouvrir un dossier",
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
-    "failed": "Claude Code n'a pas pu démarrer dans ce dossier."
+    "failed": "Claude Code n'a pas pu démarrer dans ce dossier.",
+    "typed": {
+      "label": "Tapée, non envoyée",
+      "ticket": "Prêt à démarrer <b>{{ticket}}</b> de <m>{{map}}</m>. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.",
+      "map": "Prêt à lancer Wayfinder sur <b>{{ticket}}</b> comme une Carte à part entière. Vérifiez la commande ci-dessous, puis appuyez sur Entrée."
+    }
   },
   "tabs": {
     "newSession": "Nouvelle Session",
@@ -213,7 +218,8 @@
       "closed": "Fermé",
       "blockedBy_one": "Bloqué par {{count}} Ticket ouvert",
       "blockedBy_other": "Bloqué par {{count}} Tickets ouverts",
-      "parentWaits": "Bloqué : son Ticket parent attend"
+      "parentWaits": "Bloqué : son Ticket parent attend",
+      "parent": "Ticket parent"
     },
     "tooltip": {
       "frontier": "{{name}} · sur la Frontière",
@@ -255,6 +261,20 @@
     "crumbs": "Où vous êtes dans la Carte",
     "back": "Revenir à {{name}}",
     "open": "Ouvrir {{name}}",
+    "start": "Démarrer {{name}} dans une nouvelle Session",
+    "showDetails": "Afficher le détail de {{name}}",
+    "openIssue": "Ouvrir l'issue",
+    "runAsMap": "Lancer Wayfinder sur ce Ticket dans une nouvelle Session",
+    "runAsMapHint": "Traite {{name}} comme une Carte à part entière : <code>{{command}}</code> est tapée dans une nouvelle Session, sans être envoyée.",
+    "details": {
+      "answer": "Réponse",
+      "blockedBy": "Bloqué par {{blockers}}.",
+      "blockedOutside_one": "Bloqué par {{count}} issue ouverte hors de cette Carte.",
+      "blockedOutside_other": "Bloqué par {{count}} issues ouvertes hors de cette Carte.",
+      "parentWaits": "Bloqué : son Ticket parent attend ce qui le bloque.",
+      "claimedBy": "Pris par {{assignee}}.",
+      "claimed": "Pris par quelqu'un d'autre."
+    },
     "subTickets_one": "{{count}} sous",
     "subTickets_other": "{{count}} sous",
     "rollup": {

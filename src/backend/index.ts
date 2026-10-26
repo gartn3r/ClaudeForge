@@ -2,7 +2,8 @@
 // Electron import, so Seam 1 tests drive it directly. The main process wires
 // it to IPC (see src/main/ipc.ts).
 
-import { join } from 'node:path'
+import { stat } from 'node:fs/promises'
+import { extname, isAbsolute, join } from 'node:path'
 import type {
   AppState,
   AppStatePatch,
@@ -53,6 +54,16 @@ export interface BackendOptions {
   dialogs?: Dialogs
   /** Moves a deleted Session's files to the Windows Recycle Bin. */
   trashItem: TrashItem
+  /** Opens issues on the desktop; absent in Seam 1 tests unless one stands in for it. */
+  shell?: DesktopShell
+}
+
+/** Where the desktop opens what the interface links to. */
+export interface DesktopShell {
+  /** Opens a web address in the default browser. */
+  openUrl(url: string): Promise<void>
+  /** Opens a file in the default app for its kind. */
+  openFile(path: string): Promise<void>
 }
 
 /** The native dialogs the backend asks the user through. */
@@ -67,6 +78,17 @@ export interface Backend {
   api: BackendApi
   on<E extends EventName>(event: E, listener: Listener<E>): () => void
   dispose(): void
+}
+
+/**
+ * Opens a Map's or Ticket's issue: a GitHub issue's web address, or a local markdown file. Anything
+ * else is refused, so the interface cannot have the desktop run a program.
+ */
+async function openIssue(shell: DesktopShell | undefined, path: string): Promise<void> {
+  if (/^https:\/\//i.test(path)) return shell?.openUrl(path)
+  if (!isAbsolute(path) || extname(path).toLowerCase() !== '.md') throw new Error(`${path} is not an issue`)
+  if (!(await stat(path)).isFile()) throw new Error(`${path} is not a file`)
+  return shell?.openFile(path)
 }
 
 export function createBackend(options: BackendOptions): Backend {
@@ -145,14 +167,18 @@ export function createBackend(options: BackendOptions): Backend {
   const api: BackendApi = {
     sessionHost: {
       chooseProject: async () => (await options.dialogs?.chooseProjectFolder()) ?? null,
-      start: (project, size) => sessionHost.start(project, size),
+      start: (project, size, { prefill } = {}) =>
+        sessionHost.start(project, size, prefill === undefined ? [] : ['--prefill', prefill]),
       resume: (id, size) => resumeSession(id, size),
       fork: (id, size) => resumeSession(id, size, ['--fork-session']),
       write: async (id, data) => sessionHost.write(id, data),
       resize: async (id, size) => sessionHost.resize(id, size),
       stop: async (id) => sessionHost.stop(id)
     },
-    map: maps,
+    map: {
+      ...maps,
+      openIssue: (path) => openIssue(options.shell, path)
+    },
     extensions,
     appState: {
       read: () => appState.read(),

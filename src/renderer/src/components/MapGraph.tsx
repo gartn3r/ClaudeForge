@@ -61,6 +61,8 @@ type TicketCardData = {
   onDisplaySession(id: string): void
   /** Opens a Parent Ticket: the graph then shows its Sub-tickets. */
   onOpen(id: string): void
+  /** Starts a workable Ticket, or shows any other one's details. */
+  onAct(id: string): void
 }
 type TicketCardNode = Node<TicketCardData, 'ticket'>
 
@@ -132,10 +134,11 @@ export function ticketTooltip(t: TFunction, ticket: Ticket, blockers: string[]):
 
 /**
  * A compact Ticket: type, state glyph and name; the full name and any block in its tooltip.
- * A Parent Ticket is a stack with its Sub-ticket count and roll-up, opened by a click.
+ * A Parent Ticket is a stack with its Sub-ticket count and roll-up, opened by a click; a click on
+ * any other starts it when it is workable, else shows its details.
  */
 function TicketCard({
-  data: { ticket, blockers, current, sessions, onDisplaySession, onOpen }
+  data: { ticket, blockers, current, sessions, onDisplaySession, onOpen, onAct }
 }: NodeProps<TicketCardNode>): ReactNode {
   const { t } = useTranslation()
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
@@ -147,14 +150,12 @@ function TicketCard({
   const glyph = ticket.state === 'parent' ? null : <StateGlyph ticket={{ ...ticket, state: ticket.state }} />
   return (
     <div className={classes.join(' ')} title={tooltip}>
-      {rollup && (
-        <button
-          type="button"
-          className="map-ticket__open nopan"
-          aria-label={t('map.open', { name: ticket.name })}
-          onClick={() => onOpen(ticket.id)}
-        />
-      )}
+      <button
+        type="button"
+        className="map-ticket__act nopan"
+        aria-label={t(rollup ? 'map.open' : ticket.workable ? 'map.start' : 'map.showDetails', { name: ticket.name })}
+        onClick={() => (rollup ? onOpen : onAct)(ticket.id)}
+      />
       <span className="cf-ticket__head">
         {ticket.type && TypeIcon ? (
           <span className="cf-ticket__type">
@@ -284,6 +285,7 @@ interface MapGraphProps {
   displayedSessionId: string | null
   onDisplaySession(id: string): void
   onOpen(id: string): void
+  onAct(id: string): void
 }
 
 /** The names of a Ticket's blockers that are open Tickets of the Map. */
@@ -306,7 +308,8 @@ export function MapGraph({
   ticketSessions,
   displayedSessionId,
   onDisplaySession,
-  onOpen
+  onOpen,
+  onAct
 }: MapGraphProps): ReactNode {
   const { t } = useTranslation()
 
@@ -342,11 +345,12 @@ export function MapGraph({
           current,
           sessions: sessions.filter((session) => session.id !== displayedSessionId),
           onDisplaySession,
-          onOpen
+          onOpen,
+          onAct
         }
       }
     })
-  }, [map, layout, ticketSessions, displayedSessionId, onDisplaySession, onOpen])
+  }, [map, layout, ticketSessions, displayedSessionId, onDisplaySession, onOpen, onAct])
 
   return (
     <section className="map-graph" aria-label={t('map.graph')}>

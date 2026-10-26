@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
-import { createBackend, type Dialogs, type WindowHost } from '../backend'
+import { createBackend, type DesktopShell, type Dialogs, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
@@ -13,6 +13,15 @@ if (process.env.CLAUDEFORGE_USER_DATA) app.setPath('userData', process.env.CLAUD
 function trashItem(): TrashItem {
   const override = process.env.CLAUDEFORGE_RECYCLE_BIN
   return override ? standInRecycleBin(override) : (path) => shell.trashItem(path)
+}
+
+const desktopShell: DesktopShell = {
+  openUrl: (url) => shell.openExternal(url),
+  openFile: async (path) => {
+    // Electron reports a failure to open as a message, not an error.
+    const failure = await shell.openPath(path)
+    if (failure) throw new Error(failure)
+  }
 }
 
 function systemLanguages(): string[] {
@@ -110,7 +119,8 @@ function createWindow(): void {
     env: process.env,
     window: windowHost(win),
     dialogs: dialogs(win),
-    trashItem: trashItem()
+    trashItem: trashItem(),
+    shell: desktopShell
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {

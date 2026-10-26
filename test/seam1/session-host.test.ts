@@ -173,6 +173,34 @@ describe('the Session host', () => {
     await waitForText(id, 'You wrote: "hello"')
   })
 
+  it('starts claude with text typed in its prompt but not sent, which the user sends with Enter', async () => {
+    const { api } = await start()
+    const project = env!.projects['recipe-box']
+
+    const { id } = await api.sessionHost.start(project, SIZE, { prefill: '/wayfinder meal-planner 02' })
+
+    await waitForText(id, '> /wayfinder meal-planner 02')
+    expect(await sessionRuns()).toEqual([
+      expect.objectContaining({ args: ['--prefill', '/wayfinder meal-planner 02', '--session-id', expect.any(String)], cwd: project })
+    ])
+    expect(output(id)).not.toContain('You wrote')
+    expect(statuses(id)).toEqual([])
+
+    await api.sessionHost.write(id, '\r')
+
+    await waitForText(id, 'You wrote: "/wayfinder meal-planner 02"')
+  })
+
+  it('refuses text to type that cmd.exe would change on its way to a claude it runs as a batch file', async () => {
+    const { api } = await start()
+    const project = env!.projects['recipe-box']
+
+    for (const prefill of ['/wayfinder 100%done%', '/wayfinder "meal planner"', '/wayfinder meal-planner\r02']) {
+      await expect(api.sessionHost.start(project, SIZE, { prefill })).rejects.toThrow()
+    }
+    expect(await sessionRuns()).toEqual([])
+  })
+
   it('gives claude the terminal size it starts at, then every new size', async () => {
     const { api } = await start()
     const id = await startSession()

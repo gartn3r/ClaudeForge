@@ -1,4 +1,5 @@
-import type { BackendApi, WayfinderLink } from '../../shared/api'
+import type { WayfinderLink } from '../../shared/api'
+import type { MapReader } from '.'
 
 /**
  * A reference as typed after `/wayfinder`, reduced to what names a Map or Ticket:
@@ -27,7 +28,7 @@ function namesTicket(reference: string, id: string): boolean {
  * Maps; null when they name none of them. A Ticket the Map does not hold leaves a Map-only link.
  */
 export async function resolveWayfinderLink(
-  maps: BackendApi['map'],
+  maps: MapReader,
   project: string,
   args: string
 ): Promise<WayfinderLink | null> {

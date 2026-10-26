@@ -14,6 +14,8 @@ interface MapTreeProps {
   onFold(ticketId: string, folded: boolean): void
   /** Opens a Parent Ticket in the graph. */
   onOpen(ticketId: string): void
+  /** Starts a workable Ticket, or shows any other one's details. */
+  onAct(ticketId: string): void
 }
 
 /** One shown row: a Ticket, how deep it sits and whether it shows Sub-tickets. */
@@ -41,9 +43,10 @@ function treeRows(map: WayfinderMap, hideClosed: boolean, folded: Set<string>): 
 
 /**
  * The whole Ticket hierarchy of a Map as one indented list, with a switch to hide closed Tickets.
- * The arrow keys move between rows, fold and unfold them; Enter opens a Parent Ticket in the graph.
+ * The arrow keys move between rows, fold and unfold them; Enter opens a Parent Ticket in the graph,
+ * and acts on any other Ticket as a click does.
  */
-export function MapTree({ map, hideClosed, onHideClosed, folded, onFold, onOpen }: MapTreeProps): ReactNode {
+export function MapTree({ map, hideClosed, onHideClosed, folded, onFold, onOpen, onAct }: MapTreeProps): ReactNode {
   const { t } = useTranslation()
   const switchId = useId()
   const list = useRef<HTMLUListElement>(null)
@@ -75,7 +78,7 @@ export function MapTree({ map, hideClosed, onHideClosed, folded, onFold, onOpen 
     } else if (event.key === 'ArrowLeft') {
       if (row.hasSubTickets && !isFolded) onFold(row.ticket.id, true)
       else focusRow(rows.find((each) => each.ticket.id === row.ticket.parent))
-    } else if (event.key === 'Enter' && row.ticket.rollup) onOpen(row.ticket.id)
+    } else if (event.key === 'Enter') (row.ticket.rollup ? onOpen : onAct)(row.ticket.id)
     else return
     event.preventDefault()
   }
@@ -117,6 +120,7 @@ export function MapTree({ map, hideClosed, onHideClosed, folded, onFold, onOpen 
               onFocus={() => setFocusedId(row.ticket.id)}
               onFold={onFold}
               onOpen={onOpen}
+              onAct={onAct}
             />
           ))}
         </ul>
@@ -134,12 +138,13 @@ interface TreeItemProps {
   onFocus(): void
   onFold(ticketId: string, folded: boolean): void
   onOpen(ticketId: string): void
+  onAct(ticketId: string): void
 }
 
 /**
  * One Ticket: indent guides, a twisty when it has Sub-tickets, its state, its name (opening a
  * Parent Ticket in the graph) and on the right what to know of it: a roll-up, the Frontier, who
- * claimed it or why it waits.
+ * claimed it or why it waits. The row of any other Ticket acts on it when clicked.
  */
 function TreeItem({
   map,
@@ -148,7 +153,8 @@ function TreeItem({
   tabbable,
   onFocus,
   onFold,
-  onOpen
+  onOpen,
+  onAct
 }: TreeItemProps): ReactNode {
   const { t } = useTranslation()
   const nameId = useId()
@@ -207,6 +213,7 @@ function TreeItem({
       aria-describedby={metaId}
       title={ticketTooltip(t, ticket, blockers)}
       onFocus={(event) => event.target === event.currentTarget && onFocus()}
+      onClick={rollup ? undefined : () => onAct(ticket.id)}
     >
       {depth > 0 && (
         <span className="cf-indent" aria-hidden="true">
@@ -222,7 +229,11 @@ function TreeItem({
             tabIndex={-1}
             className="map-tree__twisty"
             aria-label={t('map.tree.subTickets', { name: ticket.name })}
-            onClick={() => onFold(ticket.id, !folded)}
+            onClick={(event) => {
+              // Folding only folds, never acts on the row.
+              event.stopPropagation()
+              onFold(ticket.id, !folded)
+            }}
           >
             <Twisty className="cf-icon cf-icon--sm" aria-hidden="true" />
           </button>

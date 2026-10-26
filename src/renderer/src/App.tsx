@@ -139,6 +139,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           activeKey={hosted.activeKey}
           gpuRendering={state.gpuRendering}
           onStart={startHostedSession}
+          onClose={(key) => hosted.sessions.close(key)}
         />
         <SidePanel
           id="map"
@@ -156,6 +157,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             displayedSession={displayed?.session ?? null}
             preferences={state.maps[project] ?? {}}
             onDisplaySession={setDisplayedSessionId}
+            onStartSession={(typed) => startHostedSession(project, { kind: 'new', typed })}
             onCollapse={collapseHandler('map', true)}
           />
         </SidePanel>

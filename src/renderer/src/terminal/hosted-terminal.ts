@@ -11,8 +11,21 @@ const REFIT_DELAY_MS = 50
 /** How a Hosted session ended: `claude`'s exit code, or null when it could not start. */
 export type SessionEnd = { exitCode: number | null }
 
-/** How a Hosted session's `claude` starts: a new Session in its Project, or from a past Session. */
-export type SessionLaunch = { kind: 'new' } | { kind: 'resume' | 'fork'; sessionId: string }
+/**
+ * A `/wayfinder` command ClaudeForge types in a new Session's prompt, unsent, with what it starts:
+ * a Ticket of a Map, or, without a Map, a Ticket worked as a Map of its own.
+ */
+export interface TypedCommand {
+  command: string
+  ticket: string
+  map: string | null
+}
+
+/**
+ * How a Hosted session's `claude` starts: a new Session in its Project, maybe with a command
+ * typed in its prompt, or from a past Session.
+ */
+export type SessionLaunch = { kind: 'new'; typed?: TypedCommand } | { kind: 'resume' | 'fork'; sessionId: string }
 
 /** Claude Code puts a spinner or status glyph before the name it gives its terminal. */
 const STATUS_GLYPH = /^\p{So}\s+/u
@@ -233,7 +246,7 @@ export class HostedTerminal {
     const launch = this.launch
     switch (launch.kind) {
       case 'new':
-        return api.sessionHost.start(this.project, size)
+        return api.sessionHost.start(this.project, size, launch.typed && { prefill: launch.typed.command })
       case 'resume':
         return api.sessionHost.resume(launch.sessionId, size)
       case 'fork':

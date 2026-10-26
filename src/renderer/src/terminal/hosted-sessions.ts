@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react'
 import type { HostedSessionStatus } from '../../../shared/api'
-import { HostedTerminal, type SessionEnd, type SessionLaunch } from './hosted-terminal'
+import { HostedTerminal, type SessionEnd, type SessionLaunch, type TypedCommand } from './hosted-terminal'
 
 /** One Hosted session's tab, as the title bar and the terminal area show it. */
 export interface HostedTab {
@@ -12,6 +12,8 @@ export interface HostedTab {
   title: string | null
   status: HostedSessionStatus
   end: SessionEnd | null
+  /** The command ClaudeForge typed in its prompt, until the user sends it or `claude` ends; else null. */
+  typed: TypedCommand | null
 }
 
 export interface HostedTabs {
@@ -27,13 +29,14 @@ const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean)
 /** A tab's name: the one Claude Code gave its terminal, else its Project's folder name. */
 export const tabTitle = (tab: HostedTab): string => tab.title ?? folderName(tab.project)
 
-const tabOf = (key: string, project: string, terminal: HostedTerminal): HostedTab => ({
+const tabOf = (key: string, project: string, terminal: HostedTerminal, typed: TypedCommand | null): HostedTab => ({
   key,
   project,
   terminal,
   title: terminal.title,
   status: terminal.status,
-  end: terminal.end ?? null
+  end: terminal.end ?? null,
+  typed
 })
 
 /** Calls back when a tab's Hosted session changes status, with the tab as it now is. */
@@ -63,15 +66,18 @@ export class HostedSessions {
   start(project: string, gpuRendering: boolean, launch?: SessionLaunch): void {
     const key = String(this.nextKey++)
     const terminal = new HostedTerminal(project, gpuRendering, launch)
+    let typed = (launch?.kind === 'new' && launch.typed) || null
     terminal.onChange(() => {
+      // A turn starts once the user sends the command; once `claude` ends, there is none to send.
+      if (terminal.status !== 'idle' || terminal.end) typed = null
       const previous = this.state.tabs.find((tab) => tab.key === key)
-      const changed = tabOf(key, project, terminal)
+      const changed = tabOf(key, project, terminal, typed)
       this.update(this.state.tabs.map((tab) => (tab.key === key ? changed : tab)))
       if (previous && previous.status !== changed.status) {
         for (const listener of this.statusListeners) listener(changed)
       }
     })
-    this.update([...this.state.tabs, tabOf(key, project, terminal)], key)
+    this.update([...this.state.tabs, tabOf(key, project, terminal, typed)], key)
   }
 
   select(key: string): void {
