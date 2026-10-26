@@ -20,10 +20,11 @@ import {
   SquareCheck,
   SquareTerminal
 } from 'lucide-react'
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { SessionSummary, Ticket, TicketRollup, TicketState, TicketType, WayfinderMap } from '../../../shared/api'
 import { TICKET_WIDTH, layoutMap, type MapLayout } from '../map/layout'
+import { RELAYOUT_MS, prefersReducedMotion, useNewcomers } from '../map/transitions'
 import { IconButton } from './IconButton'
 
 export type TFunction = ReturnType<typeof useTranslation>['t']
@@ -58,6 +59,10 @@ type TicketCardData = {
   current: boolean
   /** The other Sessions working on it, each a badge that displays it. */
   sessions: SessionSummary[]
+  /** Added to the graph since it was last drawn: it fades in. */
+  entering: boolean
+  /** On the Frontier now, and not when the graph was last drawn: its outline pulses once. */
+  reachedFrontier: boolean
   onDisplaySession(id: string): void
   /** Opens a Parent Ticket: the graph then shows its Sub-tickets. */
   onOpen(id: string): void
@@ -138,7 +143,7 @@ export function ticketTooltip(t: TFunction, ticket: Ticket, blockers: string[]):
  * any other starts it when it is workable, else shows its details.
  */
 function TicketCard({
-  data: { ticket, blockers, current, sessions, onDisplaySession, onOpen, onAct }
+  data: { ticket, blockers, current, sessions, entering, reachedFrontier, onDisplaySession, onOpen, onAct }
 }: NodeProps<TicketCardNode>): ReactNode {
   const { t } = useTranslation()
   const TypeIcon = ticket.type ? TYPE_ICONS[ticket.type] : null
@@ -147,6 +152,8 @@ function TicketCard({
   const classes = ['cf-ticket', 'cf-ticket--compact', `cf-ticket--${ticket.state}`, 'map-ticket']
   if (rollup) classes.push('cf-ticket--parent')
   if (current) classes.push('cf-ticket--current')
+  if (entering) classes.push('map-ticket--entering')
+  if (reachedFrontier) classes.push('map-ticket--reached')
   const glyph = ticket.state === 'parent' ? null : <StateGlyph ticket={{ ...ticket, state: ticket.state }} />
   return (
     <div className={classes.join(' ')} title={tooltip}>
@@ -208,12 +215,22 @@ function SessionBadge({ session, onDisplay }: { session: SessionSummary; onDispl
 
 const NODE_TYPES = { ticket: TicketCard }
 
-/** The edges, drawn in the graph's own coordinates under the pan and zoom. */
-function Edges({ layout, names }: { layout: MapLayout; names: Map<string, string> }): ReactNode {
+interface EdgesProps {
+  layout: MapLayout
+  /** Changes whenever the Tickets or edges move. */
+  signature: string
+  names: Map<string, string>
+}
+
+/**
+ * The edges, drawn in the graph's own coordinates under the pan and zoom. A relayout draws them
+ * anew, fading in while the Tickets move to their new places.
+ */
+function Edges({ layout, signature, names }: EdgesProps): ReactNode {
   const { t } = useTranslation()
   return (
     <ViewportPortal>
-      <svg className="map-edges" width={layout.width} height={layout.height}>
+      <svg key={signature} className="map-edges" width={layout.width} height={layout.height}>
         {layout.edges.map((edge) => (
           <g
             key={`${edge.from}-${edge.to}`}
@@ -229,18 +246,34 @@ function Edges({ layout, names }: { layout: MapLayout; names: Map<string, string
   )
 }
 
+interface PlacementProps {
+  /** The level of the Map the graph shows. */
+  levelKey: string
+  /** Changes only when the Tickets or edges move, so a refresh that changed nothing keeps the user's pan and zoom. */
+  signature: string
+  graphWidth: number
+}
+
 /**
  * Places a new layout at full size from the top: centred when it fits the
  * panel, from the left when a rank holds more Tickets than the panel shows.
- * Text never shrinks on its own; zoom and fit are the user's.
+ * Text never shrinks on its own; zoom and fit are the user's. A relayout of
+ * the same level glides there with the Tickets.
  */
-function Placement({ layout }: { layout: MapLayout }): null {
+function Placement({ levelKey, signature, graphWidth }: PlacementProps): null {
   const flow = useReactFlow()
   const width = useStore((state) => state.width)
+  const placed = useRef<{ levelKey: string; signature: string } | null>(null)
   useEffect(() => {
     if (width === 0) return
-    void flow.setViewport({ x: Math.max(PADDING, (width - layout.width) / 2), y: PADDING, zoom: 1 })
-  }, [flow, layout, width])
+    const before = placed.current
+    const relayout = before?.levelKey === levelKey && before.signature !== signature
+    placed.current = { levelKey, signature }
+    void flow.setViewport(
+      { x: Math.max(PADDING, (width - graphWidth) / 2), y: PADDING, zoom: 1 },
+      relayout && !prefersReducedMotion() ? { duration: RELAYOUT_MS } : undefined
+    )
+  }, [flow, levelKey, signature, graphWidth, width])
   return null
 }
 
@@ -326,6 +359,22 @@ export function MapGraph({
   }, [map, level, showDecided])
   const counted = useMemo(() => ticketsBeneath(map, level), [map, level])
 
+  // What changed since this level of the Map was last drawn, to animate it.
+  const levelKey = `${map.path}\n${level ?? ''}`
+  const entering = useNewcomers(levelKey, layout.tickets.map(({ ticket }) => ticket.id))
+  const reachedFrontier = useNewcomers(
+    levelKey,
+    layout.tickets.flatMap(({ ticket }) => (ticket.state === 'frontier' ? [ticket.id] : []))
+  )
+  const signature = useMemo(
+    () =>
+      [
+        ...layout.tickets.map(({ ticket, x, y }) => `${ticket.id}@${x},${y}`),
+        ...layout.edges.map((edge) => edge.line)
+      ].join(' '),
+    [layout]
+  )
+
   const nodes = useMemo(() => {
     return layout.tickets.map(({ ticket, x, y }): TicketCardNode => {
       const sessions = ticketSessions.get(ticket.id) ?? []
@@ -344,13 +393,15 @@ export function MapGraph({
           blockers: openBlockerNames(map, ticket),
           current,
           sessions: sessions.filter((session) => session.id !== displayedSessionId),
+          entering: entering.has(ticket.id),
+          reachedFrontier: reachedFrontier.has(ticket.id),
           onDisplaySession,
           onOpen,
           onAct
         }
       }
     })
-  }, [map, layout, ticketSessions, displayedSessionId, onDisplaySession, onOpen, onAct])
+  }, [map, layout, ticketSessions, displayedSessionId, entering, reachedFrontier, onDisplaySession, onOpen, onAct])
 
   return (
     <section className="map-graph" aria-label={t('map.graph')}>
@@ -372,8 +423,8 @@ export function MapGraph({
           maxZoom={2}
           attributionPosition="top-right"
         >
-          <Edges layout={layout} names={names} />
-          <Placement layout={layout} />
+          <Edges layout={layout} signature={signature} names={names} />
+          <Placement levelKey={levelKey} signature={signature} graphWidth={layout.width} />
           <ZoomControls />
         </ReactFlow>
       )}

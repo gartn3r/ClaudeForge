@@ -6,6 +6,7 @@ import {
   Map as MapIcon,
   PanelRightClose,
   PanelRightOpen,
+  RotateCw,
   SquareTerminal
 } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -22,6 +23,7 @@ import type {
   WayfinderMap
 } from '../../../shared/api'
 import { api } from '../api'
+import { useNewcomers } from '../map/transitions'
 import type { TypedCommand } from '../terminal/hosted-terminal'
 import { IconButton } from './IconButton'
 import { MapGraph, Rollup, openBlockerNames } from './MapGraph'
@@ -57,13 +59,17 @@ const PROBLEM_MESSAGES = {
 /** How the panel shows one Map, as the user changed it. */
 type MapDisplay = { view: MapPanelView; hideClosed: boolean; folded: string[] }
 
-/** A load of one Map of one Project, and how it went. */
-type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap } | { error: true })
+/** A load of one Map of one Project, and how it went; `at` is when it was read. */
+type Loaded = { project: string; mapId: string } & ({ map: WayfinderMap; at: number } | { error: true })
 
 interface MapPanelProps {
   project: string
   /** The Project's Tracker and Maps; null while they load. */
   listing: MapListing | null
+  /** Changes each time the Project's Maps may have changed, so the shown one is loaded again. */
+  revision: number
+  /** When the listing was last read; null while it loads. */
+  listedAt: number | null
   /** The Project's Sessions, whose Tickets carry their badges. */
   sessions: SessionSummary[]
   /** The Session shown in the centre, whose Map the panel follows; null when none is. */
@@ -83,6 +89,8 @@ interface MapPanelProps {
 export function MapPanel({
   project,
   listing,
+  revision,
+  listedAt,
   sessions,
   displayedSession,
   preferences,
@@ -90,7 +98,7 @@ export function MapPanel({
   onStartSession,
   onCollapse
 }: MapPanelProps): ReactNode {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   // A Map the user chose holds until the displayed Session or Project changes.
   const followKey = `${project}\n${displayedSession?.id ?? ''}`
   const [chosen, setChosen] = useState<{ followKey: string; mapId: string } | null>(null)
@@ -105,20 +113,26 @@ export function MapPanel({
   // The Parent Ticket the user opened holds while the panel shows the same Map of the same Project.
   const [opened, setOpened] = useState<{ mapKey: string; ticketId: string } | null>(null)
 
-  // A new listing reloads the Map only when it names another one or a newer version.
+  // The Map loads again when the listing names another one, or whenever the Project's Maps may have changed.
   const mapId = summary?.id
-  const updatedAt = summary?.updatedAt
   useEffect(() => {
     if (!mapId) return
     let current = true
     api.map.load(project, mapId).then(
-      (map) => current && setLoaded({ project, mapId, map }),
-      () => current && setLoaded({ project, mapId, error: true })
+      (map) => current && setLoaded({ project, mapId, map, at: Date.now() }),
+      () =>
+        current &&
+        // A refresh that fails keeps the Map already shown, until the next one.
+        setLoaded((previous) =>
+          previous?.project === project && previous.mapId === mapId && 'map' in previous
+            ? previous
+            : { project, mapId, error: true }
+        )
     )
     return () => {
       current = false
     }
-  }, [project, mapId, updatedAt])
+  }, [project, mapId, revision])
 
   // Only the load of the Map shown now counts, never a previous Project's or Map's.
   const result = loaded?.project === project && loaded.mapId === mapId ? loaded : null
@@ -242,11 +256,41 @@ ${mapId ?? ''}`
             ))}
           </div>
         )}
+        {listing && listing.tracker.kind !== 'unsupported' && (
+          <RefreshButton
+            refreshedAt={map && result && 'at' in result ? result.at : listedAt}
+            language={i18n.language}
+            onRefresh={() => void api.map.refresh(project)}
+          />
+        )}
         <IconButton icon={PanelRightClose} label={t('map.collapse')} onClick={onCollapse} />
       </div>
       <div className="map-panel__body">{body}</div>
       {map && detailed && <TicketDetails map={map} ticket={detailed} onClose={() => setInDetail(null)} />}
     </>
+  )
+}
+
+interface RefreshButtonProps {
+  /** When the shown Map, else the listing, was last read. */
+  refreshedAt: number | null
+  language: string
+  onRefresh(): void
+}
+
+/** Reads the Project's Maps again now; its tooltip tells when they were last read. */
+function RefreshButton({ refreshedAt, language, onRefresh }: RefreshButtonProps): ReactNode {
+  const { t } = useTranslation()
+  const label = t('map.refresh')
+  const time = refreshedAt === null ? null : new Intl.DateTimeFormat(language, { timeStyle: 'short' }).format(refreshedAt)
+  return (
+    <IconButton
+      icon={RotateCw}
+      label={label}
+      title={time === null ? label : `${label}
+${t('map.refreshedAt', { time })}`}
+      onClick={onRefresh}
+    />
   )
 }
 
@@ -392,6 +436,8 @@ function MapView({
   const [showDecided, setShowDecided] = useState(false)
   const levelId = level?.id ?? null
   const decided = map.tickets.filter((ticket) => ticket.parent === levelId && map.decided.includes(ticket.id))
+  // A Ticket that closes leaves the graph and slides up into the strip.
+  const justDecided = useNewcomers(`${map.path}\n${levelId ?? ''}`, decided.map((ticket) => ticket.id))
   const ticketSessions = useMemo(() => {
     const byTicket = new Map<string, SessionSummary[]>()
     for (const session of sessions) {
@@ -448,6 +494,7 @@ function MapView({
                 {decided.map((ticket) => (
                   <li
                     key={ticket.id}
+                    className={justDecided.has(ticket.id) ? 'map-decided__arrived' : undefined}
                     aria-current={ticketSessions.get(ticket.id)?.some((s) => s.id === displayedSessionId) || undefined}
                   >
                     <button type="button" className="cf-chip" title={ticket.name} onClick={() => onAct(ticket.id)}>

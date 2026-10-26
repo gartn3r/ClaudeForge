@@ -21,6 +21,7 @@ import { createExtensionService } from './extensions'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
 import { resolveWayfinderLink } from './maps/links'
+import { MapRefresh } from './maps/refresh'
 import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
@@ -39,6 +40,12 @@ export interface WindowHost {
   isMaximized(): boolean
   /** Calls back whenever the window is maximized or restored; returns an unsubscribe. */
   onMaximizedChange(listener: (maximized: boolean) => void): () => void
+  /** Whether the window is on screen: shown and not minimized. */
+  isVisible(): boolean
+  /** Calls back whenever the window comes on screen or leaves it (shown, hidden, minimized, restored); returns an unsubscribe. */
+  onVisibilityChange(listener: (visible: boolean) => void): () => void
+  /** Calls back whenever the user comes back to the window, which takes the focus; returns an unsubscribe. */
+  onFocus(listener: () => void): () => void
   /** Shows a Windows notification; `onClick` runs once the user clicked it and the window came to the front. */
   notify(notification: WindowNotification, onClick: () => void): void
 }
@@ -116,6 +123,13 @@ export function createBackend(options: BackendOptions): Backend {
     events.emit('window.maximizedChanged', { maximized })
   )
 
+  const mapRefresh = new MapRefresh({
+    onChange: (project) => events.emit('map.changed', { project }),
+    visible: win?.isVisible() ?? true
+  })
+  const unsubscribeVisibility = win?.onVisibilityChange((visible) => mapRefresh.visibilityChanged(visible))
+  const unsubscribeFocus = win?.onFocus(() => mapRefresh.focused())
+
   // The last status found, so starting a Session does not run `claude --version` again.
   let claudeCode: ClaudeCodeStatus | undefined
   const locateWithChosenPath = async (): Promise<ClaudeCodeStatus> => {
@@ -137,7 +151,10 @@ export function createBackend(options: BackendOptions): Backend {
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
     onStatus: (id, status) => events.emit('sessionHost.status', { id, status }),
-    onTurnEnd: (id, cwd) => events.emit('sessionHost.turnEnded', { id, cwd })
+    onTurnEnd: (id, cwd) => {
+      events.emit('sessionHost.turnEnded', { id, cwd })
+      void mapRefresh.turnEnded(cwd)
+    }
   })
 
   const extensions = createExtensionService({
@@ -200,6 +217,8 @@ export function createBackend(options: BackendOptions): Backend {
     },
     map: {
       ...maps,
+      watch: (project, shown) => mapRefresh.watch(project, shown),
+      refresh: async (project) => mapRefresh.refresh(project),
       openIssue: (path) => openIssue(options.shell, path)
     },
     extensions,
@@ -250,6 +269,9 @@ export function createBackend(options: BackendOptions): Backend {
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
       unsubscribeMaximized?.()
+      unsubscribeVisibility?.()
+      unsubscribeFocus?.()
+      mapRefresh.dispose()
       unsubscribeClose?.()
       sessionHost.dispose()
       sessions.dispose()

@@ -196,6 +196,8 @@
     "collapse": "Collapse the Map panel",
     "expand": "Expand the Map panel",
     "resize": "Resize the Map panel",
+    "refresh": "Refresh the Map",
+    "refreshedAt": "Last refreshed at {{time}}",
     "destination": "Destination",
     "showAll": "Show all",
     "showLess": "Show less",
