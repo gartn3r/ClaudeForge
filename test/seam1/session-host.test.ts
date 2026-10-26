@@ -1,8 +1,7 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
 import type { HostedSessionStatus } from '../../src/shared/api'
+import { COMPILE_TIMEOUT, createChildProcessLister, type ChildProcessLister } from '../child-processes'
 import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions, type FixtureProject } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -20,57 +19,14 @@ const RUNNING_EXTERNAL_SESSION = '9c1e4b2a-6d3f-4e8b-8a17-3b5d2e9f0c42'
 const ENDED_EXTERNAL_SESSION = 'c3d2a8f1-1b7e-4c59-9e64-7f0a1d2b3c4d'
 const WORKTREE_SESSION = 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f'
 
-const run = promisify(execFile)
+let processes: ChildProcessLister | undefined
+beforeAll(async () => {
+  processes = await createChildProcessLister()
+}, COMPILE_TIMEOUT)
+afterAll(() => processes?.dispose())
 
-/**
- * Prints the image names of a process's children, other than the PowerShell that asks, from a
- * Toolhelp snapshot of the process table. Not WMI (Get-CimInstance Win32_Process): its first
- * query on a fresh CI machine can take over a minute.
- */
-const CHILD_PROCESSES_SCRIPT = `
-Add-Type -TypeDefinition @'
-using System;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-public static class ChildProcesses {
-  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-  struct ProcessEntry {
-    public uint Size, Usage, ProcessId; public IntPtr DefaultHeapId; public uint ModuleId, Threads, ParentProcessId;
-    public int PriorityClassBase; public uint Flags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string ExeFile;
-  }
-  [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
-  [DllImport("kernel32.dll", SetLastError = true)] static extern bool Process32FirstW(IntPtr snapshot, ref ProcessEntry entry);
-  [DllImport("kernel32.dll")] static extern bool Process32NextW(IntPtr snapshot, ref ProcessEntry entry);
-  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
-  public static void Print(uint parent, uint self) {
-    IntPtr snapshot = CreateToolhelp32Snapshot(2, 0);
-    if (snapshot == new IntPtr(-1)) throw new Win32Exception();
-    try {
-      var entry = new ProcessEntry { Size = (uint)Marshal.SizeOf(typeof(ProcessEntry)) };
-      if (!Process32FirstW(snapshot, ref entry)) throw new Win32Exception();
-      do {
-        if (entry.ParentProcessId == parent && entry.ProcessId != self) Console.WriteLine(entry.ExeFile);
-      } while (Process32NextW(snapshot, ref entry));
-    } finally {
-      CloseHandle(snapshot);
-    }
-  }
-}
-'@
-[ChildProcesses]::Print(${process.pid}, $PID)
-`
-
-/**
- * The names of the processes this test process started, as Windows lists them. Asked without
- * blocking, so a slow answer counts against the test's timeouts instead of stalling them.
- */
-const childProcessNames = async (): Promise<string[]> => {
-  const { stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', CHILD_PROCESSES_SCRIPT], {
-    windowsHide: true,
-    timeout: 10_000
-  })
-  return stdout.split(/\r?\n/).filter(Boolean)
-}
+/** The names of the processes this test process started, as Windows lists them. */
+const childProcessNames = (): Promise<string[]> => processes!.names(process.pid)
 
 describe('the Session host', () => {
   let env: FakeEnvironment | undefined
