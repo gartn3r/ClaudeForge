@@ -2,12 +2,17 @@ import { FolderOpen, SquareTerminal } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../api'
+import type { EditorTab } from '../editor/editor-tabs'
 import type { HostedTab } from '../terminal/hosted-sessions'
 import type { HostedTerminal, TypedCommand } from '../terminal/hosted-terminal'
+import { ExtensionEditor } from './ExtensionEditor'
 import { panelId, tabId } from './SessionTabs'
 
 interface TerminalAreaProps {
   tabs: HostedTab[]
+  /** The skill and subagent files open in an editor. */
+  editors: EditorTab[]
+  /** The tab on show, a Hosted session's or an editor's. */
   activeKey: string | null
   /** Whether the terminal on show renders with WebGL rather than the DOM renderer. */
   gpuRendering: boolean
@@ -15,17 +20,28 @@ interface TerminalAreaProps {
   onStart(project: string): void
   /** Closes a tab, stopping its `claude`. */
   onClose(key: string): void
+  onEditorDirtyChange(key: string, dirty: boolean): void
 }
 
 /**
- * The centre column, where the Hosted sessions' terminals live. Every one stays
- * mounted, so a Session in the background keeps running and keeps its
- * scrollback; only the active tab's is on show. A dormant tab's is not mounted
- * until the tab is selected, as mounting starts `claude`.
+ * The centre column, where the Hosted sessions' terminals live, and the editors
+ * of skills and subagents. Every one stays mounted, so a Session in the
+ * background keeps running and keeps its scrollback, and an editor its unsaved
+ * text; only the active tab's is on show. A dormant tab's terminal is not
+ * mounted until the tab is selected, as mounting starts `claude`.
  */
-export function TerminalArea({ tabs, activeKey, gpuRendering, onStart, onClose }: TerminalAreaProps): ReactNode {
+export function TerminalArea({
+  tabs,
+  editors,
+  activeKey,
+  gpuRendering,
+  onStart,
+  onClose,
+  onEditorDirtyChange
+}: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
+  const editorShown = editors.some((editor) => editor.key === activeKey)
 
   const openFolder = async (): Promise<void> => {
     const project = await api.sessionHost.chooseProject()
@@ -58,7 +74,15 @@ export function TerminalArea({ tabs, activeKey, gpuRendering, onStart, onClose }
             />
           )
       )}
-      {!active && (
+      {editors.map((editor) => (
+        <ExtensionEditor
+          key={editor.key}
+          tab={editor}
+          visible={editor.key === activeKey}
+          onDirtyChange={(dirty) => onEditorDirtyChange(editor.key, dirty)}
+        />
+      ))}
+      {!active && !editorShown && (
         <div className="terminal-empty">
           <p className="cf-muted">{t(tabs.length ? 'terminal.dormant' : 'terminal.empty')}</p>
           {openFolderButton(true)}

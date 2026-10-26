@@ -6,6 +6,7 @@ import type { ExtensionFileKind, FrontmatterProblem } from './api'
 
 const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const NAME_MAX = 64
+const BYTE_ORDER_MARK = 0xfeff
 /** Claude Code cuts a skill's description at this length. */
 const SKILL_DESCRIPTION_MAX = 1024
 
@@ -14,7 +15,8 @@ export const isExtensionName = (name: string): boolean => NAME.test(name) && nam
 
 /** The frontmatter's lines, between the `---` line opening the file and the next one; null when there is none. */
 function frontmatterBlock(text: string): string | null {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/)
+  // A file saved with a byte order mark still opens with its `---` line.
+  const lines = (text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text).split(/\r?\n/)
   if (lines[0]?.trimEnd() !== '---') return null
   const end = lines.findIndex((line, index) => index > 0 && line.trimEnd() === '---')
   return end < 0 ? null : lines.slice(1, end).join('\n')

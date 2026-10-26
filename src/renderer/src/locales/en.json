@@ -98,6 +98,7 @@
     "claudeFailed": "Claude Code could not list the MCP servers and plugins.",
     "loadFailed": "The Extensions could not be read.",
     "enable": "Enable {{name}}",
+    "edit": "Edit {{name}}",
     "remove": {
       "mcpServer": {
         "open": "Remove {{name}}",
@@ -148,6 +149,27 @@
       "more": "The first {{shown}} of {{count}}: search to find the others.",
       "install": "Install",
       "action": "Install {{name}}"
+    },
+    "newFile": {
+      "skill": {
+        "open": "New skill",
+        "titleGlobal": "New global skill",
+        "titleProject": "New skill in {{project}}"
+      },
+      "subagent": {
+        "open": "New subagent",
+        "titleGlobal": "New global subagent",
+        "titleProject": "New subagent in {{project}}"
+      },
+      "name": "Name",
+      "nameHint": "Lowercase letters, numbers and hyphens. It names the file too.",
+      "action": "Create",
+      "exists": {
+        "skill": "There is already a skill named {{name}} here.",
+        "subagent": "There is already a subagent named {{name}} here."
+      },
+      "badName": "Use lowercase letters, numbers and hyphens only, 64 at most.",
+      "failed": "The file could not be created. Check that the folder can be written to, then try again."
     }
   },
   "terminal": {
@@ -182,6 +204,35 @@
       "title": "Claude is still working in this Session. Stop it?",
       "body": "Its claude process ends and the tab closes. The conversation so far stays in Claude Code’s history.",
       "action": "Stop it"
+    },
+    "editor": {
+      "skill": "Skill",
+      "subagent": "Subagent"
+    },
+    "discard": {
+      "title": "Discard your changes to {{name}}?",
+      "body": "The tab closes and the file stays as it was last saved.",
+      "action": "Discard"
+    }
+  },
+  "editor": {
+    "label": "Text of {{name}}",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "loading": "Opening the file…",
+    "loadFailed": "The file could not be opened. It may have been moved or deleted.",
+    "saveFailed": "The file could not be saved. Check that it can be written to, then save again.",
+    "problems": "Fix the frontmatter to save:",
+    "problem": {
+      "noFrontmatter": "Start the file with its frontmatter: fields between two lines of ---.",
+      "notYaml": "Line {{line}} is not valid YAML: {{detail}}.",
+      "notFields": "Write the frontmatter as fields, one name: value per line.",
+      "missing": "Add the required field {{field}}.",
+      "notText": "Make {{field}} plain text.",
+      "badName": "Write name in lowercase letters, numbers and hyphens, 64 at most.",
+      "tooLong": "Shorten {{field}} to {{max}} characters at most."
     }
   },
   "closing": {
