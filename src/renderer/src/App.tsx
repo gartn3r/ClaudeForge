@@ -157,6 +157,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           onStart={startHostedSession}
           onClose={(key) => hosted.sessions.close(key)}
           onEditorDirtyChange={(key, dirty) => editing.editors.setDirty(key, dirty)}
+          onEditorRename={(key, name) => editing.editors.rename(key, name)}
         />
         <SidePanel
           id="map"

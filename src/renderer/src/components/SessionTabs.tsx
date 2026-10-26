@@ -1,9 +1,10 @@
-import { Bot, Check, Hand, Plus, Sparkles, Square, Trash2, X, type LucideIcon } from 'lucide-react'
+import { Check, Hand, Plus, Square, Trash2, X, type LucideIcon } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { EditorTab } from '../editor/editor-tabs'
 import { tabTitle, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ICONS } from './ExtensionsMenu'
 
 interface SessionTabsProps {
   tabs: HostedTab[]
@@ -98,7 +99,7 @@ export function SessionTabs({
       }
     }),
     ...editors.map((editor): StripTab => {
-      const Icon = editor.kind === 'skill' ? Sparkles : Bot
+      const Icon = ICONS[editor.kind]
       const kind = t(`tabs.editor.${editor.kind}`)
       return {
         key: editor.key,

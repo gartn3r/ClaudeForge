@@ -435,17 +435,26 @@ export interface ExtensionFile {
   text: string
 }
 
-/** Why a skill's or subagent's frontmatter would not do; `line` counts from the file's first line, 1. */
+/**
+ * Why Claude Code would not read a skill's or subagent's frontmatter as meant, by the rules its
+ * documentation gives; `line` counts from the file's first line, 1.
+ */
 export type FrontmatterProblem =
-  /** The file does not open with a block of fields between two `---` lines. */
+  /** A subagent's file does not open with a block of fields between two `---` lines (a skill needs none). */
   | { code: 'no-frontmatter' }
+  /** The `---` line opening the file has no second one ending the fields. */
+  | { code: 'unclosed-frontmatter' }
   /** The yaml parser's words, without the position. */
   | { code: 'not-yaml'; line: number; detail: string }
   /** The block is YAML, but not `field: value` pairs. */
   | { code: 'not-fields' }
+  /** A subagent's `name` or `description`; a skill requires neither. */
   | { code: 'missing'; field: string }
   | { code: 'not-text'; field: string }
-  /** `name` is not lowercase letters, numbers and hyphens. */
+  /**
+   * A skill's `name` holds `<`, `>`, a control or invisible character, or a blank other than one
+   * space between words; a subagent's starts with `-` or holds `:`.
+   */
   | { code: 'bad-name' }
   | { code: 'too-long'; field: string; max: number }
 

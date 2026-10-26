@@ -65,10 +65,12 @@ test('New skill creates one from the template in the Project, opens it in a tab,
   expect(await textOf(file)).toMatch(/^---\nname: menu-planner\ndescription: /)
   await expect(save).toBeDisabled()
 
-  // A missing field and a YAML typo each block saving, saying what to fix.
-  await replaceText(window, '---\nname: menu-planner\n---\n\nPlan a week of meals.\n')
+  // A frontmatter left open and a YAML typo each block saving, saying what to fix.
+  await replaceText(window, '---\nname: menu-planner\ndescription: Plans meals.\n\nPlan a week of meals.\n')
   const problems = editor.getByRole('status')
-  await expect(problems).toHaveText('Fix the frontmatter to save:Add the required field description.')
+  await expect(problems).toHaveText(
+    'Fix the frontmatter to save:End the frontmatter with a line of --- after its last field.'
+  )
   await expect(save).toBeDisabled()
   await expect(tab).toHaveAccessibleDescription('Skill · Unsaved changes')
   await replaceText(window, '---\nname: menu-planner\ndescription: Plans meals: a week at a time.\n---\n')
@@ -118,7 +120,7 @@ test('Edit opens a global subagent beside the Hosted sessions, keeping unsaved t
   // The Session's terminal comes back on show, and the editor keeps its text behind it.
   await sessionTab.click()
   await expect(text).toBeHidden()
-  await expect(window.getByRole('tabpanel')).toHaveClass(/terminal-view/)
+  await expect(window.getByRole('tabpanel', { name: /^recipe-box/ })).toBeVisible()
   await tab.click()
   await expect(text).toContainText('Keep it short.')
   // Editing it again shows the tab already open.

@@ -3,7 +3,7 @@
 // come from Claude Code's CLI, whose config files are internal (ADR 0003).
 
 import type { Dirent } from 'node:fs'
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type {
   AvailablePluginListing,
@@ -21,7 +21,7 @@ import type {
   McpServerStatus,
   NewExtensionFile
 } from '../shared/api'
-import { frontmatterProblems, isExtensionName } from '../shared/frontmatter'
+import { frontmatterFields, frontmatterProblems, isExtensionName } from '../shared/frontmatter'
 import { runClaude, type Environment } from './claude-code'
 
 /** How long `claude mcp list` may take: it starts and health-checks every server. */
@@ -46,16 +46,8 @@ export interface ExtensionServiceOptions {
 /** Where an Extension comes from: its scope, and the plugin that brings it, if any. */
 type Origin = Pick<Extension, 'scope' | 'plugin'>
 
-/** The fields of a Markdown file's YAML frontmatter that are written on one line. */
-function frontmatter(text: string): Record<string, string> {
-  const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? ''
-  const fields: Record<string, string> = {}
-  for (const line of block.split(/\r?\n/)) {
-    const field = /^([\w-]+):\s*(.*?)\s*$/.exec(line)
-    if (field) fields[field[1]!] = field[2]!.replace(/^(["'])(.*)\1$/, '$2')
-  }
-  return fields
-}
+/** A frontmatter field's text, trimmed; null when it is blank or no text. */
+const textField = (value: unknown): string | null => (typeof value === 'string' && value.trim()) || null
 
 async function entries(folder: string): Promise<Dirent[]> {
   try {
@@ -73,10 +65,10 @@ async function fromMarkdown(kind: ExtensionKind, file: string, fallbackName: str
   } catch {
     return null
   }
-  const { name, description } = frontmatter(text)
+  const { name, description } = frontmatterFields(text)
   // A plugin's files are its own: updating it would undo any edit.
   const editable = origin.plugin === null ? { file } : {}
-  return { kind, name: name || fallbackName, ...origin, description: description || null, ...editable }
+  return { kind, name: textField(name) ?? fallbackName, ...origin, description: textField(description), ...editable }
 }
 
 const found = (extensions: (Extension | null)[]): Extension[] => extensions.filter((extension) => extension !== null)
@@ -373,6 +365,9 @@ export function createExtensionService({
     for (const id of outdated) if (!running.includes(id)) outdated.delete(id)
     return running.filter((id) => outdated.has(id))
   }
+  /** The Hosted sessions a change at that scope reaches: all of them, or those in the Project. */
+  const runningAt = (project: string, scope: ExtensionScope): Array<{ id: string; folder: string }> =>
+    hostedSessions().filter((session) => scope === 'global' || pathKey(session.folder) === pathKey(project))
 
   /** The folders laid out like `.claude/` that hold the user's and the Project's own skills and subagents. */
   const fileFolders = (project: string): Record<ExtensionScope, string> => ({
@@ -380,8 +375,11 @@ export function createExtensionService({
     project: join(project, '.claude')
   })
 
-  /** What a file `read` and `save` would open is: a skill's SKILL.md or a subagent's file; else throws. */
-  const editable = (project: string, file: string): Omit<ExtensionFile, 'text'> => {
+  /**
+   * Which skill or subagent of the user or of the Project the file is (a skill's SKILL.md or a
+   * subagent's Markdown file), for `read` and `save`; throws for any other file.
+   */
+  const resolveExtensionFile = (project: string, file: string): Omit<ExtensionFile, 'text'> => {
     if (isAbsolute(file)) {
       for (const [scope, folder] of Object.entries(fileFolders(project)) as [ExtensionScope, string][]) {
         const parts = relative(folder, file).split(/[\\/]/)
@@ -440,9 +438,7 @@ export function createExtensionService({
 
     async change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult> {
       // Claude Code reads its setup when it starts, so only those already running miss the change.
-      const running = hostedSessions().filter(
-        (session) => scopeOf(change) === 'global' || pathKey(session.folder) === pathKey(project)
-      )
+      const running = runningAt(project, scopeOf(change))
       let error = ''
       for (const args of commandsFor(change)) {
         try {
@@ -459,7 +455,15 @@ export function createExtensionService({
 
     async create(project: string, { kind, name, scope }: NewExtensionFile): Promise<ExtensionFileCreation> {
       if (!isExtensionName(name)) return { ok: false, problem: 'bad-name' }
-      const file = fileIn(fileFolders(project)[scope], kind, name)
+      const folder = fileFolders(project)[scope]
+      const file = fileIn(folder, kind, name)
+      // Claude Code picks up skills and subagents as their files change, but only in the `skills/`
+      // and `agents/` folders it found when it started: those already running miss a new folder's.
+      const watched = await stat(join(folder, kind === 'skill' ? 'skills' : 'agents')).then(
+        () => true,
+        () => false
+      )
+      const running = watched ? [] : runningAt(project, scope)
       await mkdir(dirname(file), { recursive: true })
       try {
         await writeFile(file, TEMPLATES[kind](name), { flag: 'wx' })
@@ -467,16 +471,17 @@ export function createExtensionService({
         if ((failure as NodeJS.ErrnoException).code === 'EEXIST') return { ok: false, problem: 'exists' }
         throw failure
       }
+      for (const { id } of running) outdated.add(id)
       return { ok: true, file }
     },
 
     async read(project: string, file: string): Promise<ExtensionFile> {
-      const opened = editable(project, file)
+      const opened = resolveExtensionFile(project, file)
       return { ...opened, text: await readFile(opened.file, 'utf8') }
     },
 
     async save(project: string, file: string, text: string): Promise<ExtensionFileSave> {
-      const { file: path, kind } = editable(project, file)
+      const { file: path, kind } = resolveExtensionFile(project, file)
       const problems = frontmatterProblems(kind, text)
       if (problems.length) return { ok: false, problems }
       // The editor works in \n; a file written with \r\n keeps them.

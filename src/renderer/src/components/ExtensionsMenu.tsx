@@ -66,7 +66,8 @@ function useExtensions(project: string): { listing: Loaded; refresh(): Promise<v
   return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
-const ICONS: Record<ExtensionKind, LucideIcon> = { skill: Sparkles, subagent: Bot, 'mcp-server': Plug, plugin: Puzzle }
+/** Each kind's glyph, wherever an Extension shows: the bar, the menu, an editor and its tab. */
+export const ICONS: Record<ExtensionKind, LucideIcon> = { skill: Sparkles, subagent: Bot, 'mcp-server': Plug, plugin: Puzzle }
 
 /** The kinds as the bar counts them, and as the menu groups them. */
 const BAR_ORDER: ExtensionKind[] = ['skill', 'subagent', 'mcp-server', 'plugin']
@@ -228,7 +229,7 @@ type Asking =
   | { kind: 'remove'; extension: Extension }
   | { kind: 'add-mcp-server' }
   | { kind: 'install-plugin' }
-  | { kind: 'new-file'; file: ExtensionFileKind }
+  | { kind: 'new-file'; fileKind: ExtensionFileKind }
 
 /** The change that removes an Extension: uninstalling a plugin, or removing an MCP server. */
 function removal(extension: Extension): ExtensionChange | null {
@@ -463,15 +464,15 @@ function ExtensionsPopover({
             >
               {t('extensions.installPlugin.open')}
             </button>
-            {(['skill', 'subagent'] as const).map((file) => (
+            {(['skill', 'subagent'] as const).map((fileKind) => (
               <button
-                key={file}
+                key={fileKind}
                 type="button"
                 className="cf-btn cf-btn--ghost"
                 disabled={busy}
-                onClick={() => ask({ kind: 'new-file', file })}
+                onClick={() => ask({ kind: 'new-file', fileKind })}
               >
-                {t(`extensions.newFile.${file}.open`)}
+                {t(`extensions.newFile.${fileKind}.open`)}
               </button>
             ))}
           </div>
@@ -509,11 +510,11 @@ function ExtensionsPopover({
       )}
       {asking?.kind === 'new-file' && (
         <NewExtensionFileDialog
-          kind={asking.file}
+          kind={asking.fileKind}
           scopeName={scopeName}
           busy={busy}
           error={askError}
-          onCreate={(name) => void createFile(asking.file, name)}
+          onCreate={(name) => void createFile(asking.fileKind, name)}
           onCancel={() => setAsking(null)}
         />
       )}

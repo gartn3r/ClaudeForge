@@ -21,6 +21,8 @@ interface TerminalAreaProps {
   /** Closes a tab, stopping its `claude`. */
   onClose(key: string): void
   onEditorDirtyChange(key: string, dirty: boolean): void
+  /** An editor saved its file under the name its frontmatter now gives. */
+  onEditorRename(key: string, name: string): void
 }
 
 /**
@@ -37,7 +39,8 @@ export function TerminalArea({
   gpuRendering,
   onStart,
   onClose,
-  onEditorDirtyChange
+  onEditorDirtyChange,
+  onEditorRename
 }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
@@ -80,6 +83,7 @@ export function TerminalArea({
           tab={editor}
           visible={editor.key === activeKey}
           onDirtyChange={(dirty) => onEditorDirtyChange(editor.key, dirty)}
+          onRename={(name) => onEditorRename(editor.key, name)}
         />
       ))}
       {!active && !editorShown && (

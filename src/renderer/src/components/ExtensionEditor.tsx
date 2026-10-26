@@ -1,20 +1,23 @@
 import type { EditorView } from '@codemirror/view'
-import { Bot, CircleAlert, Save, Sparkles } from 'lucide-react'
+import { CircleAlert, Save } from 'lucide-react'
 import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import type { FrontmatterProblem } from '../../../shared/api'
-import { frontmatterProblems } from '../../../shared/frontmatter'
+import type { ExtensionFileKind, FrontmatterProblem } from '../../../shared/api'
+import { frontmatterFields, frontmatterProblems } from '../../../shared/frontmatter'
 import { api } from '../api'
 import type { EditorTab } from '../editor/editor-tabs'
 import { createMarkdownEditor } from '../editor/markdown-editor'
+import { ICONS } from './ExtensionsMenu'
 import { panelId, tabId } from './SessionTabs'
 
 /** How the editor tells the user what to fix before the file can be saved. */
-function problemText(t: TFunction, problem: FrontmatterProblem): string {
+function problemText(t: TFunction, kind: ExtensionFileKind, problem: FrontmatterProblem): string {
   switch (problem.code) {
     case 'no-frontmatter':
       return t('editor.problem.noFrontmatter')
+    case 'unclosed-frontmatter':
+      return t('editor.problem.unclosed')
     case 'not-yaml':
       return t('editor.problem.notYaml', { line: problem.line, detail: problem.detail })
     case 'not-fields':
@@ -24,10 +27,16 @@ function problemText(t: TFunction, problem: FrontmatterProblem): string {
     case 'not-text':
       return t('editor.problem.notText', { field: problem.field })
     case 'bad-name':
-      return t('editor.problem.badName')
+      return t(kind === 'skill' ? 'editor.problem.badSkillName' : 'editor.problem.badSubagentName')
     case 'too-long':
       return t('editor.problem.tooLong', { field: problem.field, max: problem.max })
   }
+}
+
+/** What Claude Code names a skill or subagent without a name: its folder, or its file. */
+const nameOfFile = (kind: ExtensionFileKind, file: string): string => {
+  const parts = file.split(/[\\/]/)
+  return kind === 'skill' ? parts.at(-2)! : parts.at(-1)!.replace(/\.md$/i, '')
 }
 
 /** The file as CodeMirror holds it: \n line endings, which the backend gives back to a \r\n file. */
@@ -37,6 +46,8 @@ interface ExtensionEditorProps {
   tab: EditorTab
   visible: boolean
   onDirtyChange(dirty: boolean): void
+  /** Saved under the name its frontmatter now gives. */
+  onRename(name: string): void
 }
 
 /**
@@ -44,7 +55,7 @@ interface ExtensionEditorProps {
  * checked as the user types. Saving waits until the frontmatter is valid. Like a terminal, it stays
  * mounted while another tab is on show, keeping its unsaved text and its undo history.
  */
-export function ExtensionEditor({ tab, visible, onDirtyChange }: ExtensionEditorProps): ReactNode {
+export function ExtensionEditor({ tab, visible, onDirtyChange, onRename }: ExtensionEditorProps): ReactNode {
   const { t } = useTranslation()
   const container = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -71,6 +82,8 @@ export function ExtensionEditor({ tab, visible, onDirtyChange }: ExtensionEditor
       if (result.ok) {
         setSaved(text)
         setSavedOnce(true)
+        const { name } = frontmatterFields(text)
+        onRename((typeof name === 'string' && name.trim()) || nameOfFile(tab.kind, tab.file))
       } else {
         setSaveFailed(true)
       }
@@ -123,7 +136,7 @@ export function ExtensionEditor({ tab, visible, onDirtyChange }: ExtensionEditor
 
   useEffect(() => dirtyChanged(dirty), [dirty])
 
-  const Icon = tab.kind === 'skill' ? Sparkles : Bot
+  const Icon = ICONS[tab.kind]
   const state = saving ? t('editor.saving') : dirty ? t('editor.unsaved') : savedOnce ? t('editor.saved') : ''
 
   return (
@@ -162,7 +175,7 @@ export function ExtensionEditor({ tab, visible, onDirtyChange }: ExtensionEditor
             <p>{t('editor.problems')}</p>
             <ul>
               {problems.map((problem) => (
-                <li key={JSON.stringify(problem)}>{problemText(t, problem)}</li>
+                <li key={JSON.stringify(problem)}>{problemText(t, tab.kind, problem)}</li>
               ))}
             </ul>
           </div>

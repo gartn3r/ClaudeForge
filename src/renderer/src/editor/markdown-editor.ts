@@ -27,7 +27,7 @@ const theme = EditorView.theme(
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground': {
       backgroundColor: 'var(--selection)'
     },
-    '.cm-activeLine': { backgroundColor: 'rgb(255 255 255 / 3%)' },
+    '.cm-activeLine': { backgroundColor: 'var(--surface)' },
     '.cm-gutters': { border: 0, backgroundColor: 'var(--terminal-well)', color: 'var(--text-faint)' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--text-muted)' }
   },

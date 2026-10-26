@@ -226,12 +226,14 @@
     "saveFailed": "Le fichier n’a pas pu être enregistré. Vérifiez qu’il est accessible en écriture, puis enregistrez de nouveau.",
     "problems": "Corrigez le frontmatter pour enregistrer :",
     "problem": {
-      "noFrontmatter": "Commencez le fichier par son frontmatter : des champs entre deux lignes de ---.",
+      "noFrontmatter": "Commencez le fichier par son frontmatter : name et description entre deux lignes de ---.",
+      "unclosed": "Terminez le frontmatter par une ligne de --- après son dernier champ.",
       "notYaml": "La ligne {{line}} n’est pas du YAML valide : {{detail}}.",
       "notFields": "Écrivez le frontmatter sous forme de champs, un nom: valeur par ligne.",
       "missing": "Ajoutez le champ obligatoire {{field}}.",
       "notText": "Faites de {{field}} du texte simple.",
-      "badName": "Écrivez name en lettres minuscules, chiffres et tirets, 64 au plus.",
+      "badSkillName": "Retirez de name tout < ou >, tout caractère invisible et toute espace autre qu’une seule entre deux mots.",
+      "badSubagentName": "Écrivez name sans deux-points, et sans tiret au début.",
       "tooLong": "Raccourcissez {{field}} à {{max}} caractères au plus."
     }
   },

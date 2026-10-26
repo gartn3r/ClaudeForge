@@ -226,12 +226,14 @@
     "saveFailed": "The file could not be saved. Check that it can be written to, then save again.",
     "problems": "Fix the frontmatter to save:",
     "problem": {
-      "noFrontmatter": "Start the file with its frontmatter: fields between two lines of ---.",
+      "noFrontmatter": "Start the file with its frontmatter: name and description between two lines of ---.",
+      "unclosed": "End the frontmatter with a line of --- after its last field.",
       "notYaml": "Line {{line}} is not valid YAML: {{detail}}.",
       "notFields": "Write the frontmatter as fields, one name: value per line.",
       "missing": "Add the required field {{field}}.",
       "notText": "Make {{field}} plain text.",
-      "badName": "Write name in lowercase letters, numbers and hyphens, 64 at most.",
+      "badSkillName": "Take out of name any < or >, invisible character, and any space but one between words.",
+      "badSubagentName": "Write name without a colon, and not starting with a hyphen.",
       "tooLong": "Shorten {{field}} to {{max}} characters at most."
     }
   },

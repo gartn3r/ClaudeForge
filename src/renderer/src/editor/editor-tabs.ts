@@ -1,19 +1,17 @@
 import { useState, useSyncExternalStore } from 'react'
-import type { ExtensionFileKind, ExtensionScope } from '../../../shared/api'
+import type { ExtensionFile } from '../../../shared/api'
 
 /** A skill's or subagent's file to open in an editor tab. */
-export interface EditorTarget {
+export type EditorTarget = Omit<ExtensionFile, 'text'> & {
   /** The Project the Extensions menu showed it for: the backend opens only its files and the user's. */
   project: string
-  file: string
-  kind: ExtensionFileKind
-  scope: ExtensionScope
+  /** The skill's or subagent's name, which the tab shows. */
   name: string
 }
 
 /** One editor tab, after the Hosted sessions' tabs in the title bar. */
 export interface EditorTab extends EditorTarget {
-  /** Never a Hosted session tab's key, so the two kinds of tab share ids. */
+  /** Unlike any Hosted session tab's key, so tab and panel ids built from either never collide. */
   key: string
   /** The text differs from the file as last read or saved. */
   dirty: boolean
@@ -57,6 +55,11 @@ export class EditorTabs {
   /** A Hosted session goes on show instead. */
   deselect(): void {
     if (this.state.activeKey !== null) this.update(this.state.tabs, null)
+  }
+
+  /** The file was saved under another name in its frontmatter. */
+  rename(key: string, name: string): void {
+    this.update(this.state.tabs.map((tab) => (tab.key === key ? { ...tab, name } : tab)))
   }
 
   setDirty(key: string, dirty: boolean): void {
