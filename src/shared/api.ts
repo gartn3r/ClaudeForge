@@ -576,13 +576,18 @@ export interface BackendApi {
     minimize(): Promise<void>
     toggleMaximize(): Promise<void>
     /**
-     * Asks to close the window, as its close button and Alt+F4 do. With a Hosted session working,
-     * the interface is asked to warn the user first (`window.closeRequested`); otherwise every
-     * Hosted session's `claude` is stopped, and once all have ended, the window closes.
+     * Asks to close the window, as its close button and Alt+F4 do. With a Hosted session working or
+     * an editor tab unsaved, the interface is asked to warn the user first (`window.closeRequested`);
+     * otherwise every Hosted session's `claude` is stopped, and once all have ended, the window closes.
      */
     close(): Promise<void>
-    /** Closes the window even with Hosted sessions working, once the user agreed, stopping them as close does. */
+    /** Closes the window even with Hosted sessions working or editors unsaved, once the user agreed, stopping them as close does. */
     closeAnyway(): Promise<void>
+    /**
+     * Tells the backend which editor tabs (by key) hold unsaved text, replacing what it was told
+     * before, so that closing the window warns about them. The interface keeps it current.
+     */
+    setUnsavedEditors(keys: string[]): Promise<void>
     isMaximized(): Promise<boolean>
     /** Raises a Windows notification; clicking it brings the window to the front, then pushes its tag. */
     notify(notification: WindowNotification): Promise<void>
@@ -607,8 +612,11 @@ export interface BackendEvents {
   'window.maximizedChanged': { maximized: boolean }
   /** The user clicked a notification, which brought the window to the front. */
   'window.notificationClicked': { tag: string }
-  /** The user asked to close the window while Hosted sessions work (by id): `window.closeAnyway` closes it. */
-  'window.closeRequested': { working: string[] }
+  /**
+   * The user asked to close the window while Hosted sessions work (by id) or editor tabs hold
+   * unsaved text (by key, as `window.setUnsavedEditors` gave them): `window.closeAnyway` closes it.
+   */
+  'window.closeRequested': { working: string[]; unsavedEditors: string[] }
   /** The watched Project's Maps may have changed (`map.watch`): list them and load the shown one again. */
   'map.changed': { project: string }
   /** ClaudeForge's own update moved on: a newer version is downloaded. */

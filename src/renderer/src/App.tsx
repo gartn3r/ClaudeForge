@@ -46,6 +46,10 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   useSavedTabs(hosted.tabs, catalog, state.tabs)
   // Skill and subagent editors share the tab strip; while one is on show, no terminal is.
   const editing = useEditorTabs()
+  // The backend asks before closing the window while an editor holds unsaved text.
+  // Joined, so the backend hears again only when the set changes (editor keys hold no space).
+  const unsavedKeys = editing.tabs.filter((tab) => tab.dirty).map((tab) => tab.key).join(' ')
+  useEffect(() => void api.window.setUnsavedEditors(unsavedKeys ? unsavedKeys.split(' ') : []), [unsavedKeys])
   const activeTab = hosted.tabs.find((tab) => tab.key === hosted.activeKey)
   const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
   const displayed = catalog
@@ -199,7 +203,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           />
         </SidePanel>
       </div>
-      <CloseWarning tabs={hosted.tabs} />
+      <CloseWarning tabs={hosted.tabs} editors={editing.tabs} />
     </div>
   )
 }

@@ -203,10 +203,13 @@ export function createBackend(options: BackendOptions): Backend {
     return closing
   }
 
-  /** The user asked to close the window: warn them first about the Hosted sessions still working. */
+  /** The editor tabs holding unsaved text, by key, as the interface last said. */
+  let unsavedEditors: string[] = []
+  /** The user asked to close the window: warn them first about the Hosted sessions still working and the unsaved editors. */
   const requestClose = async (): Promise<void> => {
     const working = sessionHost.working()
-    if (working.length && !closing) events.emit('window.closeRequested', { working })
+    if ((working.length || unsavedEditors.length) && !closing)
+      events.emit('window.closeRequested', { working, unsavedEditors })
     else await stopSessionsAndClose()
   }
   const unsubscribeClose = win?.onCloseRequest(() => void requestClose())
@@ -268,6 +271,9 @@ export function createBackend(options: BackendOptions): Backend {
       toggleMaximize: async () => win?.toggleMaximize(),
       close: requestClose,
       closeAnyway: stopSessionsAndClose,
+      setUnsavedEditors: async (keys) => {
+        unsavedEditors = [...keys]
+      },
       isMaximized: async () => win?.isMaximized() ?? false,
       notify: async (notification) =>
         win?.notify(notification, () => events.emit('window.notificationClicked', { tag: notification.tag }))

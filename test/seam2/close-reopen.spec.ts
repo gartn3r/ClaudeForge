@@ -77,3 +77,44 @@ test('closing while a Session works warns, naming it; reopening brings it back a
   ])
   await expect(dormant).toHaveAccessibleDescription('Ready')
 })
+
+test('closing with a skill edited but not saved warns, naming it; once saved, ClaudeForge closes at once', async () => {
+  const window = await launch()
+  const bar = window.getByRole('complementary', { name: 'Sessions' }).getByRole('button', { name: /^Extensions/ })
+  await expect(bar).toHaveAccessibleName(/^Extensions: \d+ skills/)
+  await bar.click()
+  const menu = window.getByRole('dialog', { name: 'Extensions' })
+  await menu.getByRole('group', { name: 'Scope' }).getByRole('button', { name: 'This Project · recipe-box' }).click()
+  await menu.getByRole('button', { name: 'Edit seed-data' }).click()
+  const tab = window.getByRole('tab', { name: 'seed-data' })
+  const text = window.getByRole('textbox', { name: 'Text of seed-data' })
+  await expect(text).toContainText('Write ten recipes')
+  await window.keyboard.press('Control+End')
+  await window.keyboard.type(' Use metric units.')
+  await expect(tab).toHaveAccessibleDescription('Skill · Unsaved changes')
+
+  // The title bar's close button warns, and the user changes their mind: the text stays.
+  await window.getByRole('button', { name: 'Close window' }).click()
+  const warning = window.getByRole('alertdialog', { name: 'A skill or subagent has unsaved changes. Close ClaudeForge?' })
+  await expect(warning.getByRole('listitem')).toHaveText(['seed-data · Skill'])
+  await expect(warning).toContainText('each file stays as it was last saved')
+  await warning.getByRole('button', { name: 'Cancel' }).click()
+  await expect(warning).toBeHidden()
+  await expect(text).toContainText('Use metric units.')
+
+  // Windows asks to close the window, as for Alt+F4: the same warning.
+  const { app } = claudeforge!
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.close())
+  await expect(warning.getByRole('listitem')).toHaveText(['seed-data · Skill'])
+  await warning.getByRole('button', { name: 'Cancel' }).click()
+  await expect(warning).toBeHidden()
+
+  // Saved, nothing holds ClaudeForge open any more.
+  await text.click()
+  await window.keyboard.press('Control+S')
+  await expect(tab).toHaveAccessibleDescription('Skill')
+  const closed = app.waitForEvent('close')
+  await window.getByRole('button', { name: 'Close window' }).click()
+  await closed
+  claudeforge = undefined
+})
