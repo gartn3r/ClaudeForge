@@ -46,10 +46,25 @@ if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'Claude
 const shownNotifications = new Set<Notification>()
 
 function windowHost(win: BrowserWindow): WindowHost {
+  // Set once the backend has dealt with the user's request to close, so the window really closes.
+  let closing = false
   return {
     minimize: () => win.minimize(),
     toggleMaximize: () => (win.isMaximized() ? win.unmaximize() : win.maximize()),
-    close: () => win.close(),
+    close: () => {
+      closing = true
+      if (!win.isDestroyed()) win.close()
+    },
+    onCloseRequest: (listener) => {
+      const onClose = (event: Electron.Event): void => {
+        // An interface that is gone cannot warn the user: the window just closes.
+        if (closing || win.webContents.isCrashed()) return
+        event.preventDefault()
+        listener()
+      }
+      win.on('close', onClose)
+      return () => win.off('close', onClose)
+    },
     isMaximized: () => win.isMaximized(),
     onMaximizedChange: (listener) => {
       const onMaximize = (): void => listener(true)

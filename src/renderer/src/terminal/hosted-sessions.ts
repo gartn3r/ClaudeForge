@@ -1,5 +1,6 @@
-import { useState, useSyncExternalStore } from 'react'
-import type { HostedSessionStatus } from '../../../shared/api'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import type { HostedSessionStatus, ProjectSessions, SavedTab } from '../../../shared/api'
+import { api } from '../api'
 import { HostedTerminal, type SessionEnd, type SessionLaunch, type TypedCommand } from './hosted-terminal'
 
 /** One Hosted session's tab, as the title bar and the terminal area show it. */
@@ -14,6 +15,8 @@ export interface HostedTab {
   end: SessionEnd | null
   /** The command ClaudeForge typed in its prompt, until the user sends it or `claude` ends; else null. */
   typed: TypedCommand | null
+  /** Restored from the last time ClaudeForge ran and not selected since: its `claude` has not started. */
+  dormant: boolean
 }
 
 export interface HostedTabs {
@@ -29,14 +32,21 @@ const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean)
 /** A tab's name: the one Claude Code gave its terminal, else its Project's folder name. */
 export const tabTitle = (tab: HostedTab): string => tab.title ?? folderName(tab.project)
 
-const tabOf = (key: string, project: string, terminal: HostedTerminal, typed: TypedCommand | null): HostedTab => ({
+const tabOf = (
+  key: string,
+  project: string,
+  terminal: HostedTerminal,
+  typed: TypedCommand | null,
+  dormant: boolean
+): HostedTab => ({
   key,
   project,
   terminal,
   title: terminal.title,
   status: terminal.status,
   end: terminal.end ?? null,
-  typed
+  typed,
+  dormant
 })
 
 /** Calls back when a tab's Hosted session changes status, with the tab as it now is. */
@@ -66,22 +76,29 @@ export class HostedSessions {
   start(project: string, gpuRendering: boolean, launch?: SessionLaunch): void {
     const key = String(this.nextKey++)
     const terminal = new HostedTerminal(project, gpuRendering, launch)
-    let typed = (launch?.kind === 'new' && launch.typed) || null
-    terminal.onChange(() => {
-      // A turn starts once the user sends the command; once `claude` ends, there is none to send.
-      if (terminal.status !== 'idle' || terminal.end) typed = null
-      const previous = this.state.tabs.find((tab) => tab.key === key)
-      const changed = tabOf(key, project, terminal, typed)
-      this.update(this.state.tabs.map((tab) => (tab.key === key ? changed : tab)))
-      if (previous && previous.status !== changed.status) {
-        for (const listener of this.statusListeners) listener(changed)
-      }
-    })
-    this.update([...this.state.tabs, tabOf(key, project, terminal, typed)], key)
+    const typed = (launch?.kind === 'new' && launch.typed) || null
+    this.update([...this.state.tabs, this.follow(key, project, terminal, typed, false)], key)
   }
 
+  /**
+   * Brings back the tabs saved when ClaudeForge last closed, after the others and dormant: none goes
+   * on show, and each resumes its Session (`claude --resume`) only once selected.
+   */
+  restore(saved: readonly SavedTab[], gpuRendering: boolean): void {
+    const restored = saved.map(({ sessionId, project, title }) => {
+      const terminal = new HostedTerminal(project, gpuRendering, { kind: 'resume', sessionId }, title)
+      return this.follow(String(this.nextKey++), project, terminal, null, true)
+    })
+    this.update([...this.state.tabs, ...restored])
+  }
+
+  /** Shows the tab; a dormant one wakes up, resuming its Session. */
   select(key: string): void {
-    if (this.state.tabs.some((tab) => tab.key === key)) this.update(this.state.tabs, key)
+    if (!this.state.tabs.some((tab) => tab.key === key)) return
+    this.update(
+      this.state.tabs.map((tab) => (tab.key === key && tab.dormant ? { ...tab, dormant: false } : tab)),
+      key
+    )
   }
 
   /** Stops the tab's `claude` if it still runs and drops the tab; the next tab, else the previous one, goes on show. */
@@ -99,15 +116,62 @@ export class HostedSessions {
     }
   }
 
+  /** Keeps the tab up to date with its terminal from now on; returns it as it starts. */
+  private follow(
+    key: string,
+    project: string,
+    terminal: HostedTerminal,
+    typed: TypedCommand | null,
+    dormant: boolean
+  ): HostedTab {
+    terminal.onChange(() => {
+      // A turn starts once the user sends the command; once `claude` ends, there is none to send.
+      if (terminal.status !== 'idle' || terminal.end) typed = null
+      const previous = this.state.tabs.find((tab) => tab.key === key)
+      if (!previous) return
+      const changed = tabOf(key, project, terminal, typed, previous.dormant)
+      this.update(this.state.tabs.map((tab) => (tab.key === key ? changed : tab)))
+      if (previous.status !== changed.status) {
+        for (const listener of this.statusListeners) listener(changed)
+      }
+    })
+    return tabOf(key, project, terminal, typed, dormant)
+  }
+
   private update(tabs: HostedTab[], activeKey = this.state.activeKey): void {
     this.state = { tabs, activeKey }
     for (const listener of this.listeners) listener()
   }
 }
 
-/** The window's Hosted sessions, and the store that changes them. */
-export function useHostedSessions(): HostedTabs & { sessions: HostedSessions } {
-  const [sessions] = useState(() => new HostedSessions())
+/** The window's Hosted sessions, starting with the saved tabs, dormant; and the store that changes them. */
+export function useHostedSessions(
+  saved: readonly SavedTab[],
+  gpuRendering: boolean
+): HostedTabs & { sessions: HostedSessions } {
+  const [sessions] = useState(() => {
+    const created = new HostedSessions()
+    created.restore(saved, gpuRendering)
+    return created
+  })
   const state = useSyncExternalStore(sessions.subscribe, sessions.snapshot)
   return { ...state, sessions }
+}
+
+/**
+ * Keeps the open tabs saved in app state as they change, so they come back dormant on the next
+ * start, however ClaudeForge closes. Only a tab whose Session Claude Code keeps a history of (in the
+ * Session catalog) can resume, so the others are left out: one never prompted, one that never started.
+ */
+export function useSavedTabs(tabs: HostedTab[], catalog: ProjectSessions[] | null, saved: readonly SavedTab[]): void {
+  useEffect(() => {
+    // Until the catalog is read, nothing says which Sessions can resume.
+    if (!catalog) return
+    const known = new Set(catalog.flatMap((group) => group.sessions.map(({ id }) => id)))
+    const next = tabs.flatMap(({ terminal, project, title }): SavedTab[] => {
+      const sessionId = terminal.sessionId
+      return sessionId && known.has(sessionId) ? [{ sessionId, project, title }] : []
+    })
+    if (JSON.stringify(next) !== JSON.stringify(saved)) void api.appState.write({ tabs: next })
+  }, [tabs, catalog, saved])
 }

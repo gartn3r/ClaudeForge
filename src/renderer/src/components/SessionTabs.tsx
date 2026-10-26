@@ -18,8 +18,8 @@ interface SessionTabsProps {
 export const tabId = (key: string): string => `session-tab-${key}`
 export const panelId = (key: string): string => `session-panel-${key}`
 
-/** What a tab's glyph shows: the Hosted session's status, or that its `claude` has ended. */
-type TabState = HostedTab['status'] | 'ended'
+/** What a tab's glyph shows: the Hosted session's status, that its `claude` has ended, or not started yet. */
+type TabState = HostedTab['status'] | 'ended' | 'dormant'
 
 /** Each state's StatusBadge: its modifier, and its icon where it has one rather than a dot (working's pulses). */
 const STATUS_BADGE: Record<TabState, { className: string; icon?: LucideIcon }> = {
@@ -27,7 +27,8 @@ const STATUS_BADGE: Record<TabState, { className: string; icon?: LucideIcon }> =
   working: { className: 'cf-status cf-status--working' },
   waiting: { className: 'cf-status cf-status--waiting', icon: Hand },
   done: { className: 'cf-status cf-status--done', icon: Check },
-  ended: { className: 'cf-status cf-status--dormant' }
+  ended: { className: 'cf-status cf-status--dormant' },
+  dormant: { className: 'cf-status cf-status--dormant' }
 }
 
 function StatusGlyph({ state }: { state: TabState }): ReactNode {
@@ -68,6 +69,8 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
   }
 
   const confirmingTab = tabs.find((tab) => tab.key === confirming)
+  // The tab Tab moves the focus to: the one on show, else the first (dormant tabs, none on show yet).
+  const focusableKey = tabs.some((tab) => tab.key === activeKey) ? activeKey : tabs[0]?.key
 
   return (
     <div className="session-tabs">
@@ -75,7 +78,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
         {tabs.map((tab, index) => {
           const active = tab.key === activeKey
           const title = tabTitle(tab)
-          const state: TabState = tab.end ? 'ended' : tab.status
+          const state: TabState = tab.dormant ? 'dormant' : tab.end ? 'ended' : tab.status
           const statusLabel = t(`tabs.status.${state}`)
           return (
             <div
@@ -87,7 +90,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
               aria-controls={panelId(tab.key)}
               aria-labelledby={`${tabId(tab.key)}-title`}
               aria-describedby={`${tabId(tab.key)}-status`}
-              tabIndex={active ? 0 : -1}
+              tabIndex={tab.key === focusableKey ? 0 : -1}
               title={`${title} · ${statusLabel}`}
               onClick={() => onSelect(tab.key)}
               // A middle click closes the tab, as in a browser.

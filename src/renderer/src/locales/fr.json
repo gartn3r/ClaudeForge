@@ -153,6 +153,7 @@
   "terminal": {
     "label": "Terminal",
     "empty": "Ouvrez un dossier pour y démarrer une Session.",
+    "dormant": "Sélectionnez un onglet pour reprendre sa Session.",
     "openFolder": "Ouvrir un dossier",
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
     "failed": "Claude Code n'a pas pu démarrer dans ce dossier.",
@@ -170,7 +171,8 @@
       "working": "Au travail",
       "waiting": "Vous attend",
       "done": "Terminée",
-      "ended": "Arrêtée"
+      "ended": "Arrêtée",
+      "dormant": "Pas démarrée"
     },
     "notification": {
       "waiting": "Claude vous attend.",
@@ -181,6 +183,12 @@
       "body": "Son processus claude s’arrête et l’onglet se ferme. La conversation jusqu’ici reste dans l’historique de Claude Code.",
       "action": "L’arrêter"
     }
+  },
+  "closing": {
+    "title_one": "Claude travaille encore dans une Session. Fermer ClaudeForge ?",
+    "title_other": "Claude travaille encore dans {{count}} Sessions. Fermer ClaudeForge ?",
+    "body": "La fermeture arrête chaque processus claude démarré par ClaudeForge. Chaque Session revient en onglet au prochain démarrage de ClaudeForge, et la conversation jusqu’ici reste dans l’historique de Claude Code.",
+    "action": "Fermer quand même"
   },
   "map": {
     "label": "Carte",

@@ -52,6 +52,16 @@ export interface MapPreferences {
 /** A Project's Map preferences, by Map id. */
 export type ProjectMapPreferences = Record<string, MapPreferences>
 
+/** A Hosted session's tab as ClaudeForge saves it, to come back dormant on the next start. */
+export interface SavedTab {
+  /** Claude Code's id for the Session, which `claude --resume` takes. */
+  sessionId: string
+  /** The Project the tab belongs to. */
+  project: string
+  /** The name Claude Code last gave its terminal; null when it gave none. */
+  title: string | null
+}
+
 export interface AppState {
   version: 1
   layout: Record<PanelId, PanelLayout>
@@ -65,6 +75,8 @@ export interface AppState {
   sessions: Record<string, SessionPreferences>
   /** By Project folder, then Map id; a Map the user never changed has no entry. */
   maps: Record<string, ProjectMapPreferences>
+  /** The Hosted session tabs open when ClaudeForge last ran, in tab order: dormant tabs to restore. */
+  tabs: SavedTab[]
 }
 
 /** A partial update of the app state; nested objects merge. */
@@ -77,6 +89,8 @@ export interface AppStatePatch {
   sessions?: Record<string, { title?: string | null; hidden?: boolean | null } | null>
   /** By Project folder, then Map id: a default value or null drops that preference, a null entry every one of them. */
   maps?: Record<string, Record<string, { view?: MapPanelView | null; hideClosed?: boolean | null; folded?: string[] | null } | null>>
+  /** Replaces every saved tab. */
+  tabs?: SavedTab[]
 }
 
 export interface SystemInfo {
@@ -271,6 +285,8 @@ export interface SessionStartOptions {
 export interface HostedSession {
   /** ClaudeForge's id for the Hosted session, not Claude Code's session id. */
   id: string
+  /** Claude Code's id for the Session it runs: the resumed one's, else the new one's (a fork's too). */
+  sessionId: string
   /** The pseudoconsole behind the terminal, as xterm.js's `windowsPty` option takes it; null off Windows. */
   windowsPty: { backend: 'conpty'; buildNumber: number } | null
 }
@@ -473,7 +489,14 @@ export interface BackendApi {
   window: {
     minimize(): Promise<void>
     toggleMaximize(): Promise<void>
+    /**
+     * Asks to close the window, as its close button and Alt+F4 do. With a Hosted session working,
+     * the interface is asked to warn the user first (`window.closeRequested`); otherwise every
+     * Hosted session's `claude` is stopped, and once all have ended, the window closes.
+     */
     close(): Promise<void>
+    /** Closes the window even with Hosted sessions working, once the user agreed, stopping them as close does. */
+    closeAnyway(): Promise<void>
     isMaximized(): Promise<boolean>
     /** Raises a Windows notification; clicking it brings the window to the front, then pushes its tag. */
     notify(notification: WindowNotification): Promise<void>
@@ -498,6 +521,8 @@ export interface BackendEvents {
   'window.maximizedChanged': { maximized: boolean }
   /** The user clicked a notification, which brought the window to the front. */
   'window.notificationClicked': { tag: string }
+  /** The user asked to close the window while Hosted sessions work (by id): `window.closeAnyway` closes it. */
+  'window.closeRequested': { working: string[] }
 }
 
 export type EventName = keyof BackendEvents
@@ -511,7 +536,8 @@ const EVENTS: Record<EventName, true> = {
   'appState.changed': true,
   'sessions.changed': true,
   'window.maximizedChanged': true,
-  'window.notificationClicked': true
+  'window.notificationClicked': true,
+  'window.closeRequested': true
 }
 
 /** Every pushed event, for the IPC transport. */

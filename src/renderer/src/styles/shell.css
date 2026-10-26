@@ -634,6 +634,11 @@ dialog.cf-dialog::backdrop {
 .confirm-dialog__error {
   color: var(--danger);
 }
+.close-warning__sessions {
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--text);
+}
 
 /* Map follows the Session */
 .cf-row[aria-current="true"] {

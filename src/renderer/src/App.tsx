@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppState, ClaudeCodeStatus, MapListing, PanelId } from '../../shared/api'
 import { api, onEvent } from './api'
+import { CloseWarning } from './components/CloseWarning'
 import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
 import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
@@ -10,7 +11,7 @@ import { SessionTabs } from './components/SessionTabs'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
-import { useHostedSessions } from './terminal/hosted-sessions'
+import { useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
 
@@ -39,7 +40,9 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // The displayed Session sets the displayed Project, whose Map the Map panel follows: the one
   // clicked in the explorer, else the Hosted session on show.
   const catalog = useSessionCatalog()
-  const hosted = useHostedSessions()
+  // The tabs open when ClaudeForge last closed come back dormant, and the open ones are kept for next time.
+  const hosted = useHostedSessions(initialState.tabs, initialState.gpuRendering)
+  useSavedTabs(hosted.tabs, catalog, state.tabs)
   const activeTab = hosted.tabs.find((tab) => tab.key === hosted.activeKey)
   const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
   const displayed = catalog
@@ -162,6 +165,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           />
         </SidePanel>
       </div>
+      <CloseWarning tabs={hosted.tabs} />
     </div>
   )
 }

@@ -77,7 +77,7 @@ export class HostedTerminal {
   private ended: SessionEnd | undefined
   private readonly changeListeners = new Set<() => void>()
   private currentStatus: HostedSessionStatus = 'idle'
-  private currentTitle: string | null = null
+  private currentTitle: string | null
   /** Whether the terminal is on show; only then does it hold a WebGL context, as Chromium caps them. */
   private visible = true
   private readonly unsubscribers: Array<() => void>
@@ -86,11 +86,14 @@ export class HostedTerminal {
   private disposed = false
   private refitTimer: ReturnType<typeof setTimeout> | undefined
 
+  /** `title` is the name a restored tab's Session had, until Claude Code names its terminal again. */
   constructor(
     private readonly project: string,
     private gpuRendering: boolean,
-    private readonly launch: SessionLaunch = { kind: 'new' }
+    private readonly launch: SessionLaunch = { kind: 'new' },
+    title: string | null = null
   ) {
+    this.currentTitle = title
     this.terminal = new Terminal({
       // The mono-terminal text style.
       fontFamily: token('font-mono'),
@@ -178,8 +181,13 @@ export class HostedTerminal {
   }
 
   /** The Session host's id for it, once `claude` has started. */
-  get sessionId(): string | null {
+  get hostedId(): string | null {
     return this.session?.id ?? null
+  }
+
+  /** Claude Code's id for its Session: the resumed one's, else known once `claude` has started. */
+  get sessionId(): string | null {
+    return this.session?.sessionId ?? (this.launch.kind === 'resume' ? this.launch.sessionId : null)
   }
 
   /** What `claude` is doing, as the Session host last said. */

@@ -20,7 +20,8 @@ interface TerminalAreaProps {
 /**
  * The centre column, where the Hosted sessions' terminals live. Every one stays
  * mounted, so a Session in the background keeps running and keeps its
- * scrollback; only the active tab's is on show.
+ * scrollback; only the active tab's is on show. A dormant tab's is not mounted
+ * until the tab is selected, as mounting starts `claude`.
  */
 export function TerminalArea({ tabs, activeKey, gpuRendering, onStart, onClose }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
@@ -45,18 +46,21 @@ export function TerminalArea({ tabs, activeKey, gpuRendering, onStart, onClose }
   return (
     <main className="terminal-area" aria-label={t('terminal.label')}>
       {active?.typed && <TypedBanner typed={active.typed} onCancel={() => onClose(active.key)} />}
-      {tabs.map((tab) => (
-        <TerminalView
-          key={tab.key}
-          tabKey={tab.key}
-          terminal={tab.terminal}
-          visible={tab.key === activeKey}
-          gpuRendering={gpuRendering}
-        />
-      ))}
+      {tabs.map(
+        (tab) =>
+          !tab.dormant && (
+            <TerminalView
+              key={tab.key}
+              tabKey={tab.key}
+              terminal={tab.terminal}
+              visible={tab.key === activeKey}
+              gpuRendering={gpuRendering}
+            />
+          )
+      )}
       {!active && (
         <div className="terminal-empty">
-          <p className="cf-muted">{t('terminal.empty')}</p>
+          <p className="cf-muted">{t(tabs.length ? 'terminal.dormant' : 'terminal.empty')}</p>
           {openFolderButton(true)}
         </div>
       )}

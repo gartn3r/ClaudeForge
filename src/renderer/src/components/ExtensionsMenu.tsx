@@ -313,7 +313,7 @@ function ExtensionsPopover({
   const scopeName = scope === 'project' ? projectName : null
   const outdated = typeof listing === 'object' ? listing.outdatedSessions : []
   const outdatedTabs = hostedTabs.filter(
-    ({ end, terminal }) => !end && terminal.sessionId !== null && outdated.includes(terminal.sessionId)
+    ({ end, terminal }) => !end && terminal.hostedId !== null && outdated.includes(terminal.hostedId)
   )
   const removing = asking?.kind === 'remove' ? asking.extension : null
   const removingChange = removing && removal(removing)
