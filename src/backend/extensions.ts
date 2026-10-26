@@ -3,19 +3,25 @@
 // come from Claude Code's CLI, whose config files are internal (ADR 0003).
 
 import type { Dirent } from 'node:fs'
-import { mkdir, readdir, readFile } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type {
   AvailablePluginListing,
   ClaudeScope,
   Extension,
   ExtensionChange,
   ExtensionChangeResult,
+  ExtensionFile,
+  ExtensionFileCreation,
+  ExtensionFileKind,
+  ExtensionFileSave,
   ExtensionKind,
   ExtensionListing,
   ExtensionScope,
-  McpServerStatus
+  McpServerStatus,
+  NewExtensionFile
 } from '../shared/api'
+import { frontmatterFields, frontmatterProblems, isExtensionName } from '../shared/frontmatter'
 import { runClaude, type Environment } from './claude-code'
 import { pathKey } from './worktree'
 
@@ -41,16 +47,8 @@ export interface ExtensionServiceOptions {
 /** Where an Extension comes from: its scope, and the plugin that brings it, if any. */
 type Origin = Pick<Extension, 'scope' | 'plugin'>
 
-/** The fields of a Markdown file's YAML frontmatter that are written on one line. */
-function frontmatter(text: string): Record<string, string> {
-  const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? ''
-  const fields: Record<string, string> = {}
-  for (const line of block.split(/\r?\n/)) {
-    const field = /^([\w-]+):\s*(.*?)\s*$/.exec(line)
-    if (field) fields[field[1]!] = field[2]!.replace(/^(["'])(.*)\1$/, '$2')
-  }
-  return fields
-}
+/** A frontmatter field's text, trimmed; null when it is blank or no text. */
+const textField = (value: unknown): string | null => (typeof value === 'string' && value.trim()) || null
 
 async function entries(folder: string): Promise<Dirent[]> {
   try {
@@ -68,8 +66,10 @@ async function fromMarkdown(kind: ExtensionKind, file: string, fallbackName: str
   } catch {
     return null
   }
-  const { name, description } = frontmatter(text)
-  return { kind, name: name || fallbackName, ...origin, description: description || null }
+  const { name, description } = frontmatterFields(text)
+  // A plugin's files are its own: updating it would undo any edit.
+  const editable = origin.plugin === null ? { file } : {}
+  return { kind, name: textField(name) ?? fallbackName, ...origin, description: textField(description), ...editable }
 }
 
 const found = (extensions: (Extension | null)[]): Extension[] => extensions.filter((extension) => extension !== null)
@@ -238,6 +238,39 @@ function claudeError(error: unknown): string {
   return stderr?.trim() || stdout?.trim() || message || String(error)
 }
 
+/** Where a skill or subagent of that name lives, in a folder laid out like `.claude/`. */
+const fileIn = (folder: string, kind: ExtensionFileKind, name: string): string =>
+  kind === 'skill' ? join(folder, 'skills', name, 'SKILL.md') : join(folder, 'agents', `${name}.md`)
+
+/** What ClaudeForge writes for a new skill or subagent: valid frontmatter, and what to fill in. */
+const TEMPLATES: Record<ExtensionFileKind, (name: string) => string> = {
+  skill: (name) =>
+    [
+      '---',
+      `name: ${name}`,
+      'description: Say what this skill does and when Claude should use it.',
+      '---',
+      '',
+      `# ${name}`,
+      '',
+      'Write the instructions Claude follows when it uses this skill.',
+      ''
+    ].join('\n'),
+  subagent: (name) =>
+    [
+      '---',
+      `name: ${name}`,
+      'description: Say what this subagent does and when Claude should hand it a task.',
+      '# Without tools, it may use every tool the Session has.',
+      '# tools: Read, Grep, Glob',
+      '# model: inherit',
+      '---',
+      '',
+      'Write the system prompt this subagent works from: its role, how it works, and what it reports back.',
+      ''
+    ].join('\n')
+}
+
 const KIND_ORDER: ExtensionKind[] =['skill', 'subagent', 'mcp-server', 'plugin']
 
 const byKindThenName = (a: Extension, b: Extension): number =>
@@ -327,6 +360,36 @@ export function createExtensionService({
     for (const id of outdated) if (!running.includes(id)) outdated.delete(id)
     return running.filter((id) => outdated.has(id))
   }
+  /** The Hosted sessions a change at that scope reaches: all of them, or those in the Project. */
+  const runningAt = (project: string, scope: ExtensionScope): Array<{ id: string; folder: string }> =>
+    hostedSessions().filter((session) => scope === 'global' || pathKey(session.folder) === pathKey(project))
+
+  /** The folders laid out like `.claude/` that hold the user's and the Project's own skills and subagents. */
+  const fileFolders = (project: string): Record<ExtensionScope, string> => ({
+    global: claudeHome,
+    project: join(project, '.claude')
+  })
+
+  /**
+   * Which skill or subagent of the user or of the Project the file is (a skill's SKILL.md or a
+   * subagent's Markdown file), for `read` and `save`; throws for any other file.
+   */
+  const resolveExtensionFile = (project: string, file: string): Omit<ExtensionFile, 'text'> => {
+    if (isAbsolute(file)) {
+      for (const [scope, folder] of Object.entries(fileFolders(project)) as [ExtensionScope, string][]) {
+        const parts = relative(folder, file).split(/[\\/]/)
+        const [first, second, third] = parts.map((part) => (process.platform === 'win32' ? part.toLowerCase() : part))
+        const named = (part: string | undefined): boolean => !!part && part !== '..'
+        if (parts.length === 3 && first === 'skills' && named(second) && third === 'skill.md') {
+          return { file: resolve(file), kind: 'skill', scope }
+        }
+        if (parts.length === 2 && first === 'agents' && named(second) && second!.endsWith('.md')) {
+          return { file: resolve(file), kind: 'subagent', scope }
+        }
+      }
+    }
+    throw new Error(`${file} is not a skill or subagent of the user or of ${project}`)
+  }
 
   return {
     async list(project: string): Promise<ExtensionListing> {
@@ -370,9 +433,7 @@ export function createExtensionService({
 
     async change(project: string, change: ExtensionChange): Promise<ExtensionChangeResult> {
       // Claude Code reads its setup when it starts, so only those already running miss the change.
-      const running = hostedSessions().filter(
-        (session) => scopeOf(change) === 'global' || pathKey(session.folder) === pathKey(project)
-      )
+      const running = runningAt(project, scopeOf(change))
       let error = ''
       for (const args of commandsFor(change)) {
         try {
@@ -385,6 +446,45 @@ export function createExtensionService({
         }
       }
       return { ok: false, error }
+    },
+
+    async create(project: string, { kind, name, scope }: NewExtensionFile): Promise<ExtensionFileCreation> {
+      if (!isExtensionName(name)) return { ok: false, problem: 'bad-name' }
+      const folder = fileFolders(project)[scope]
+      const file = fileIn(folder, kind, name)
+      // Claude Code picks up skills and subagents as their files change, but only in the `skills/`
+      // and `agents/` folders it found when it started: those already running miss a new folder's.
+      const watched = await stat(join(folder, kind === 'skill' ? 'skills' : 'agents')).then(
+        () => true,
+        () => false
+      )
+      const running = watched ? [] : runningAt(project, scope)
+      await mkdir(dirname(file), { recursive: true })
+      try {
+        await writeFile(file, TEMPLATES[kind](name), { flag: 'wx' })
+      } catch (failure) {
+        if ((failure as NodeJS.ErrnoException).code === 'EEXIST') return { ok: false, problem: 'exists' }
+        throw failure
+      }
+      for (const { id } of running) outdated.add(id)
+      return { ok: true, file }
+    },
+
+    async read(project: string, file: string): Promise<ExtensionFile> {
+      const opened = resolveExtensionFile(project, file)
+      return { ...opened, text: await readFile(opened.file, 'utf8') }
+    },
+
+    async save(project: string, file: string, text: string): Promise<ExtensionFileSave> {
+      const { file: path, kind } = resolveExtensionFile(project, file)
+      const problems = frontmatterProblems(kind, text)
+      if (problems.length) return { ok: false, problems }
+      // The editor works in \n; a file written with \r\n keeps them.
+      const previous = await readFile(path, 'utf8').catch(() => '')
+      const lines = text.replace(/\r\n/g, '\n')
+      await mkdir(dirname(path), { recursive: true })
+      await writeFile(path, previous.includes('\r\n') ? lines.replace(/\n/g, '\r\n') : lines)
+      return { ok: true }
     }
   }
 }

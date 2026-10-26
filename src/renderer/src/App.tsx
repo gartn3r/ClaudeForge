@@ -11,6 +11,7 @@ import { SessionTabs } from './components/SessionTabs'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
+import { useEditorTabs } from './editor/editor-tabs'
 import { useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
@@ -43,6 +44,8 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // The tabs open when ClaudeForge last closed come back dormant, and the open ones are kept for next time.
   const hosted = useHostedSessions(initialState.tabs, initialState.gpuRendering)
   useSavedTabs(hosted.tabs, catalog, state.tabs)
+  // Skill and subagent editors share the tab strip; while one is on show, no terminal is.
+  const editing = useEditorTabs()
   const activeTab = hosted.tabs.find((tab) => tab.key === hosted.activeKey)
   const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
   const displayed = catalog
@@ -55,13 +58,18 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
   const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
     setDisplayedSessionId(null)
+    editing.editors.deselect()
     hosted.sessions.start(folder, state.gpuRendering, launch)
   }
   const selectHostedSession = (key: string): void => {
     setDisplayedSessionId(null)
+    editing.editors.deselect()
     hosted.sessions.select(key)
   }
-  useSessionNotifications(hosted.sessions, hosted.activeKey, state.notifications, selectHostedSession)
+  const shownKey = editing.activeKey ?? hosted.activeKey
+  // A Session behind an editor is not on show, so it notifies like one in the background.
+  const shownHostedKey = editing.activeKey === null ? hosted.activeKey : null
+  useSessionNotifications(hosted.sessions, shownHostedKey, state.notifications, selectHostedSession)
   const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
@@ -125,9 +133,12 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
         tabs={
           <SessionTabs
             tabs={hosted.tabs}
-            activeKey={hosted.activeKey}
+            editors={editing.tabs}
+            activeKey={shownKey}
             onSelect={selectHostedSession}
             onClose={(key) => hosted.sessions.close(key)}
+            onSelectEditor={(key) => editing.editors.select(key)}
+            onCloseEditor={(key) => editing.editors.close(key)}
             onNew={() => startHostedSession(project)}
           />
         }
@@ -151,15 +162,19 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             project={project}
             hostedTabs={hosted.tabs}
             onShowHostedSession={selectHostedSession}
+            onEditExtension={(target) => editing.editors.open(target)}
             onCollapse={collapseHandler('explorer', true)}
           />
         </SidePanel>
         <TerminalArea
           tabs={hosted.tabs}
-          activeKey={hosted.activeKey}
+          editors={editing.tabs}
+          activeKey={shownKey}
           gpuRendering={state.gpuRendering}
           onStart={startHostedSession}
           onClose={(key) => hosted.sessions.close(key)}
+          onEditorDirtyChange={(key, dirty) => editing.editors.setDirty(key, dirty)}
+          onEditorRename={(key, name) => editing.editors.rename(key, name)}
         />
         <SidePanel
           id="map"

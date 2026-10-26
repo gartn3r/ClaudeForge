@@ -98,6 +98,7 @@
     "claudeFailed": "Claude Code n’a pas pu lister les serveurs MCP et les plugins.",
     "loadFailed": "Les Extensions n’ont pas pu être lues.",
     "enable": "Activer {{name}}",
+    "edit": "Modifier {{name}}",
     "remove": {
       "mcpServer": {
         "open": "Retirer {{name}}",
@@ -148,6 +149,27 @@
       "more": "Les {{shown}} premiers sur {{count}} : recherchez pour trouver les autres.",
       "install": "Installer",
       "action": "Installer {{name}}"
+    },
+    "newFile": {
+      "skill": {
+        "open": "Nouveau skill",
+        "titleGlobal": "Nouveau skill global",
+        "titleProject": "Nouveau skill dans {{project}}"
+      },
+      "subagent": {
+        "open": "Nouveau sous-agent",
+        "titleGlobal": "Nouveau sous-agent global",
+        "titleProject": "Nouveau sous-agent dans {{project}}"
+      },
+      "name": "Nom",
+      "nameHint": "Lettres minuscules, chiffres et tirets. Il nomme aussi le fichier.",
+      "action": "Créer",
+      "exists": {
+        "skill": "Il y a déjà un skill nommé {{name}} ici.",
+        "subagent": "Il y a déjà un sous-agent nommé {{name}} ici."
+      },
+      "badName": "Utilisez uniquement des lettres minuscules, des chiffres et des tirets, 64 au plus.",
+      "failed": "Le fichier n’a pas pu être créé. Vérifiez que le dossier est accessible en écriture, puis réessayez."
     }
   },
   "terminal": {
@@ -182,6 +204,37 @@
       "title": "Claude travaille encore dans cette Session. L’arrêter ?",
       "body": "Son processus claude s’arrête et l’onglet se ferme. La conversation jusqu’ici reste dans l’historique de Claude Code.",
       "action": "L’arrêter"
+    },
+    "editor": {
+      "skill": "Skill",
+      "subagent": "Sous-agent"
+    },
+    "discard": {
+      "title": "Abandonner vos modifications de {{name}} ?",
+      "body": "L’onglet se ferme et le fichier reste tel qu’il a été enregistré pour la dernière fois.",
+      "action": "Abandonner"
+    }
+  },
+  "editor": {
+    "label": "Texte de {{name}}",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "unsaved": "Modifications non enregistrées",
+    "loading": "Ouverture du fichier…",
+    "loadFailed": "Le fichier n’a pas pu être ouvert. Il a peut-être été déplacé ou supprimé.",
+    "saveFailed": "Le fichier n’a pas pu être enregistré. Vérifiez qu’il est accessible en écriture, puis enregistrez de nouveau.",
+    "problems": "Corrigez le frontmatter pour enregistrer :",
+    "problem": {
+      "noFrontmatter": "Commencez le fichier par son frontmatter : name et description entre deux lignes de ---.",
+      "unclosed": "Terminez le frontmatter par une ligne de --- après son dernier champ.",
+      "notYaml": "La ligne {{line}} n’est pas du YAML valide : {{detail}}.",
+      "notFields": "Écrivez le frontmatter sous forme de champs, un nom: valeur par ligne.",
+      "missing": "Ajoutez le champ obligatoire {{field}}.",
+      "notText": "Faites de {{field}} du texte simple.",
+      "badSkillName": "Retirez de name tout < ou >, tout caractère invisible et toute espace autre qu’une seule entre deux mots.",
+      "badSubagentName": "Écrivez name sans deux-points, et sans tiret au début.",
+      "tooLong": "Raccourcissez {{field}} à {{max}} caractères au plus."
     }
   },
   "closing": {
