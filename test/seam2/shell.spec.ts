@@ -78,11 +78,15 @@ test('sets the interface in the bundled Geist font without fetching anything fro
 
 /** Drags a side panel's inner edge by dx pixels. */
 async function dragEdge(window: Page, name: string, dx: number): Promise<void> {
-  const box = (await window.getByRole('separator', { name }).boundingBox())!
+  const edge = window.getByRole('separator', { name })
+  // Waits until the edge holds still and nothing covers it, as a panel's content can still be loading.
+  await edge.hover()
+  const box = (await edge.boundingBox())!
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2
   await window.mouse.move(x, y)
   await window.mouse.down()
+  await expect(edge).toHaveAttribute('data-dragging', 'true')
   await window.mouse.move(x + dx / 2, y)
   await window.mouse.move(x + dx, y)
   await window.mouse.up()

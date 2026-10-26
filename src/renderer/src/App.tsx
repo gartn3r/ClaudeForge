@@ -12,6 +12,7 @@ import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
 import { useHostedSessions } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
+import { useSessionNotifications } from './terminal/session-notifications'
 
 interface AppProps {
   initialState: AppState
@@ -57,6 +58,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     setDisplayedSessionId(null)
     hosted.sessions.select(key)
   }
+  useSessionNotifications(hosted.sessions, hosted.activeKey, state.notifications, selectHostedSession)
   const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>

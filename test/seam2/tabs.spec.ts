@@ -3,7 +3,14 @@
 import { execFileSync } from 'node:child_process'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
-import { launchClaudeForge, sessionRuns, type RunningClaudeForge } from './claudeforge'
+import {
+  clickNotification,
+  launchClaudeForge,
+  recordNotifications,
+  sessionRuns,
+  shownNotifications,
+  type RunningClaudeForge
+} from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -154,4 +161,70 @@ test('asks before closing a Session Claude is working in, and closes an idle one
   await expect(window.getByText('Open a folder to start a Session in it.')).toBeVisible()
   // No pseudoconsole, so no `claude`, is left running.
   await expect.poll(() => childProcessNames(mainPid), { timeout: 15_000 }).not.toContain('OpenConsole.exe')
+})
+
+test('shows on each tab whether Claude is working, waiting for the user or done, pulsing only without reduced motion', async () => {
+  const window = await launch()
+
+  await newSession(window)
+  await send(window, '/ask')
+  const tab = window.getByRole('tab', { name: '/ask' })
+  await expect(tab).toHaveAccessibleDescription('Waiting for you')
+  await window.keyboard.type('blue')
+  await window.keyboard.press('Enter')
+  await expect(tab).toHaveAccessibleDescription('Done')
+  await send(window, '/work 60000')
+  await expect(tab).toHaveAccessibleDescription('Working')
+
+  const pulse = () => tab.locator('.cf-dot').evaluate((dot) => getComputedStyle(dot).animationName)
+  expect(await pulse()).toBe('cf-pulse')
+  await window.emulateMedia({ reducedMotion: 'reduce' })
+  await expect.poll(pulse).toBe('none')
+})
+
+test('a background Session that waits for the user or finishes raises a notification, and clicking it shows that Session', async () => {
+  const window = await launch()
+  const { app } = claudeforge!
+  await recordNotifications(app)
+
+  await newSession(window)
+  await send(window, '/ask 1500')
+  await newSession(window)
+  const asking = window.getByRole('tab', { name: '/ask 1500' })
+  const other = window.getByRole('tab', { name: 'harbor-api' })
+  await expect(asking).toHaveAccessibleDescription('Waiting for you', { timeout: 15_000 })
+  await expect.poll(() => shownNotifications(app)).toEqual([{ title: '/ask 1500', body: 'Claude is waiting for you.' }])
+
+  await clickNotification(app, 0)
+  await expect(asking).toHaveAttribute('aria-selected', 'true')
+  await expect(shownTerminal(window)).toContainText('Red or blue?')
+
+  await other.click()
+  await send(window, '/work 1500')
+  await asking.click()
+  const working = window.getByRole('tab', { name: '/work 1500' })
+  await expect(working).toHaveAccessibleDescription('Done', { timeout: 15_000 })
+  await expect.poll(() => shownNotifications(app)).toEqual([
+    { title: '/ask 1500', body: 'Claude is waiting for you.' },
+    { title: '/work 1500', body: 'Claude has finished.' }
+  ])
+  await clickNotification(app, 1)
+  await expect(working).toHaveAttribute('aria-selected', 'true')
+})
+
+test('raises no notification once the user turned notifications off', async () => {
+  const window = await launch()
+  const { app } = claudeforge!
+  await recordNotifications(app)
+  await window.getByRole('button', { name: 'Settings' }).click()
+  await window.getByRole('switch', { name: 'Notifications' }).click()
+  await expect(window.getByRole('switch', { name: 'Notifications' })).toHaveAttribute('aria-checked', 'false')
+  await window.keyboard.press('Escape')
+
+  await newSession(window)
+  await send(window, '/work 1000')
+  await newSession(window)
+  await expect(window.getByRole('tab', { name: '/work 1000' })).toHaveAccessibleDescription('Done', { timeout: 15_000 })
+
+  expect(await shownNotifications(app)).toEqual([])
 })

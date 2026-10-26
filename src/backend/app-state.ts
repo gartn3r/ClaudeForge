@@ -26,6 +26,7 @@ export function defaultAppState(): AppState {
     },
     claudePath: null,
     gpuRendering: true,
+    notifications: true,
     sessions: {},
     maps: {}
   }
@@ -110,7 +111,7 @@ function mergeMaps(
 
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering, sessions, maps } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, notifications, sessions, maps } = (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -123,6 +124,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   }
   if (typeof claudePath === 'string' || claudePath === null) next = { ...next, claudePath }
   if (typeof gpuRendering === 'boolean') next = { ...next, gpuRendering }
+  if (typeof notifications === 'boolean') next = { ...next, notifications }
   if (typeof sessions === 'object' && sessions !== null) {
     next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
   }

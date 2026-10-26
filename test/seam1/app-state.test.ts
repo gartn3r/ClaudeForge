@@ -62,6 +62,14 @@ describe('app state', () => {
     expect((await start().api.appState.read()).gpuRendering).toBe(false)
   })
 
+  it('notifies the user about Sessions until they turn notifications off, and remembers that across a restart', async () => {
+    expect((await start().api.appState.read()).notifications).toBe(true)
+
+    await start().api.appState.write({ notifications: false })
+
+    expect((await start().api.appState.read()).notifications).toBe(false)
+  })
+
   it('shows every Map as a graph with closed Tickets and nothing folded until the user changes it', async () => {
     expect((await start().api.appState.read()).maps).toEqual({})
   })

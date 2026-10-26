@@ -1,7 +1,7 @@
-import { Check, Plus, Square, X } from 'lucide-react'
+import { Check, Hand, Plus, Square, X, type LucideIcon } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { HostedTab } from '../terminal/hosted-sessions'
+import { tabTitle, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
 
 interface SessionTabsProps {
@@ -18,24 +18,23 @@ interface SessionTabsProps {
 export const tabId = (key: string): string => `session-tab-${key}`
 export const panelId = (key: string): string => `session-panel-${key}`
 
-/** The last part of a Project's path: a tab's name until Claude Code names its terminal. */
-const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
-
 /** What a tab's glyph shows: the Hosted session's status, or that its `claude` has ended. */
 type TabState = HostedTab['status'] | 'ended'
 
-/** Each state's StatusBadge modifier; done shows a check, the others a dot. */
-const STATUS_CLASS: Record<TabState, string> = {
-  idle: 'cf-status',
-  working: 'cf-status cf-status--working',
-  done: 'cf-status cf-status--done',
-  ended: 'cf-status cf-status--dormant'
+/** Each state's StatusBadge: its modifier, and its icon where it has one rather than a dot (working's pulses). */
+const STATUS_BADGE: Record<TabState, { className: string; icon?: LucideIcon }> = {
+  idle: { className: 'cf-status' },
+  working: { className: 'cf-status cf-status--working' },
+  waiting: { className: 'cf-status cf-status--waiting', icon: Hand },
+  done: { className: 'cf-status cf-status--done', icon: Check },
+  ended: { className: 'cf-status cf-status--dormant' }
 }
 
 function StatusGlyph({ state }: { state: TabState }): ReactNode {
+  const { className, icon: Icon } = STATUS_BADGE[state]
   return (
-    <span className={STATUS_CLASS[state]}>
-      {state === 'done' ? <Check className="cf-icon cf-icon--sm" aria-hidden="true" /> : <span className="cf-dot" />}
+    <span className={className}>
+      {Icon ? <Icon className="cf-icon cf-icon--sm" aria-hidden="true" /> : <span className="cf-dot" />}
     </span>
   )
 }
@@ -75,7 +74,7 @@ export function SessionTabs({ tabs, activeKey, onSelect, onClose, onNew }: Sessi
       <div className="cf-tabs" role="tablist" aria-label={t('titleBar.hostedSessions')}>
         {tabs.map((tab, index) => {
           const active = tab.key === activeKey
-          const title = tab.title ?? folderName(tab.project)
+          const title = tabTitle(tab)
           const state: TabState = tab.end ? 'ended' : tab.status
           const statusLabel = t(`tabs.status.${state}`)
           return (

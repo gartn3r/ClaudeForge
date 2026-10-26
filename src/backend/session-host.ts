@@ -4,6 +4,8 @@ import { extname } from 'node:path'
 import { spawn, type IPty } from 'node-pty'
 import type { HostedSession, HostedSessionStatus, TerminalSize } from '../shared/api'
 import { envVar, type Environment } from './claude-code'
+import { HistoryStatus } from './history-status'
+import { PROBE_REPLY, ProgramStatusReader, type ProgramStatusState } from './program-status'
 
 /** What every Hosted session's `claude` gets on top of ClaudeForge's own environment. */
 const HOSTED_ENVIRONMENT: Environment = {
@@ -24,24 +26,47 @@ function withVariables(env: Environment, variables: Environment): Environment {
   return result
 }
 
-/** Output this soon after the user typed or the terminal resized is `claude` redrawing its screen, not working. */
-const REDRAW_MS = 250
-/** How long `claude` must stay quiet, after the user sent a prompt or after working, before its turn counts as over. */
-const QUIET_MS = 1500
-
-/** One running `claude`, with what its output says it is doing. */
+/** One running `claude`, with what it last said it is doing. */
 interface HostedProcess {
   id: string
   /** The folder `claude` runs in: its Project, or a git worktree of it. */
   folder: string
   pty: IPty
   status: HostedSessionStatus
-  /** When the user last typed into it or resized it, in ms since the epoch. */
-  touchedAt: number
-  /** Whether the user sent a prompt (Enter) and `claude` has not fallen quiet since: only then can it work. */
-  inTurn: boolean
-  /** Ends the turn once `claude` stays quiet. */
-  quietTimer?: ReturnType<typeof setTimeout>
+  /** Reads the status signals in its output. */
+  reader: ProgramStatusReader
+  /** Follows its Session history until `claude` shows it reports its status itself. */
+  history?: HistoryStatus
+}
+
+/** The status each reported state gives a Hosted session: blocked waits for the user; a failed turn is over too. */
+const STATUS_OF_REPORT: Record<ProgramStatusState, HostedSessionStatus> = {
+  idle: 'idle',
+  working: 'working',
+  blocked: 'waiting',
+  done: 'done',
+  error: 'done',
+  // Clears what it reported, as when `claude` exits.
+  clear: 'idle'
+}
+
+/** Whether a Session in this status is in the middle of a turn. */
+const midTurn = (status: HostedSessionStatus): boolean => status === 'working' || status === 'waiting'
+
+/**
+ * The options to start `claude` with and the Session id they give it. A resumed Session keeps its
+ * id; any other gets a new one (`--session-id`), which Claude Code also takes with `--fork-session`.
+ */
+function withSessionId(args: readonly string[]): { sessionId: string; args: string[] } {
+  const resumed = args.indexOf('--resume')
+  if (resumed >= 0 && !args.includes('--fork-session')) return { sessionId: args[resumed + 1]!, args: [...args] }
+  const sessionId = randomUUID()
+  return { sessionId, args: [...args, '--session-id', sessionId] }
+}
+
+function stopFollowingHistory(session: HostedProcess): void {
+  session.history?.stop()
+  session.history = undefined
 }
 
 const windowsPty = (): HostedSession['windowsPty'] =>
@@ -50,11 +75,15 @@ const windowsPty = (): HostedSession['windowsPty'] =>
 export interface SessionHostOptions {
   /** ClaudeForge's environment, which `claude` inherits. */
   env: Environment
+  /** The Claude Code home, where `claude` keeps each Session's history. */
+  claudeHome: string
   /** The `claude` to run; rejects when there is none. */
   claudePath(): Promise<string>
   onOutput(id: string, data: string): void
   onExit(id: string, exitCode: number): void
   onStatus(id: string, status: HostedSessionStatus): void
+  /** A turn ended, finished or interrupted. */
+  onTurnEnd(id: string, cwd: string): void
 }
 
 /**
@@ -63,11 +92,12 @@ export interface SessionHostOptions {
  * built into Windows 10. node-pty is not thread-safe, so every PTY lives here,
  * in the one process that hosts the backend.
  *
- * Until Claude Code's own status signals are read, a Hosted session counts as
- * working while `claude` keeps printing on its own after the user sent it a
- * prompt: Claude Code redraws its spinner many times a second through a turn,
- * and prints nothing while it waits at its prompt. Typing alone, and the
- * replies xterm.js sends to the terminal's own queries, start no turn.
+ * A Hosted session's status is what `claude` reports to its terminal through
+ * the OSC 7501 Program Status Protocol: the Session host answers Claude Code's
+ * support probe as the terminal, before xterm.js answers the device-attributes
+ * query Claude Code sends after it. Until `claude` asks about status reports,
+ * which a Claude Code older than 2.1.295 never does, the status follows the Session history, found
+ * by the Session id: the resumed Session's, or one the Session host gives `claude`.
  */
 export class SessionHost {
   private readonly sessions = new Map<string, HostedProcess>()
@@ -79,25 +109,34 @@ export class SessionHost {
     const claude = await this.options.claudePath()
     const env = withVariables(this.options.env, HOSTED_ENVIRONMENT)
     const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
+    const { sessionId, args: claudeArgs } = withSessionId(args)
     // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
     // Each option is quoted as is: they are ClaudeForge's own flags and Session ids, never user text.
     const pty = /^\.(cmd|bat)$/i.test(extname(claude))
       ? spawn(
           envVar(env, 'COMSPEC') ?? 'cmd.exe',
-          `/d /s /c ""${claude}"${args.map((arg) => ` "${arg}"`).join('')}"`,
+          `/d /s /c ""${claude}"${claudeArgs.map((arg) => ` "${arg}"`).join('')}"`,
           ptyOptions
         )
-      : spawn(claude, [...args], ptyOptions)
+      : spawn(claude, claudeArgs, ptyOptions)
 
     const id = randomUUID()
-    const session: HostedProcess = { id, folder, pty, status: 'idle', touchedAt: 0, inTurn: false }
+    const session: HostedProcess = { id, folder, pty, status: 'idle', reader: new ProgramStatusReader() }
+    session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
+      this.setStatus(session, status)
+    )
     this.sessions.set(id, session)
     pty.onData((data) => {
+      for (const signal of session.reader.read(data)) {
+        // A `claude` that asks whether its terminal reads status reports sends them: its history says no more.
+        stopFollowingHistory(session)
+        if (signal.kind === 'probe') pty.write(PROBE_REPLY)
+        else this.setStatus(session, STATUS_OF_REPORT[signal.state])
+      }
       this.options.onOutput(id, data)
-      this.noteOutput(session)
     })
     pty.onExit(({ exitCode }) => {
-      clearTimeout(session.quietTimer)
+      stopFollowingHistory(session)
       this.sessions.delete(id)
       this.options.onExit(id, exitCode)
     })
@@ -112,22 +151,11 @@ export class SessionHost {
   // A Hosted session that has ended ignores input, resizes and stops.
 
   write(id: string, data: string): void {
-    const session = this.sessions.get(id)
-    if (!session) return
-    session.touchedAt = Date.now()
-    // Enter sends the prompt; it is the only way a turn starts.
-    if (data.includes('\r')) {
-      session.inTurn = true
-      this.waitForQuiet(session)
-    }
-    session.pty.write(data)
+    this.sessions.get(id)?.pty.write(data)
   }
 
   resize(id: string, { cols, rows }: TerminalSize): void {
-    const session = this.sessions.get(id)
-    if (!session) return
-    session.touchedAt = Date.now()
-    session.pty.resize(cols, rows)
+    this.sessions.get(id)?.pty.resize(cols, rows)
   }
 
   stop(id: string): void {
@@ -136,31 +164,19 @@ export class SessionHost {
 
   /** Ends every Hosted session, as when ClaudeForge closes. */
   dispose(): void {
-    for (const { pty, quietTimer } of this.sessions.values()) {
-      clearTimeout(quietTimer)
-      pty.kill()
+    for (const session of this.sessions.values()) {
+      stopFollowingHistory(session)
+      session.pty.kill()
     }
     this.sessions.clear()
   }
 
-  /** Output `claude` prints on its own in a turn, not just after the user typed, means it works until it falls quiet. */
-  private noteOutput(session: HostedProcess): void {
-    if (!session.inTurn || Date.now() - session.touchedAt < REDRAW_MS) return
-    if (session.status !== 'working') this.setStatus(session, 'working')
-    this.waitForQuiet(session)
-  }
-
-  /** Ends the turn once `claude` stays quiet for a while: done if it worked, as it was if it never did. */
-  private waitForQuiet(session: HostedProcess): void {
-    clearTimeout(session.quietTimer)
-    session.quietTimer = setTimeout(() => {
-      session.inTurn = false
-      if (session.status === 'working') this.setStatus(session, 'done')
-    }, QUIET_MS)
-  }
-
+  /** A turn ends when a Session that worked or waited for the user is done, or back at rest. */
   private setStatus(session: HostedProcess, status: HostedSessionStatus): void {
+    const previous = session.status
+    if (status === previous) return
     session.status = status
     this.options.onStatus(session.id, status)
+    if (midTurn(previous) && !midTurn(status)) this.options.onTurnEnd(session.id, session.folder)
   }
 }

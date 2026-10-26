@@ -95,7 +95,7 @@ describe('the Session host', () => {
     await expect(api.sessionHost.start(env!.projects['recipe-box'], SIZE)).rejects.toThrow()
   })
 
-  it('starts claude with no options in the Project, with the environment ConPTY hosts need, and streams its output', async () => {
+  it('starts claude in the Project with a new Session id, with the environment ConPTY hosts need, and streams its output', async () => {
     const { api } = await start()
     const project = env!.projects['recipe-box']
 
@@ -104,7 +104,7 @@ describe('the Session host', () => {
     await waitForText(id, 'Fake Claude Code')
     expect(await sessionRuns()).toEqual([
       {
-        args: [],
+        args: ['--session-id', expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)],
         cwd: project,
         env: expect.objectContaining({ CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT: '1', TERM_PROGRAM: 'ClaudeForge' })
       }
@@ -129,7 +129,10 @@ describe('the Session host', () => {
 
     await waitForText(id, 'Fake Claude Code')
     expect(await sessionRuns()).toEqual([
-      expect.objectContaining({ args: ['--resume', PAST_SESSION, '--fork-session'], cwd: env!.projects['harbor-api'] })
+      expect.objectContaining({
+        args: ['--resume', PAST_SESSION, '--fork-session', '--session-id', expect.any(String)],
+        cwd: env!.projects['harbor-api']
+      })
     ])
   })
 
@@ -225,6 +228,83 @@ describe('the Session host', () => {
 
     await vi.waitFor(() => expect(statuses(working)).toEqual(['working', 'done']), { timeout: 15_000 })
     expect(statuses(other)).toEqual([])
+  })
+
+  it('reports a Hosted session waiting while claude waits for the user, and done once the user answers', async () => {
+    const { api } = await start()
+    const id = await startSession()
+
+    await api.sessionHost.write(id, '/ask\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting']), { timeout: 15_000 })
+    await api.sessionHost.write(id, 'blue\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
+  })
+
+  it('reports a Hosted session waiting on a permission prompt too, and a failed turn as over', async () => {
+    const { api } = await start()
+    const id = await startSession()
+
+    await api.sessionHost.write(id, '/permission\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting']), { timeout: 15_000 })
+    await api.sessionHost.write(id, 'yes\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
+    await api.sessionHost.write(id, '/fail\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done', 'working', 'done']), { timeout: 15_000 })
+  })
+
+  it('is back at rest once claude exits and clears its status', async () => {
+    const { api } = await start()
+    const id = await startSession()
+    await api.sessionHost.write(id, '/ask\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting']), { timeout: 15_000 })
+
+    await api.sessionHost.write(id, 'blue\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done']), { timeout: 15_000 })
+    await api.sessionHost.write(id, '/exit\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['waiting', 'done', 'idle']), { timeout: 15_000 })
+    await vi.waitFor(() => expect(exits.map((exit) => exit.id)).toEqual([id]), { timeout: 15_000 })
+  })
+
+  it('tells when a turn ends, finished or interrupted by the user, with its Project', async () => {
+    const { api } = await start()
+    const turnEnds: Array<{ id: string; cwd: string }> = []
+    backend!.on('sessionHost.turnEnded', (turnEnd) => turnEnds.push(turnEnd))
+    const id = await startSession('harbor-api')
+
+    await api.sessionHost.write(id, '/work 300\r')
+    const cwd = env!.projects['harbor-api']
+    await vi.waitFor(() => expect(turnEnds).toEqual([{ id, cwd }]), { timeout: 15_000 })
+    await api.sessionHost.write(id, '/work 60000\r')
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done', 'working']), { timeout: 15_000 })
+    await api.sessionHost.write(id, 'x')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done', 'working', 'idle']), { timeout: 15_000 })
+    expect(turnEnds).toHaveLength(2)
+  })
+
+  it('follows the Session history when claude sends no status signals, as before Claude Code 2.1.295', async () => {
+    const { api } = await start({ claude: { version: '2.1.200' } })
+    const turnEnds: string[] = []
+    backend!.on('sessionHost.turnEnded', ({ id }) => turnEnds.push(id))
+    const id = await startSession()
+
+    await api.sessionHost.write(id, '/work 1500\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done']), { timeout: 15_000 })
+    expect(turnEnds).toEqual([id])
+  })
+
+  it("follows a resumed Session's history from where it was, so its past turns say nothing", async () => {
+    const { api } = await start({ claude: { version: '2.1.200' } })
+    const { id } = await api.sessionHost.resume(PAST_SESSION, SIZE)
+    await waitForText(id, `Terminal ${SIZE.cols}x${SIZE.rows}`)
+
+    await api.sessionHost.write(id, '/work 1500\r')
+
+    await vi.waitFor(() => expect(statuses(id)).toEqual(['working', 'done']), { timeout: 15_000 })
   })
 
   it("does not count claude echoing the user's typing as work", async () => {

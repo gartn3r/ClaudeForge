@@ -12,7 +12,9 @@
   "settings": {
     "label": "Settings",
     "gpuRendering": "GPU rendering",
-    "gpuRenderingHint": "Turn it off if the terminal shows garbled text."
+    "gpuRenderingHint": "Turn it off if the terminal shows garbled text.",
+    "notifications": "Notifications",
+    "notificationsHint": "When a Session in the background waits for you or finishes."
   },
   "explorer": {
     "label": "Sessions",
@@ -161,8 +163,13 @@
     "status": {
       "idle": "Ready",
       "working": "Working",
+      "waiting": "Waiting for you",
       "done": "Done",
       "ended": "Ended"
+    },
+    "notification": {
+      "waiting": "Claude is waiting for you.",
+      "done": "Claude has finished."
     },
     "stop": {
       "title": "Claude is still working in this Session. Stop it?",

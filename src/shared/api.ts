@@ -59,6 +59,8 @@ export interface AppState {
   claudePath: string | null
   /** Whether the terminal renders with WebGL; off falls back to the DOM renderer, for GPUs that garble text. */
   gpuRendering: boolean
+  /** Whether a background Hosted session that waits for the user or finishes raises a Windows notification. */
+  notifications: boolean
   /** By Session id; a Session the user never tidied has no entry. */
   sessions: Record<string, SessionPreferences>
   /** By Project folder, then Map id; a Map the user never changed has no entry. */
@@ -70,6 +72,7 @@ export interface AppStatePatch {
   layout?: Partial<Record<PanelId, Partial<PanelLayout>>>
   claudePath?: string | null
   gpuRendering?: boolean
+  notifications?: boolean
   /** By Session id: a null field drops that preference, a null entry every one of them. */
   sessions?: Record<string, { title?: string | null; hidden?: boolean | null } | null>
   /** By Project folder, then Map id: a default value or null drops that preference, a null entry every one of them. */
@@ -380,16 +383,28 @@ export interface NewMcpServer {
 export type ExtensionChangeResult = { ok: true } | { ok: false; error: string }
 
 /**
- * What a Hosted session's `claude` is doing: idle until the user first sends it something, working
- * while it streams a turn, done once that turn is over.
+ * What a Hosted session's `claude` is doing: idle at its prompt, working through a turn, waiting for
+ * the user mid-turn (a permission prompt or a question), or done: its last turn is over, until
+ * Claude Code says it is back at rest or starts another turn.
  */
-export type HostedSessionStatus = 'idle' | 'working' | 'done'
+export type HostedSessionStatus = 'idle' | 'working' | 'waiting' | 'done'
+
+/** A Windows notification about one Hosted session, worded by the interface. */
+export interface WindowNotification {
+  /** Names what the notification is about, so the interface knows what to show when the user clicks it. */
+  tag: string
+  title: string
+  body: string
+}
 
 export interface BackendApi {
   sessionHost: {
     /** Asks the user for a Project folder ("Open folder"); null when they cancel. */
     chooseProject(): Promise<string | null>
-    /** Starts `claude`, with no extra options, in a Project; its output and exit arrive as events. */
+    /**
+     * Starts `claude` in a Project, as a new Session with an id ClaudeForge picks (`--session-id`);
+     * its output, status and exit arrive as events.
+     */
     start(project: string, size: TerminalSize): Promise<HostedSession>
     /**
      * Continues a past Session (`claude --resume <id>`) in the folder it ran in; refused for an
@@ -445,6 +460,8 @@ export interface BackendApi {
     toggleMaximize(): Promise<void>
     close(): Promise<void>
     isMaximized(): Promise<boolean>
+    /** Raises a Windows notification; clicking it brings the window to the front, then pushes its tag. */
+    notify(notification: WindowNotification): Promise<void>
   }
 }
 
@@ -455,10 +472,17 @@ export interface BackendEvents {
   'sessionHost.exit': { id: string; exitCode: number }
   /** A Hosted session's status changed; every Hosted session starts idle. */
   'sessionHost.status': { id: string; status: HostedSessionStatus }
+  /**
+   * A Hosted session's turn ended, finished or interrupted: what Claude did may have changed its
+   * Project. `cwd` is the folder it runs in: its Project, or a git worktree of it.
+   */
+  'sessionHost.turnEnded': { id: string; cwd: string }
   'appState.changed': AppState
   /** The whole Session catalog, after Claude Code's files changed it. */
   'sessions.changed': ProjectSessions[]
   'window.maximizedChanged': { maximized: boolean }
+  /** The user clicked a notification, which brought the window to the front. */
+  'window.notificationClicked': { tag: string }
 }
 
 export type EventName = keyof BackendEvents
@@ -468,9 +492,11 @@ const EVENTS: Record<EventName, true> = {
   'sessionHost.output': true,
   'sessionHost.exit': true,
   'sessionHost.status': true,
+  'sessionHost.turnEnded': true,
   'appState.changed': true,
   'sessions.changed': true,
-  'window.maximizedChanged': true
+  'window.maximizedChanged': true,
+  'window.notificationClicked': true
 }
 
 /** Every pushed event, for the IPC transport. */

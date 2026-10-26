@@ -56,13 +56,20 @@ test('starts a new Session in a Project with its "+", forks a past Session, and 
   const window = await launch()
 
   await window.getByRole('button', { name: 'New Session in harbor-api' }).click()
-  await expect.poll(() => sessionRuns(env)).toEqual([expect.objectContaining({ args: [], cwd: env.projects['harbor-api'] })])
+  await expect.poll(() => sessionRuns(env)).toEqual([
+    expect.objectContaining({ args: ['--session-id', expect.any(String)], cwd: env.projects['harbor-api'] })
+  ])
 
   await row(window, 'harbor-api', 'Add an OpenAPI export').click({ button: 'right' })
   await window.getByRole('menuitem', { name: 'Fork' }).click()
   await expect
     .poll(async () => (await sessionRuns(env)).slice(1))
-    .toEqual([expect.objectContaining({ args: ['--resume', PAST_SESSION, '--fork-session'], cwd: env.projects['harbor-api'] })])
+    .toEqual([
+      expect.objectContaining({
+        args: ['--resume', PAST_SESSION, '--fork-session', '--session-id', expect.any(String)],
+        cwd: env.projects['harbor-api']
+      })
+    ])
   await expect(window.getByRole('tab')).toHaveCount(2)
 
   await row(window, 'harbor-api', 'Rate limiter rewrite').click({ button: 'right' })

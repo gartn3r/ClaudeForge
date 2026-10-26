@@ -68,6 +68,23 @@ export function SettingsMenu({ state }: SettingsMenuProps): ReactNode {
               onClick={() => void api.appState.write({ gpuRendering: !state.gpuRendering })}
             />
           </div>
+          <div className="settings__row">
+            <div>
+              <div id={`${idPrefix}-notifications`}>{t('settings.notifications')}</div>
+              <div id={`${idPrefix}-notifications-hint`} className="settings__hint">
+                {t('settings.notificationsHint')}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="cf-toggle"
+              role="switch"
+              aria-checked={state.notifications}
+              aria-labelledby={`${idPrefix}-notifications`}
+              aria-describedby={`${idPrefix}-notifications-hint`}
+              onClick={() => void api.appState.write({ notifications: !state.notifications })}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,14 +1,23 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Backend, WindowHost } from '../../src/backend'
+import type { WindowNotification } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { startBackend } from './backend'
 
 /** Stands in for the Electron window, the boundary the backend does not own. */
-function fakeWindow(): WindowHost & { closed: boolean } {
+function fakeWindow(): WindowHost & {
+  closed: boolean
+  /** The notifications shown, oldest first, each with what clicking it does. */
+  notifications: Array<WindowNotification & { click(): void }>
+} {
   let maximized = false
   const listeners = new Set<(maximized: boolean) => void>()
   return {
     closed: false,
+    notifications: [],
+    notify(notification, onClick) {
+      this.notifications.push({ ...notification, click: onClick })
+    },
     minimize() {},
     toggleMaximize() {
       maximized = !maximized
@@ -55,5 +64,21 @@ describe('window controls', () => {
     await backend.api.window.close()
 
     expect(win.closed).toBe(true)
+  })
+
+  it('raise a Windows notification, and tell the interface the user clicked it', async () => {
+    env = await createFakeEnvironment()
+    const win = fakeWindow()
+    backend = startBackend(env, win)
+    const clicked: string[] = []
+    backend.on('window.notificationClicked', ({ tag }) => clicked.push(tag))
+
+    await backend.api.window.notify({ tag: 'tab-2', title: 'Fix the rate limiter', body: 'Claude is waiting for you.' })
+
+    expect(win.notifications).toEqual([
+      { tag: 'tab-2', title: 'Fix the rate limiter', body: 'Claude is waiting for you.', click: expect.any(Function) }
+    ])
+    win.notifications[0]!.click()
+    expect(clicked).toEqual(['tab-2'])
   })
 })
