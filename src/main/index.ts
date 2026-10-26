@@ -52,6 +52,7 @@ function windowHost(win: BrowserWindow): WindowHost {
   let hung = false
   win.on('unresponsive', () => (hung = true))
   win.on('responsive', () => (hung = false))
+  const onScreen = (): boolean => win.isVisible() && !win.isMinimized()
   return {
     minimize: () => win.minimize(),
     toggleMaximize: () => (win.isMaximized() ? win.unmaximize() : win.maximize()),
@@ -79,6 +80,24 @@ function windowHost(win: BrowserWindow): WindowHost {
         win.off('maximize', onMaximize)
         win.off('unmaximize', onUnmaximize)
       }
+    },
+    isVisible: onScreen,
+    onVisibilityChange: (listener) => {
+      const onChange = (): void => listener(onScreen())
+      win.on('show', onChange)
+      win.on('hide', onChange)
+      win.on('minimize', onChange)
+      win.on('restore', onChange)
+      return () => {
+        win.off('show', onChange)
+        win.off('hide', onChange)
+        win.off('minimize', onChange)
+        win.off('restore', onChange)
+      }
+    },
+    onFocus: (listener) => {
+      win.on('focus', listener)
+      return () => win.off('focus', listener)
     },
     notify: ({ title, body }, onClick) => {
       if (!Notification.isSupported()) return

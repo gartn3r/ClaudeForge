@@ -503,6 +503,15 @@ export interface BackendApi {
     list(project: string): Promise<MapListing>
     load(project: string, mapId: string): Promise<WayfinderMap>
     /**
+     * Names the Project whose Maps the interface displays, and whether its Map is on show (the Map
+     * panel expanded). From then on `map.changed` is pushed for that Project: as soon as a local
+     * markdown Map's files change; for GitHub, when a turn ends in one of its Sessions, when the user
+     * returns to the window, and about every minute while the Map is on show in a visible window.
+     */
+    watch(project: string, shown: boolean): Promise<void>
+    /** The user asked for the Project's Maps to be read again now: pushes `map.changed` for it. */
+    refresh(project: string): Promise<void>
+    /**
      * Opens a Map's or Ticket's issue where its Tracker keeps it (its `path`): a web address in the
      * browser, a markdown file in its default app; refused for anything else.
      */
@@ -585,6 +594,8 @@ export interface BackendEvents {
   'window.notificationClicked': { tag: string }
   /** The user asked to close the window while Hosted sessions work (by id): `window.closeAnyway` closes it. */
   'window.closeRequested': { working: string[] }
+  /** The watched Project's Maps may have changed (`map.watch`): list them and load the shown one again. */
+  'map.changed': { project: string }
 }
 
 export type EventName = keyof BackendEvents
@@ -599,7 +610,8 @@ const EVENTS: Record<EventName, true> = {
   'sessions.changed': true,
   'window.maximizedChanged': true,
   'window.notificationClicked': true,
-  'window.closeRequested': true
+  'window.closeRequested': true,
+  'map.changed': true
 }
 
 /** Every pushed event, for the IPC transport. */

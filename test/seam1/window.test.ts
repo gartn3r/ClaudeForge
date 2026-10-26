@@ -40,7 +40,10 @@ function fakeWindow(): WindowHost & {
     onMaximizedChange(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
-    }
+    },
+    isVisible: () => true,
+    onVisibilityChange: () => () => undefined,
+    onFocus: () => () => undefined
   }
 }
 

@@ -249,6 +249,8 @@
     "collapse": "Replier le panneau Carte",
     "expand": "Déplier le panneau Carte",
     "resize": "Redimensionner le panneau Carte",
+    "refresh": "Actualiser la Carte",
+    "refreshedAt": "Dernière actualisation à {{time}}",
     "destination": "Destination",
     "showAll": "Tout afficher",
     "showLess": "Réduire",

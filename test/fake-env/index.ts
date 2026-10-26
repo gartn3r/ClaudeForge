@@ -70,6 +70,8 @@ export interface FakeEnvironment {
   /** ClaudeForge's own data folder, where app state lives. */
   userDataDir: string
   projects: Record<FixtureProject, string>
+  /** The fake `gh`'s copy of `test/fixtures/gh`, which a test may change as GitHub would. */
+  ghRecordings: string
   /** Where the fake `claude` is, when there is one. */
   readonly claudePath: string | undefined
   /** Git worktrees of the fixture Projects, by `<project>@<worktree>`. */
@@ -198,12 +200,15 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   const projectsDir = join(root, 'projects')
   const recycleBin = join(root, 'recycle-bin')
   const claudeState = join(root, 'claude-cli')
+  const ghRecordings = join(root, 'gh')
   const systemLanguages = options.systemLanguages ?? ['en-US']
 
   await Promise.all([mkdir(binDir, { recursive: true }), mkdir(logDir), mkdir(userDataDir), mkdir(recycleBin)])
   await cp(join(FIXTURES, 'projects'), projectsDir, { recursive: true })
   // A copy, as the fake `claude` changes it when told to add, remove, install or switch Extensions.
   await cp(join(FIXTURES, 'claude'), claudeState, { recursive: true })
+  // A copy too, so a test can change an issue as GitHub would.
+  await cp(join(FIXTURES, 'gh'), ghRecordings, { recursive: true })
   const projects = Object.fromEntries(
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
   ) as Record<FixtureProject, string>
@@ -226,7 +231,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     CLAUDEFORGE_SYSTEM_LANGUAGES: systemLanguages.join(','),
     CLAUDEFORGE_RECYCLE_BIN: recycleBin,
     FAKE_ENV_LOG_DIR: logDir,
-    FAKE_GH_RECORDINGS: join(FIXTURES, 'gh'),
+    FAKE_GH_RECORDINGS: ghRecordings,
     FAKE_CLAUDE_STATE: claudeState,
     FAKE_PROJECTS_DIR: projectsDir
   }
@@ -251,6 +256,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     claudeHome,
     userDataDir,
     projects,
+    ghRecordings,
     get claudePath() {
       return claudePath
     },
