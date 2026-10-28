@@ -1,4 +1,4 @@
-import { mkdir, open, writeFile } from 'node:fs/promises'
+import { mkdir, open, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, encodeProjectPath, type FakeEnvironment } from '../fake-env'
@@ -205,6 +205,31 @@ for (const locale of LOCALES) {
       expect((await env.recycled()).sort()).toEqual(
         [join(harborHistories(), `${PAGINATE_ID}.jsonl`), join(harborHistories(), `${OPENAPI_ID}.jsonl`)].sort()
       )
+    })
+
+    test('picks and deletes a greyed Session whose folder is gone like any other past Session', async () => {
+      const worktree = env.worktrees['recipe-box@leftovers']!
+      await rm(worktree, { recursive: true })
+      claudeforge = await launchClaudeForge(env)
+      const { window } = claudeforge
+      const leftovers = anyRow(window, 'Track leftovers in the fridge')
+      await expect(leftovers).toHaveClass(/explorer__row--missing/)
+
+      await anyRow(window, 'Chart the meal planner').click()
+      await leftovers.click({ modifiers: ['Control'] })
+      await expect(leftovers).toHaveAttribute('aria-selected', 'true')
+      await leftovers.click({ button: 'right' })
+      await window.getByRole('menuitem', { name: locale.deleteMany(2) }).click()
+      const dialog = window.getByRole('alertdialog', { name: locale.title(2) })
+      await expect(dialog.getByRole('listitem')).toHaveText(['Chart the meal planner', /^Track leftovers in the fridge/])
+      await dialog.getByRole('button', { name: locale.confirm }).click()
+
+      await expect(dialog).toBeHidden()
+      await expect(recipeSessions(window)).toHaveCount(1)
+      expect(await env.recycled()).toEqual([
+        join(env.claudeHome, 'projects', encodeProjectPath(env.projects['recipe-box']), '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7.jsonl'),
+        join(env.claudeHome, 'projects', encodeProjectPath(worktree), 'f6c9d2e1-3a5b-4c7d-9e0f-1a2b3c4d5e6f.jsonl')
+      ])
     })
 
     test('deletes the selection on the Delete key, and reports by title a Session whose files are held open', async () => {
