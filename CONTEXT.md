@@ -42,6 +42,33 @@ A Shortcut to a command that is typed, never sent: into the Hosted session on sh
 A tab beside the Hosted session tabs that shows a Web shortcut's page inside ClaudeForge.
 _Avoid_: webview, browser tab
 
+### Piloting
+
+**ClaudeForge CLI**:
+The command through which a Hosted session's Claude drives ClaudeForge's interface: it changes an Element's properties or adds Content items to it. Only Hosted sessions can use it. ClaudeForge never reaches Claude unasked other than by typing into a Session's terminal, in view.
+_Avoid_: headless mode, API, bridge
+
+**Element**:
+A container of the interface with an identifier (a panel, a Panel tab, a card, a menu), so that the user, by hand or through Claude and the ClaudeForge CLI, can name it, change its properties and add Content items to it. Its properties are a closed list: visible or hidden, collapsed or expanded, width, order, title, text colour and background colour (any colour). What a Session's terminal or a Map shows is never an Element's content. ClaudeForge's own Elements have fixed identifiers and one set of properties for the whole of ClaudeForge. A Panel tab takes every kind of Content item; a card takes texts, links, files (as links) and actions; a menu takes links and actions only. An Element that is created comes to the front; one whose content changes only shows a mark, unless the change asks for it to be shown.
+_Avoid_: widget, component
+
+**Created Element**:
+An Element added by the user or through the ClaudeForge CLI, only where ClaudeForge provides for it: a Panel tab in the Right panel, a card in the explorer, a menu in the title bar. Its creator names it, uniquely within its Project. It belongs to that Project, shows only while that Project is displayed, can be changed only by that Project's Sessions, and lasts until it is closed. ClaudeForge's own panels and columns are never created.
+
+**Content item**:
+One thing in an Element, with its own identifier there: a text, a link, a file, a web page or an action. Adding a Content item under an identifier already used replaces it; any other is added after the rest. A file shows as it is on disk now, or as missing. An action is a command typed, never sent, as a Skill shortcut's is; it belongs to the Project, not to the Session that made it. The user can add every kind by hand. When two Sessions write the same Content item, the last one wins, and the item names the Session that last wrote it. A link or an action can be kept as a Shortcut, which copies it; the two then live apart.
+_Avoid_: block, widget, entry
+
+**Default layout**:
+The arrangement of Elements ClaudeForge starts with. Restoring it gives ClaudeForge's own Elements back all their original properties, colours included; Created Elements keep their titles and colours but are shown and expanded again. Nothing is removed: Created Elements are closed one by one.
+
+**Right panel**:
+The column on the right of the Hosted sessions, holding Panel tabs in its header. Without a Map it opens on the first other Panel tab; it collapses on its own only when the displayed Project has neither a Map nor any other Panel tab.
+
+**Panel tab**:
+A tab of the Right panel. The first is the Map Panel tab; the others are Created Elements.
+_Avoid_: tab alone (a Web tab or a Hosted session's tab is something else)
+
 ### Wayfinder
 
 **Map**:
