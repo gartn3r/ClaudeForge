@@ -32,7 +32,11 @@ export function TitleBar({ tabs, settings }: TitleBarProps): ReactNode {
 
   return (
     <header className="titlebar">
-      <div className="brand">{t('app.name')}</div>
+      <div className="brand">
+        {/* The wordmark: a lime marker stroke behind "Forge", never any icon. */}
+        {t('app.name').replace(/Forge$/, '')}
+        <span className="brand__mark">Forge</span>
+      </div>
       {tabs}
       {update.state === 'ready' && (
         <span className="cf-chip titlebar__update" role="status" title={t('titleBar.updateReadyHint', update)}>

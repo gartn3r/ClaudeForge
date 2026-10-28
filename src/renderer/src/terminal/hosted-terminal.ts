@@ -38,11 +38,11 @@ const token = (name: string): string => getComputedStyle(document.documentElemen
 /** The design system's terminal theme, read from its tokens. */
 function terminalTheme(): ITheme {
   return {
-    background: token('terminal-well'),
-    foreground: token('text'),
-    cursor: token('brass'),
-    cursorAccent: token('terminal-well'),
-    selectionBackground: token('selection'),
+    background: token('terminal'),
+    foreground: token('terminal-text'),
+    cursor: token('accent'),
+    cursorAccent: token('terminal'),
+    selectionBackground: token('terminal-selection'),
     black: token('ansi-black'),
     red: token('ansi-red'),
     green: token('ansi-green'),

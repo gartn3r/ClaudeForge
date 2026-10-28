@@ -1,4 +1,4 @@
-import { FolderOpen, SquareTerminal } from 'lucide-react'
+import { FolderOpen } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../api'
@@ -87,13 +87,13 @@ export function TerminalArea({
         />
       ))}
       {!active && !editorShown && (
-        <div className="terminal-empty">
+        <div className="terminal-empty cf-on-slate">
           <p className="cf-muted">{t(tabs.length ? 'terminal.dormant' : 'terminal.empty')}</p>
           {openFolderButton(true)}
         </div>
       )}
       {active?.end && (
-        <div className="terminal-ended" role="status">
+        <div className="terminal-ended cf-on-slate" role="status">
           <span>
             {active.end.exitCode !== null
               ? t('terminal.exited', { code: active.end.exitCode })
@@ -116,7 +116,9 @@ function TypedBanner({ typed, onCancel }: { typed: TypedCommand; onCancel(): voi
   const { t } = useTranslation()
   return (
     <div className="terminal-typed" role="status" aria-label={t('terminal.typed.label')}>
-      <SquareTerminal className="cf-icon" aria-hidden="true" />
+      <span className="terminal-typed__chip" aria-hidden="true">
+        {t('terminal.typed.label')}
+      </span>
       <span>
         {typed.map === null ? (
           <Trans i18nKey="terminal.typed.map" values={{ ticket: typed.ticket }} components={{ b: <strong /> }} />

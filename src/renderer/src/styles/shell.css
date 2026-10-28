@@ -1,4 +1,4 @@
-/* The window shell: title bar, three columns, side panels, rails and splitters. */
+/* The window shell: title bar, the tiles of the three columns, rails and splitters. */
 
 html,
 body,
@@ -16,6 +16,25 @@ body {
   background: var(--selection);
 }
 
+/* Thin scrollbars that sit on any tile. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(47, 53, 63, 0.25) padding-box;
+}
+.cf-on-slate ::-webkit-scrollbar-thumb,
+.terminal-area ::-webkit-scrollbar-thumb {
+  background: rgba(245, 241, 227, 0.25) padding-box;
+}
+
 .shell {
   display: flex;
   flex-direction: column;
@@ -23,34 +42,42 @@ body {
   background: var(--ground);
 }
 
-/* Title bar */
+/* Title bar: the wordmark, the tabs as pills, the settings and the window controls. */
 .titlebar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  gap: var(--space-4);
   height: var(--size-titlebar);
   flex: none;
+  padding-left: 20px;
   background: var(--ground);
-  border-bottom: 1px solid var(--line);
   -webkit-app-region: drag;
   user-select: none;
 }
 .titlebar button {
   -webkit-app-region: no-drag;
 }
+/* The wordmark: "ClaudeForge" in the display face, a lime marker stroke behind the lower half of
+   "Forge". Never any icon. */
 .brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: var(--size-titlebar);
-  padding: 0 var(--space-3);
   flex: none;
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 26px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--text);
+}
+.brand__mark {
+  margin-left: 1px;
+  padding: 0 2px;
+  background: linear-gradient(transparent 56%, var(--accent) 56%, var(--accent) 92%, transparent 92%);
 }
 /* Hosted session tabs: the tab strip shrinks its tabs before the "+" leaves the bar. */
 .session-tabs {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   flex: 1;
   min-width: 0;
   height: var(--size-titlebar);
@@ -58,8 +85,6 @@ body {
 .titlebar .cf-tabs {
   min-width: 0;
   overflow: hidden;
-  border-bottom: 0;
-  padding: 0;
 }
 .titlebar .cf-tab {
   flex: 0 1 auto;
@@ -77,57 +102,58 @@ body {
   opacity: 1;
 }
 .session-tabs__new {
-  align-self: center;
   flex: none;
-  margin-left: var(--space-1);
+  width: var(--size-tab);
+  height: var(--size-tab);
+  margin-left: 6px;
 }
 /* A downloaded update of ClaudeForge, which installs when the window closes. */
 .titlebar__update {
-  align-self: center;
   flex: none;
-  margin: 0 var(--space-2);
-  color: var(--brass);
+  height: 32px;
+  padding: 0 12px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 700;
 }
 .wincontrols {
   display: flex;
   align-self: flex-start;
-  height: var(--size-titlebar);
+  height: 40px;
   margin-left: auto;
 }
-.wincontrols button,
-.settings__button {
+.wincontrols button {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 46px;
-  height: var(--size-titlebar);
+  height: 40px;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   transition: background 120ms, color 120ms;
 }
-.wincontrols button:hover,
-.settings__button:hover,
-.settings__button[aria-expanded='true'] {
-  background: var(--surface-raised);
-  color: var(--text);
+.wincontrols button:hover {
+  background: var(--tile);
 }
 .wincontrols button.close:hover {
   background: var(--danger);
-  color: var(--ground);
+  color: var(--on-slate);
 }
 /* Inset: the controls sit flush against the window edge, where an outer ring would be clipped. */
-.wincontrols button:focus-visible,
-.settings__button:focus-visible {
+.wincontrols button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 
-/* Columns */
+/* Columns: tiles 12px apart, 8px from the window's edges, so that at the smallest screen tested
+   (1024px wide) both side panels keep their default widths beside a 320px terminal. */
 .columns {
   display: flex;
+  gap: var(--space-3);
   flex: 1;
   min-height: 0;
+  padding: 0 var(--space-2) var(--space-2);
 }
 
 /* Side panels keep their set width, but give way before the terminal does in a narrow window. */
@@ -138,60 +164,78 @@ body {
   flex: 0 1 auto;
   min-width: 0;
   min-height: 0;
-  background: var(--surface);
 }
 .side-panel[data-collapsed='true'] {
   flex-shrink: 0;
 }
-.side-panel--left {
-  border-right: 1px solid var(--line);
-}
-.side-panel--right {
-  border-left: 1px solid var(--line);
-}
 .side-panel__body {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+/* The Map panel is one card. */
+.side-panel--right .side-panel__body {
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-radius: var(--radius-tile);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .rail {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
+  gap: 10px;
   flex: 1;
-  padding: var(--space-1) 0;
+  padding: 14px 0;
+  border-radius: var(--radius-tile);
+  --surface-raised: var(--ground);
+}
+.side-panel--left .rail {
+  background: var(--tile);
+}
+.side-panel--right .rail {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.rail > .cf-btn--icon,
+.rail__end > .cf-btn--icon {
+  width: 44px;
+  height: 44px;
+  background: var(--ground);
 }
 .rail__end {
   margin-top: auto;
 }
 
-/* Splitter on a side panel's inner edge */
+/* Splitter: a strip in the gap beside a side panel's inner edge. */
 .splitter {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 7px;
+  width: 10px;
   z-index: 2;
   cursor: col-resize;
   touch-action: none;
 }
 .side-panel--left .splitter {
-  right: -4px;
+  right: -11px;
 }
 .side-panel--right .splitter {
-  left: -4px;
+  left: -11px;
 }
 .splitter::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 3px;
-  width: 1px;
+  top: 24px;
+  bottom: 24px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
   background: transparent;
   transition: background 120ms;
 }
@@ -199,13 +243,11 @@ body {
 .splitter[data-dragging='true']::after {
   background: var(--line-control);
 }
-/* The splitter is a 7px strip; its focus ring is the 2px focus line along the edge it moves. */
+/* The splitter's focus ring is the 2px focus line along the edge it moves. */
 .splitter:focus-visible {
   outline: none;
 }
 .splitter:focus-visible::after {
-  left: 2px;
-  width: 2px;
   background: var(--focus);
 }
 .shell[data-resizing='true'] {
@@ -213,22 +255,35 @@ body {
   user-select: none;
 }
 
-/* Explorer */
+/* Explorer: the Sessions tile, in deep cream, over the Extensions tile. */
+.explorer__tile {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  --surface: var(--tile);
+  --surface-raised: var(--ground);
+  border-radius: var(--radius-tile);
+  background: var(--tile);
+  overflow: hidden;
+}
 .explorer__tree {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--space-2);
+  padding: 0 10px 12px;
 }
+/* The list of Session ids was unreadable: a dashed notice, as in the editor's. */
 .explorer__problem {
   display: flex;
   gap: var(--space-2);
   align-items: flex-start;
   margin-bottom: var(--space-2);
-  padding: var(--space-2);
+  padding: 10px 8px 10px 12px;
   border-radius: var(--radius-md);
+  border: 1px dashed var(--danger);
   background: var(--ground);
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 12px;
   line-height: 16px;
   overflow-wrap: anywhere;
@@ -244,21 +299,25 @@ body {
 }
 .explorer__problem .cf-btn--icon {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
 .extbar {
   flex: none;
-  border-top: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  background: var(--slate);
+  overflow: hidden;
 }
 
-/* Terminal area */
+/* Terminal area: the slate tile. */
 .terminal-area {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 320px;
-  background: var(--terminal-well);
+  border-radius: var(--radius-tile);
+  background: var(--terminal);
+  overflow: hidden;
 }
 .terminal-view {
   flex: 1;
@@ -268,8 +327,12 @@ body {
 /* xterm.js's fit addon counts this padding, so the cells fill what is left. */
 .terminal-view .xterm {
   height: 100%;
-  padding: var(--space-2) 0 0 var(--space-3);
+  padding: var(--space-4) var(--space-2) var(--space-2) 20px;
   box-sizing: border-box;
+}
+.terminal-view .xterm,
+.terminal-view .xterm .xterm-viewport {
+  background-color: var(--terminal) !important;
 }
 .terminal-empty {
   display: flex;
@@ -284,16 +347,27 @@ body {
 }
 .terminal-empty p {
   margin: 0;
+  max-width: 360px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 500;
+  color: var(--text);
+}
+.terminal-empty .cf-btn {
+  height: 44px;
+  padding: 0 22px;
 }
 .terminal-ended {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex: none;
-  padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text-muted);
+  margin: 0 var(--space-4) var(--space-4);
+  padding: 10px 10px 10px 16px;
+  border-radius: 16px;
+  background: var(--slate-deep);
+  color: var(--text);
 }
 .terminal-ended span {
   flex: 1;
@@ -302,22 +376,44 @@ body {
 /* Settings */
 .settings {
   position: relative;
-  align-self: flex-start;
+  flex: none;
   margin-left: auto;
 }
 .settings + .wincontrols {
   margin-left: 0;
 }
 .settings__button {
-  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-tab);
+  height: var(--size-tab);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  transition: background 120ms, color 120ms;
+}
+.settings__button:hover {
+  background: var(--card);
+}
+.settings__button[aria-expanded='true'] {
+  border-color: var(--slate);
+  background: var(--slate);
+  color: var(--on-slate);
+}
+.settings__button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 .settings__popover {
   position: absolute;
-  top: calc(var(--size-titlebar) + var(--space-1));
+  top: calc(var(--size-tab) + var(--space-2));
   right: 0;
   z-index: 10;
-  width: 280px;
-  padding: var(--space-3);
+  width: 300px;
+  padding: 18px;
+  border-radius: 20px;
   -webkit-app-region: no-drag;
 }
 .settings__row {
@@ -325,21 +421,37 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  font-weight: 600;
 }
 .settings__row + .settings__row {
-  margin-top: var(--space-3);
+  margin-top: 14px;
 }
 .settings__hint {
   margin-top: 2px;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 400;
   color: var(--text-muted);
 }
 
-/* Map panel */
+/* Map panel: the title on its own row with the view and the actions, the Map's name under it. */
+.side-panel--right .cf-panel-head {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+.side-panel--right .cf-panel-head > .cf-eyebrow {
+  flex: 1;
+}
+.side-panel--right .cf-panel-head > .map-name,
+.side-panel--right .cf-panel-head > .map-crumbs {
+  order: 1;
+  flex: 1 0 100%;
+  margin: 0;
+}
 .map-panel__body {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -361,18 +473,17 @@ body {
   white-space: nowrap;
 }
 .map-link-button {
-  height: 20px;
-  padding: 0 4px;
+  height: 24px;
+  padding: 0 8px;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
 }
 .cf-destination {
   flex: none;
 }
 .cf-destination .map-link-button {
   align-self: flex-start;
-  margin-left: -4px;
-  color: var(--route);
+  margin-left: -8px;
 }
 .map-destination__text[data-expanded='false'] {
   display: -webkit-box;
@@ -385,6 +496,7 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 220px;
+  margin: 0 var(--space-4);
 }
 .map-decided {
   position: relative;
@@ -399,7 +511,7 @@ body {
   gap: var(--space-2);
 }
 .map-decided__head .cf-chip {
-  height: 18px;
+  height: 20px;
   font-size: 11px;
 }
 .map-decided__head .map-link-button {
@@ -438,11 +550,16 @@ body {
 }
 .map-zoom {
   position: absolute;
-  left: var(--space-2);
-  bottom: var(--space-2);
+  left: 10px;
+  bottom: 10px;
   z-index: 5;
   display: flex;
-  gap: 2px;
+  gap: 4px;
+}
+.map-zoom .cf-btn--icon {
+  border-radius: 10px;
+  background: var(--card);
+  border-color: var(--line-strong);
 }
 .map-counts {
   position: absolute;
@@ -457,31 +574,41 @@ body {
   pointer-events: none;
 }
 .map-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   flex: none;
   max-height: 45%;
   overflow: auto;
-  padding: var(--space-1) 0;
-  border-top: 1px solid var(--line);
+  padding: 0 var(--space-4);
 }
 .map-section-head {
   width: 100%;
   border: 0;
-  background: transparent;
   font: inherit;
   text-align: left;
 }
 .map-section-head:hover {
+  background: #e3dcc3;
+}
+.map-section-head .cf-eyebrow {
   color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .map-section-head:focus-visible {
   outline: 2px solid var(--focus);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 .map-section-head .cf-chip {
   margin-left: auto;
+  background: var(--ground);
+  box-shadow: none;
 }
 .map-section {
-  padding: 0 var(--space-3) var(--space-2) var(--space-6);
+  padding: var(--space-1) var(--space-3) var(--space-2) var(--space-4);
 }
 .map-text p {
   margin: 0 0 6px;
@@ -494,7 +621,7 @@ body {
   margin-top: 4px;
 }
 .map-text strong {
-  font-weight: 500;
+  font-weight: 600;
 }
 .map-text code {
   font-family: var(--font-mono);
@@ -507,14 +634,23 @@ body {
   flex: 1;
   align-items: center;
   justify-content: center;
+  margin: 0;
   padding: var(--space-6);
   color: var(--text-muted);
   text-align: center;
   text-wrap: pretty;
 }
+.explorer__tree > .empty {
+  min-height: 160px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--text);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .wincontrols button,
+  .settings__button,
   .splitter::after {
     transition: none;
   }
@@ -530,15 +666,10 @@ body {
 .explorer__projects {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-.explorer__projects .cf-sessions {
-  padding-left: var(--space-3);
+  gap: 4px;
 }
 .explorer__projects .cf-project {
   margin: 0;
-  font-size: inherit;
-  line-height: inherit;
 }
 .cf-project__name {
   overflow: hidden;
@@ -546,7 +677,7 @@ body {
   white-space: nowrap;
 }
 .cf-dot--none {
-  background: transparent;
+  background: var(--dormant);
 }
 .cf-row__sub {
   display: flex;
@@ -555,6 +686,7 @@ body {
 }
 .cf-row__sub .cf-chip {
   height: 18px;
+  background: var(--ground);
 }
 
 /* Explorer: tidying Sessions (row menu, rename field, hidden Sessions, Recycle Bin dialog) */
@@ -563,22 +695,26 @@ body {
   /* Shift+click picks a range of rows, not their text. */
   user-select: none;
 }
-/* Picked rows, in brass, apart from the displayed Session's raised ground. */
-.explorer__projects .cf-row[aria-selected="true"] {
-  background: var(--selection);
+/* Every Session's title reads in slate; hidden and greyed ones fade below. */
+.explorer__projects .cf-row__title {
+  color: var(--text);
+}
+/* Picked rows, in soft lime, apart from the displayed Session's cream ground and slate marker. */
+.explorer__projects .cf-row[aria-selected='true'] {
+  background: var(--accent-soft);
 }
 .explorer__row-actions {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  height: 24px;
-  width: 24px;
-  background: var(--surface-raised);
+  top: 4px;
+  right: 4px;
+  height: 26px;
+  width: 26px;
+  background: var(--card);
   opacity: 0;
 }
 .cf-row:hover .explorer__row-actions,
 .cf-row:focus-within .explorer__row-actions,
-.explorer__row-actions[aria-expanded="true"] {
+.explorer__row-actions[aria-expanded='true'] {
   opacity: 1;
 }
 .explorer__row--hidden .cf-row__title,
@@ -590,26 +726,32 @@ body {
 .explorer__row--missing .cf-status {
   color: var(--text-faint);
 }
+.explorer__row--hidden .cf-row__title,
+.explorer__row--missing .cf-row__title {
+  font-weight: 500;
+}
 .explorer__rename {
   min-width: 0;
-  height: 22px;
-  margin: 1px 0;
-  padding: 0 6px;
-  border: 1px solid var(--focus);
+  height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1.5px solid var(--slate);
   border-radius: var(--radius-sm);
   outline: none;
-  background: var(--ground);
+  background: var(--card);
   color: var(--text);
   font: inherit;
+  font-weight: 600;
 }
 .explorer__show-hidden {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--size-row);
-  padding: 0 var(--space-2) 0 calc(var(--space-3) + var(--space-2));
+  padding: 0 10px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
 }
 .explorer__show-hidden .cf-row__meta {
@@ -620,26 +762,28 @@ body {
   z-index: 100;
   display: flex;
   flex-direction: column;
-  min-width: 184px;
-  padding: var(--space-1);
+  min-width: 200px;
+  padding: 6px;
+  border-radius: 16px;
 }
 .menu__item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  height: var(--size-row);
-  padding: 0 var(--space-2);
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   background: transparent;
   color: var(--text);
   font: inherit;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
 }
 .menu__item:hover:not(:disabled),
 .menu__item:focus-visible {
-  background: var(--surface-raised);
+  background: var(--ground);
   outline: none;
 }
 .menu__item--danger {
@@ -651,22 +795,23 @@ body {
 }
 .menu__separator {
   height: 1px;
-  margin: var(--space-1) 0;
+  margin: 4px 6px;
   border: 0;
-  background: var(--line);
+  background: var(--line-strong);
 }
 dialog.cf-dialog {
   margin: auto;
   border: 0;
 }
 dialog.cf-dialog::backdrop {
-  background: rgba(3, 6, 10, 0.6);
+  background: rgba(47, 53, 63, 0.38);
 }
 .confirm-dialog__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   color: var(--text-muted);
+  line-height: 20px;
 }
 .confirm-dialog__body p,
 .confirm-dialog__error {
@@ -676,6 +821,9 @@ dialog.cf-dialog::backdrop {
   overflow-wrap: anywhere;
 }
 .confirm-dialog__error {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 .confirm-dialog__sessions {
@@ -691,16 +839,22 @@ dialog.cf-dialog::backdrop {
   color: var(--text);
 }
 
-/* Map follows the Session */
-.cf-row[aria-current="true"] {
-  background: var(--surface-overlay);
+/* Map follows the Session: the displayed Session on cream, marked in slate. */
+.cf-row[aria-current='true'] {
+  background: var(--ground);
+  box-shadow: inset 3px 0 0 var(--slate);
 }
-.cf-row[aria-current="true"] .cf-row__title {
+.cf-row[aria-current='true'] .cf-row__title {
   color: var(--text);
-  font-weight: 500;
 }
-.cf-decided [aria-current="true"] .cf-chip {
-  box-shadow: inset 0 0 0 1.5px var(--brass);
+.cf-row[aria-current='true'] .cf-dot--none {
+  background: var(--accent);
+}
+.explorer__projects .cf-row[aria-current='true'][aria-selected='true'] {
+  background: var(--accent-soft);
+}
+.cf-decided [aria-current='true'] .cf-chip {
+  box-shadow: inset 0 0 0 2px var(--slate);
 }
 .explorer__wayfinder {
   min-width: 0;
@@ -713,52 +867,57 @@ dialog.cf-dialog::backdrop {
 }
 .map-selector__button {
   max-width: 100%;
-  gap: 6px;
-  padding: 0 6px;
+  height: 40px;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--ground);
   color: var(--text);
   font: inherit;
+  font-weight: 600;
 }
 .map-selector__menu {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  min-width: 220px;
   max-width: 320px;
-  padding: var(--space-1);
-  background: var(--surface-overlay);
-  border-radius: var(--radius-lg);
+  padding: 6px;
+  background: var(--card);
+  border-radius: 16px;
   box-shadow: var(--shadow-popover);
 }
 .map-selector__item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--size-row);
-  padding: 0 var(--space-2);
+  min-height: 34px;
+  padding: 0 10px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-weight: 400;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
 }
 .map-selector__item:hover,
 .map-selector__item:focus-visible {
-  background: var(--surface-raised);
+  background: var(--ground);
 }
 .map-selector__item:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
-.map-selector__item[aria-checked="false"] .cf-icon {
+.map-selector__item[aria-checked='false'] .cf-icon {
   visibility: hidden;
 }
-.map-selector__item[data-open="false"] span {
+.map-selector__item[data-open='false'] span {
   color: var(--text-muted);
 }
 /* A badge takes the third line of a compact Ticket's name. */
@@ -787,64 +946,97 @@ dialog.cf-dialog::backdrop {
 }
 .map-ticket .cf-ticket__session:disabled {
   cursor: default;
-  color: var(--text-muted);
+  opacity: 0.7;
 }
 
-/* Extensions menu */
+/* Extensions: the slate tile under the Sessions, and the menu it opens. */
 .extbar__button {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
+  row-gap: 4px;
   width: 100%;
-  height: 36px;
-  padding: 0 var(--space-3);
+  min-height: 64px;
+  padding: 14px 18px;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--text);
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
 .extbar__button:hover,
 .extbar__button[aria-expanded='true'] {
-  background: var(--surface-raised);
-}
-.extbar__button[aria-expanded='true'] .cf-eyebrow {
-  color: var(--text);
+  background: rgba(245, 241, 227, 0.06);
 }
 .extbar__button:focus-visible {
   outline: 2px solid var(--focus);
-  outline-offset: -2px;
+  outline-offset: -4px;
+  border-radius: var(--radius-tile);
 }
-.extbar__button .cf-eyebrow {
-  margin-right: auto;
+.extbar__button > .cf-eyebrow {
+  flex: 1 0 100%;
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
 }
 .extbar__count {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
 }
 .extbar__count--failing {
-  color: var(--danger);
+  color: var(--text);
+  font-weight: 700;
+}
+.extbar__count--failing .cf-icon {
+  color: var(--accent);
 }
 .extmenu {
   position: fixed;
   z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   width: 380px;
-  padding: var(--space-2);
+  padding: 18px;
+  border-radius: var(--radius-tile);
+  background: var(--slate);
   overflow: auto;
 }
 .extmenu__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-1) 2px var(--space-2);
+}
+.extmenu__head > .cf-eyebrow {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+.extmenu .cf-seg {
+  background: var(--slate-deep);
+}
+.extmenu .cf-seg button {
+  color: var(--text-muted);
+}
+.extmenu .cf-seg button[aria-pressed='true'] {
+  background: var(--ground);
+  color: var(--slate);
 }
 .extmenu__group {
   display: flex;
@@ -852,7 +1044,7 @@ dialog.cf-dialog::backdrop {
   gap: 2px;
 }
 .extmenu__group > .cf-eyebrow {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) 10px;
 }
 .extmenu__group ul {
   display: flex;
@@ -865,25 +1057,34 @@ dialog.cf-dialog::backdrop {
 .extmenu .cf-row {
   cursor: default;
 }
+.extmenu .cf-chip {
+  background: rgba(245, 241, 227, 0.12);
+  color: var(--text);
+}
 .extmenu__problem {
   color: var(--danger);
 }
 .extmenu__note {
   margin: 0;
-  padding: var(--space-2);
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   background: var(--ground);
   color: var(--text-muted);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 12.5px;
+  line-height: 18px;
 }
-.extmenu__note--problem {
+.extmenu .extmenu__note {
+  background: rgba(176, 201, 46, 0.16);
+  color: var(--text);
+}
+.extmenu__note--problem,
+.extmenu .extmenu__note--problem {
   color: var(--danger);
 }
 /* Remove or Uninstall shows on the row the pointer or the focus is on. */
 .extmenu__action {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   opacity: 0;
 }
 .extmenu .cf-row:hover .extmenu__action,
@@ -894,17 +1095,17 @@ dialog.cf-dialog::backdrop {
   display: flex;
   gap: var(--space-2);
   align-items: flex-start;
-  padding: var(--space-2);
+  padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: var(--ground);
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 16px;
+  background: rgba(176, 201, 46, 0.16);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 18px;
 }
 .extmenu__notice > .cf-icon {
   flex: none;
   margin-top: 1px;
-  color: var(--waiting);
+  color: var(--accent);
 }
 .extmenu__notice p,
 .extmenu__notice ul {
@@ -916,13 +1117,12 @@ dialog.cf-dialog::backdrop {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--route);
+  color: var(--text);
   font: inherit;
+  font-weight: 700;
   text-align: left;
-  cursor: pointer;
-}
-.extmenu__notice .lnk:hover {
   text-decoration: underline;
+  cursor: pointer;
 }
 .extmenu__notice .lnk:focus-visible {
   outline: 2px solid var(--focus);
@@ -934,33 +1134,30 @@ dialog.cf-dialog::backdrop {
   gap: var(--space-2);
 }
 .extdialog {
-  width: 460px;
+  width: 480px;
   max-height: calc(100vh - 64px);
   overflow: auto;
-}
-.extdialog::backdrop {
-  background: rgb(0 0 0 / 40%);
 }
 .extdialog__form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 6px;
 }
 .extdialog__form label,
 .extdialog__label {
   margin-top: var(--space-2);
-  color: var(--text-muted);
-  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
 }
 .extdialog__form .cf-dialog__actions {
   margin-top: var(--space-3);
 }
 .extdialog__input {
-  min-height: var(--size-control);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-control);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: #fff;
   color: var(--text);
   font: inherit;
   resize: vertical;
@@ -971,10 +1168,13 @@ dialog.cf-dialog::backdrop {
 }
 .extdialog__hint {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 .extdialog__error {
   margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 .extdialog__plugins {
@@ -995,11 +1195,6 @@ dialog.cf-dialog::backdrop {
 .map-ticket {
   position: relative;
 }
-/* A Parent Ticket: a two-line name, then its roll-up at the foot of the stack. */
-.map-ticket.cf-ticket--parent {
-  --map-stack: 3px 3px 0 0 var(--surface-raised), 3px 3px 0 1px var(--line), 6px 6px 0 0 var(--surface),
-    6px 6px 0 1px var(--line);
-}
 .map-ticket.cf-ticket--parent .cf-ticket__name {
   -webkit-line-clamp: 2;
 }
@@ -1012,9 +1207,6 @@ dialog.cf-dialog::backdrop {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.map-ticket.cf-ticket--parent.cf-ticket--current {
-  box-shadow: inset 0 0 0 2px var(--brass), 0 0 0 4px var(--brass-soft), var(--map-stack);
 }
 .map-ticket__status {
   display: inline-flex;
@@ -1055,14 +1247,15 @@ dialog.cf-dialog::backdrop {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   font: inherit;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
 }
 .map-crumbs__step button:hover {
-  color: var(--text);
+  color: var(--accent-text);
   text-decoration: underline;
 }
 .map-crumbs__step button:focus-visible {
@@ -1091,20 +1284,20 @@ dialog.cf-dialog::backdrop {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line);
+  padding: 0 var(--space-4) var(--space-2) 20px;
 }
 .map-tree__switch {
   margin-left: auto;
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
 }
 .map-tree__rows {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   margin: 0;
-  padding: 6px 4px 6px 8px;
+  padding: 0 12px 6px 14px;
   list-style: none;
 }
 /* A Parent Ticket's row: only its twisty and its name act. Any other row acts on its Ticket. */
@@ -1115,7 +1308,7 @@ dialog.cf-dialog::backdrop {
   cursor: default;
 }
 .map-tree__row--parent .cf-tree-name {
-  font-weight: 500;
+  font-weight: 600;
 }
 .map-tree__twisty,
 .map-tree__open {
@@ -1150,7 +1343,7 @@ dialog.cf-dialog::backdrop {
 .map-tree__state {
   display: inline-flex;
   flex: none;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .map-tree__state--closed {
   color: var(--done);
@@ -1163,11 +1356,15 @@ dialog.cf-dialog::backdrop {
 }
 .map-tree__claim {
   flex: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--slate);
   font-size: 11px;
-  color: var(--route);
+  font-weight: 700;
+  color: var(--on-slate);
 }
 .map-tree__claim .cf-dot {
-  background: var(--route);
+  background: var(--on-slate);
 }
 
 /* Explorer: starting Sessions (the Project's "+", shown on hover and focus) */
@@ -1183,27 +1380,41 @@ dialog.cf-dialog::backdrop {
   opacity: 1;
 }
 
-/* Starting a Ticket from the Map */
+/* A command ClaudeForge typed, unsent: soft lime over the terminal, with its slate chip. */
 .terminal-typed {
   display: flex;
   flex: none;
-  align-items: center;
-  gap: 10px;
-  margin: var(--space-3) 20px 0;
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-overlay);
-  box-shadow: inset 0 0 0 1px var(--line);
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-4) var(--space-4) 0;
+  padding: 12px 10px 12px 16px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--slate);
+  line-height: 20px;
+  --text: var(--slate);
+  --text-muted: #4a5320;
+  --focus: var(--slate);
+  --surface-raised: rgba(47, 53, 63, 0.08);
+  --line-strong: rgba(47, 53, 63, 0.2);
 }
-.terminal-typed > .cf-icon {
+.terminal-typed__chip {
   flex: none;
-  color: var(--brass);
+  padding: 1px 9px;
+  border-radius: var(--radius-full);
+  background: var(--slate);
+  color: var(--on-slate);
+  font-size: 11.5px;
+  font-weight: 700;
 }
-.terminal-typed > span {
+.terminal-typed > span:not(.terminal-typed__chip) {
   flex: 1;
 }
 .terminal-typed strong {
-  font-weight: 600;
+  font-weight: 700;
+}
+.terminal-typed .cf-btn {
+  margin-top: -6px;
 }
 .map-decided .cf-decided .cf-chip {
   border: 0;
@@ -1218,11 +1429,11 @@ dialog.cf-dialog::backdrop {
 }
 .map-run-level {
   flex: none;
-  padding: var(--space-3);
-  border-top: 1px solid var(--line);
+  padding: 0 var(--space-4);
 }
 .map-run-level__button {
   width: 100%;
+  height: 40px;
 }
 .map-run-level__hint {
   margin: var(--space-2) 0 0;
@@ -1233,10 +1444,42 @@ dialog.cf-dialog::backdrop {
 .map-run-level__hint code {
   overflow-wrap: anywhere;
 }
+/* Ticket details: the state over the title, on cream, then the question and the answer. */
+.ticket-details {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.ticket-details > .ticket-details__state {
+  order: -2;
+  padding: 24px 26px 6px;
+  background: var(--ground);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ticket-details > .cf-dialog__title {
+  order: -1;
+  padding: 0 26px 18px;
+  background: var(--ground);
+  font-size: 26px;
+  line-height: 32px;
+}
+.ticket-details > :not(.ticket-details__state):not(.cf-dialog__title) {
+  margin: 16px 26px 0;
+}
+.ticket-details > .cf-dialog__actions {
+  margin-bottom: 24px;
+}
 .ticket-details__state,
 .ticket-details__reason,
 .ticket-details__error {
   margin: 0;
+}
+.ticket-details__reason {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px dashed var(--line-control);
+  font-weight: 600;
 }
 .ticket-details__error {
   color: var(--danger);
@@ -1244,7 +1487,8 @@ dialog.cf-dialog::backdrop {
 .ticket-details__part {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 6px;
+  line-height: 20px;
 }
 
 /* A live Map changing: the relayout glides over 320ms, ease-out (RELAYOUT_MS); new Tickets fade and
@@ -1285,10 +1529,10 @@ dialog.cf-dialog::backdrop {
 }
 @keyframes map-frontier-pulse {
   from {
-    box-shadow: inset 0 0 0 1.5px var(--brass), 0 0 0 0 var(--brass);
+    box-shadow: 0 0 0 0 var(--accent);
   }
   to {
-    box-shadow: inset 0 0 0 1.5px var(--brass), 0 0 0 8px transparent;
+    box-shadow: 0 0 0 10px transparent;
   }
 }
 @keyframes map-decided-in {
@@ -1309,7 +1553,7 @@ dialog.cf-dialog::backdrop {
   }
 }
 
-/* Skill and subagent editor: a tab like a Hosted session's, holding a Markdown file. */
+/* Skill and subagent editor: a card in place of the terminal, holding a Markdown file. */
 .cf-tab--unsaved .cf-tab__title::after {
   content: ' •' / '';
   color: var(--text-muted);
@@ -1319,23 +1563,30 @@ dialog.cf-dialog::backdrop {
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  background: var(--card);
 }
 .ext-editor[hidden] {
   display: none;
 }
 .ext-editor__bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px 12px;
   flex: none;
-  padding: var(--space-2) var(--space-3);
+  padding: 18px 22px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface);
+}
+.ext-editor__bar > .cf-icon {
+  color: var(--accent-text);
 }
 .ext-editor__name {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1354,23 +1605,33 @@ dialog.cf-dialog::backdrop {
   flex: none;
   color: var(--text-muted);
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ext-editor__bar .cf-btn--primary {
+  height: 40px;
+  padding: 0 20px;
 }
 .ext-editor__problems {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   flex: none;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--line);
-  background: var(--danger-soft);
-  font-size: 12px;
-  line-height: 16px;
+  margin: 16px 22px 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px dashed var(--slate);
+  background: var(--ground);
+  font-size: 13px;
+  line-height: 18px;
 }
 .ext-editor__problems > .cf-icon {
   flex: none;
   margin-top: 1px;
   color: var(--danger);
+}
+.ext-editor__problems p {
+  font-weight: 700;
 }
 .ext-editor__problems p,
 .ext-editor__problems ul {
@@ -1380,8 +1641,7 @@ dialog.cf-dialog::backdrop {
   padding-left: var(--space-4);
 }
 .ext-editor__note {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
+  margin: 16px 22px 0;
   color: var(--text-muted);
 }
 .ext-editor__note--problem {
@@ -1390,8 +1650,25 @@ dialog.cf-dialog::backdrop {
 .ext-editor__code {
   flex: 1;
   min-height: 0;
+  margin: 16px 22px 22px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 .ext-editor__code .cm-editor {
   height: 100%;
+}
+/* The Extensions menu is a slate tile over the explorer. */
+.extmenu {
+  --surface: var(--slate);
+  --surface-raised: rgba(245, 241, 227, 0.08);
+}
+/* The tab on show reads on slate. */
+.cf-tab[aria-selected='true'] {
+  --text: var(--on-slate);
+  --text-muted: var(--on-slate-muted);
+  --surface-raised: rgba(245, 241, 227, 0.12);
+  --focus: var(--accent);
+  --dormant: #8a8f99;
+  --done: var(--on-slate-muted);
+  --waiting: var(--accent-soft);
 }

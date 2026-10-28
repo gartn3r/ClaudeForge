@@ -161,7 +161,7 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit
   })
 
   return (
-    <section className="extbar" aria-label={t('extensions.heading')}>
+    <section className="extbar cf-on-slate" aria-label={t('extensions.heading')}>
       <button
         type="button"
         ref={button}
@@ -369,7 +369,7 @@ function ExtensionsPopover({
   return createPortal(
     <div
       ref={ref}
-      className="cf-popover extmenu"
+      className="cf-popover cf-on-slate extmenu"
       role="dialog"
       aria-label={t('extensions.heading')}
       aria-busy={busy}

@@ -22,7 +22,7 @@ const harborSessions = (window: Page): Locator =>
   explorerOf(window).getByRole('group', { name: 'harbor-api' }).getByRole('treeitem')
 const row = (window: Page, title: string): Locator => harborSessions(window).filter({ hasText: title })
 /** The design system's text-faint. */
-const FAINT = 'rgb(107, 122, 140)'
+const FAINT = 'rgb(138, 143, 153)'
 
 test('renames a Session from its menu, and Escape leaves the name as it was', async () => {
   claudeforge = await launchClaudeForge(env)

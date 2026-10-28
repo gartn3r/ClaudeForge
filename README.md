@@ -31,7 +31,7 @@ On GitHub, a Ticket's Sub-tickets are its own sub-issues; nothing needs declarin
 - `src/shared/api.ts`: the API's types, the pushed events and the IPC channel names, shared by every side.
 - `src/preload/`: the sandboxed bridge (`window.claudeforge`) carrying only backend API channels.
 - `src/renderer/`: the React interface. `terminal/hosted-terminal.ts` wires one Hosted session to xterm.js (WebGL renderer unless GPU rendering is off, Shift+Enter sent as a newline). The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.
-- `design/tokens.json`: the ClaudeForge design system tokens; `src/renderer/src/styles/` carries them as CSS with the design system's `cf-` components. Geist and JetBrains Mono ship as font files.
+- `design/tokens.json`: the ClaudeForge design system tokens; `src/renderer/src/styles/` carries them as CSS with the design system's `cf-` components, in the Bento design (cream, slate and lime tiles). Fraunces, Inter and JetBrains Mono ship as font files.
 
 ## Test
 

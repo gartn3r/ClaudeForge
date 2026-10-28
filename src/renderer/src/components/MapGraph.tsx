@@ -39,7 +39,7 @@ const TYPE_ICONS: Record<TicketType, typeof Search> = {
 /** A Parent Ticket shows its Sub-ticket count instead of a glyph of its own. */
 const STATE_GLYPHS: Record<Exclude<TicketState, 'parent'>, ReactNode> = {
   frontier: <ChevronRight className="cf-icon cf-icon--sm" aria-hidden="true" />,
-  claimed: <span className="cf-dot" style={{ background: 'var(--route)' }} />,
+  claimed: <span className="cf-dot" style={{ background: 'currentColor' }} />,
   blocked: <Lock className="cf-icon cf-icon--sm" aria-hidden="true" />,
   closed: <Check className="cf-icon cf-icon--sm" aria-hidden="true" />
 }

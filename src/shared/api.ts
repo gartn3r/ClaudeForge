@@ -14,7 +14,7 @@ export const PANEL_BOUNDS = {
 } as const
 
 /** Width of a collapsed side panel. */
-export const RAIL_WIDTH = 40
+export const RAIL_WIDTH = 64
 
 export type PanelId = keyof typeof PANEL_BOUNDS
 

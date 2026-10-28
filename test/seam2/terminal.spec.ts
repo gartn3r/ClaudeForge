@@ -107,14 +107,14 @@ test('draws the terminal with WebGL where the machine has it, and with the DOM r
   await expect(terminal).toContainText('Fake Claude Code')
 })
 
-test("sets the terminal in the design system's mono-terminal type, on the terminal well", async () => {
+test("sets the terminal in the design system's mono-terminal type, on the slate terminal tile", async () => {
   const window = await openFolder()
   const text = terminalOf(window).getByText('Fake Claude Code')
 
   await expect(text).toHaveCSS('font-family', /^"JetBrains Mono"/)
   await expect(text).toHaveCSS('font-size', '13px')
-  // The text token on the terminal-well token.
-  await expect(text).toHaveCSS('color', 'rgb(223, 230, 238)')
+  // The terminal-text token on the terminal token: the slate tile.
+  await expect(text).toHaveCSS('color', 'rgb(230, 227, 214)')
   const background = await text.evaluate((element) => {
     // The first background painted behind the text.
     for (let at: Element | null = element; at; at = at.parentElement) {
@@ -123,5 +123,5 @@ test("sets the terminal in the design system's mono-terminal type, on the termin
     }
     return null
   })
-  expect(background).toBe('rgb(11, 16, 22)')
+  expect(background).toBe('rgb(47, 53, 63)')
 })

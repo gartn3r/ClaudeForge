@@ -244,27 +244,29 @@ export function Explorer({
 
   return (
     <>
-      <div className="cf-panel-head">
-        <span className="cf-eyebrow">{t('explorer.heading')}</span>
-        <IconButton icon={PanelLeftClose} label={t('explorer.collapse')} onClick={onCollapse} />
-      </div>
-      <div className="explorer__tree">
-        <ListProblem />
-        {projects?.length === 0 && <p className="empty">{t('explorer.empty')}</p>}
-        {projects && projects.length > 0 && (
-          <ul
-            ref={tree}
-            className="explorer__projects"
-            role="tree"
-            aria-label={t('explorer.label')}
-            aria-multiselectable="true"
-            onKeyDown={onTreeKeyDown}
-          >
-            {projects.map((project) => (
-              <ProjectGroup key={project.path} project={project} now={now} actions={actions} />
-            ))}
-          </ul>
-        )}
+      <div className="explorer__tile">
+        <div className="cf-panel-head">
+          <span className="cf-eyebrow">{t('explorer.heading')}</span>
+          <IconButton icon={PanelLeftClose} label={t('explorer.collapse')} onClick={onCollapse} />
+        </div>
+        <div className="explorer__tree">
+          <ListProblem />
+          {projects?.length === 0 && <p className="empty">{t('explorer.empty')}</p>}
+          {projects && projects.length > 0 && (
+            <ul
+              ref={tree}
+              className="explorer__projects"
+              role="tree"
+              aria-label={t('explorer.label')}
+              aria-multiselectable="true"
+              onKeyDown={onTreeKeyDown}
+            >
+              {projects.map((project) => (
+                <ProjectGroup key={project.path} project={project} now={now} actions={actions} />
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
       <ExtensionsBar
         project={project}

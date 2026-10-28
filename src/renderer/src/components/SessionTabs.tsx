@@ -57,6 +57,8 @@ interface StripTab {
   description: string
   /** An editor's text differs from its file. */
   unsaved: boolean
+  /** What the tab shows the state of, for its look: a Hosted session's, or none. */
+  state?: TabState
   select(): void
   /** Closes it, or asks first. */
   close(): void
@@ -91,6 +93,7 @@ export function SessionTabs({
         glyph: <StatusGlyph state={state} />,
         description: t(`tabs.status.${state}`),
         unsaved: false,
+        state,
         select: () => onSelect(tab.key),
         close: () => {
           if (!tab.end && tab.status === 'working') setConfirming({ kind: 'stop', key: tab.key })
@@ -147,6 +150,7 @@ export function SessionTabs({
             id={tabId(tab.key)}
             className={`cf-tab${tab.unsaved ? ' cf-tab--unsaved' : ''}`}
             role="tab"
+            data-state={tab.state}
             aria-selected={tab.key === activeKey}
             aria-controls={panelId(tab.key)}
             aria-labelledby={`${tabId(tab.key)}-title`}
@@ -182,7 +186,7 @@ export function SessionTabs({
       </div>
       <button
         type="button"
-        className="cf-btn cf-btn--ghost cf-btn--icon session-tabs__new"
+        className="cf-btn cf-btn--add cf-btn--icon session-tabs__new"
         aria-label={t('tabs.newSession')}
         title={t('tabs.newSession')}
         onClick={onNew}

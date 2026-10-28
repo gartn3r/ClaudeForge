@@ -58,7 +58,7 @@ test('speaks French when Windows is displayed in French', async () => {
   await expect(window.getByRole('button', { name: 'Fermer la fenêtre' })).toBeVisible()
 })
 
-test('sets the interface in the bundled Geist font without fetching anything from the network', async () => {
+test('sets the interface in the bundled Inter and Fraunces fonts without fetching anything from the network', async () => {
   claudeforge = await launchClaudeForge(env)
   const { window } = claudeforge
   const requests: string[] = []
@@ -71,7 +71,8 @@ test('sets the interface in the bundled Geist font without fetching anything fro
     return [...document.fonts].filter((font) => font.status === 'loaded').map((font) => font.family)
   })
 
-  expect(loaded).toContain('Geist')
+  expect(loaded).toContain('Inter')
+  expect(loaded).toContain('Fraunces')
   expect(requests.filter((url) => url.endsWith('.woff2')).length).toBeGreaterThan(0)
   expect(requests.filter((url) => !url.startsWith('file:'))).toEqual([])
 })
@@ -111,20 +112,20 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
 
   await window.getByRole('button', { name: 'Collapse the Map panel' }).click()
-  await expect.poll(() => widthOf(window, 'Map')).toBe(40)
+  await expect.poll(() => widthOf(window, 'Map')).toBe(64)
 
   await claudeforge.close()
   claudeforge = await launchClaudeForge(env)
   window = claudeforge.window
 
   await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
-  await expect.poll(() => widthOf(window, 'Map')).toBe(40)
+  await expect.poll(() => widthOf(window, 'Map')).toBe(64)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
   await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
 
   await window.getByRole('button', { name: 'Collapse the explorer' }).click()
-  await expect.poll(() => widthOf(window, 'Sessions')).toBe(40)
+  await expect.poll(() => widthOf(window, 'Sessions')).toBe(64)
   await window.getByRole('button', { name: 'Expand the explorer' }).click()
   await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
 })

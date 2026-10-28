@@ -190,7 +190,7 @@ function createWindow(): void {
     frame: false,
     show: false,
     title: 'ClaudeForge',
-    backgroundColor: '#0f141b',
+    backgroundColor: '#f5f1e3',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

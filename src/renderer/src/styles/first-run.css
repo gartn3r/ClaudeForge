@@ -1,68 +1,65 @@
-/* The first-run screen, shown instead of the columns while there is no claude ClaudeForge can run. */
+/* The first-run screen, shown instead of the columns while there is no claude ClaudeForge can run:
+   a big title, then one tile per step. */
 
 .first-run {
-  position: relative;
   display: flex;
   flex: 1;
-  align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: var(--space-6);
+  padding: 32px clamp(16px, 4vw, 48px) 48px;
   overflow: auto;
-  background: var(--surface);
-}
-.first-run__contours {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: var(--contour);
-  stroke-width: 1.5;
-  pointer-events: none;
+  background: var(--ground);
 }
 .first-run__content {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  width: 560px;
+  width: 1120px;
   max-width: 100%;
 }
 .first-run__intro {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--slate);
 }
-.first-run__intro .cf-pill {
-  align-self: flex-start;
+.first-run__title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex: 1 1 520px;
 }
 .first-run h1 {
   margin: 0;
-  font-size: 28px;
-  line-height: 32px;
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.02;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
-.first-run__intro p {
-  max-width: 520px;
+.first-run__intro > p {
+  flex: 0 1 340px;
   margin: 0;
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 15px;
+  line-height: 24px;
 }
 .first-run code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--tile);
   color: var(--text);
 }
-.first-run__where code {
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
 .first-run a {
-  color: var(--route);
+  color: inherit;
+  font-weight: 700;
 }
 .first-run a:hover {
-  color: var(--ansi-bright-blue);
+  color: var(--accent-text);
 }
 .first-run a:focus-visible {
   outline: 2px solid var(--focus);
@@ -70,46 +67,73 @@
   border-radius: var(--radius-sm);
 }
 .first-run strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 .first-run__steps {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .first-run__steps li {
   display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1 1 260px;
+  min-width: 0;
+  min-height: 220px;
+  padding: 28px;
+  border-radius: var(--radius-dialog);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 15px;
+  line-height: 23px;
 }
-.first-run__steps li > span:last-child {
-  padding-top: 2px;
+.first-run__steps li:first-child {
+  background: var(--accent);
+  box-shadow: none;
+}
+.first-run__steps li.cf-on-slate {
+  background: var(--slate);
+  box-shadow: none;
+}
+.first-run__steps li.cf-on-slate code {
+  background: var(--slate-deep);
 }
 .first-run__step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: var(--radius-full);
-  background: var(--surface-overlay);
-  font-size: 12px;
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 0.9;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.first-run__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+.first-run__steps li.cf-on-slate .first-run__step-number {
+  color: var(--accent);
+}
+.first-run__steps li:last-child .first-run__step-number {
+  color: var(--text-muted);
+}
+.first-run__steps .cf-btn {
+  margin-top: auto;
+  height: 48px;
 }
 .first-run__where {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  padding: 22px 28px;
+  border-radius: var(--radius-dialog);
+  background: var(--tile);
+}
+.first-run__where .cf-eyebrow {
+  color: var(--text);
+}
+.first-run__where code {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--ground);
+  overflow-wrap: anywhere;
 }
