@@ -333,8 +333,8 @@ test.describe('in French', () => {
 
   test('the + buttons, the creation form and Restore default layout speak French', async () => {
     const window = await launch()
-    await explorer(window).getByRole('button', { name: 'Nouvelle card' }).click()
-    const form = window.getByRole('dialog', { name: 'Nouvelle card' })
+    await explorer(window).getByRole('button', { name: 'Nouvelle fiche' }).click()
+    const form = window.getByRole('dialog', { name: 'Nouvelle fiche' })
     await form.getByRole('textbox', { name: 'Titre' }).fill('Été 2026')
     await expect(form.getByRole('textbox', { name: 'Identifiant' })).toHaveValue('ete-2026')
     await form.getByRole('button', { name: 'Créer' }).click()

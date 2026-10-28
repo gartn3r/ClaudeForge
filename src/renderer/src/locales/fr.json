@@ -482,28 +482,28 @@
       "sessions": "Sessions",
       "extensions": "Extensions",
       "terminalArea": "Zone des terminaux",
-      "rightPanel": "Right panel",
-      "mapTab": "Map"
+      "rightPanel": "Panneau de droite",
+      "mapTab": "Carte"
     },
     "mark": "Mis à jour",
     "card": {
-      "new": "Nouvelle card",
+      "new": "Nouvelle fiche",
       "empty": "Rien ici pour l’instant. Clic droit pour ajouter un contenu."
     },
     "menuNew": "Nouveau menu",
     "menuEmpty": "Rien ici pour l’instant. Clic droit sur le menu pour ajouter un lien ou une action.",
     "create": {
-      "panel-tab": "Nouveau Panel tab",
-      "card": "Nouvelle card",
+      "panel-tab": "Nouvel onglet de panneau",
+      "card": "Nouvelle fiche",
       "menu": "Nouveau menu",
       "inProject": "Dans {{project}}.",
       "title": "Titre",
       "name": "Identifiant",
-      "nameHint": "Unique dans le Project : c’est le nom que Claude utilise pour y écrire.",
+      "nameHint": "Unique dans le Projet : c’est le nom que Claude utilise pour y écrire.",
       "action": "Créer"
     },
     "restoreDefault": "Disposition par défaut",
-    "restoreDefaultHint": "Rend aux panneaux et aux cards de ClaudeForge leur place, leur taille, leur titre et leurs couleurs, et affiche de nouveau chaque card et chaque menu. Rien n’est supprimé.",
+    "restoreDefaultHint": "Rend aux panneaux et aux fiches de ClaudeForge leur place, leur taille, leur titre et leurs couleurs, et affiche de nouveau chaque fiche et chaque menu. Rien n’est supprimé.",
     "menu": {
       "label": "Actions de {{name}}",
       "rename": "Renommer",
