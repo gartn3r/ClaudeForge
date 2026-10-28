@@ -263,6 +263,16 @@ export type SessionDeletion =
   | { deleted: true }
   | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' | 'failed' }
 
+/**
+ * ClaudeForge found its list of Session ids unreadable, so it started a new, empty one. `file` is
+ * where the unreadable list now is: set aside beside the new one, or, when it could not be moved,
+ * still in place, and then nothing is recorded to disk until ClaudeForge restarts.
+ */
+export interface SessionListProblem {
+  file: string
+  setAside: boolean
+}
+
 /** A Project and its Sessions, the most recently active first. */
 export interface ProjectSessions {
   path: string
@@ -569,8 +579,13 @@ export interface BackendApi {
     write(patch: AppStatePatch): Promise<AppState>
   }
   sessions: {
-    /** Every Session on the machine, grouped by Project, the most recently active Project first. */
+    /**
+     * Every Session, grouped by Project, the most recently active Project first: only the
+     * conversations that ran in a ClaudeForge terminal, by its list of Session ids (ADR 0005).
+     */
     list(): Promise<ProjectSessions[]>
+    /** Why the list of Session ids was found unreadable as ClaudeForge started; null when it was fine. */
+    listProblem(): Promise<SessionListProblem | null>
     /** Names the Session in ClaudeForge only; an empty title gives it back Claude Code's name. */
     rename(id: string, title: string): Promise<void>
     /** Hides the Session from the explorer's list, or shows it again. */

@@ -232,6 +232,8 @@ describe('the Session catalog', () => {
       projects.flatMap((project) => project.sessions).find((session) => session.id === id)
 
     it('when a Session starts', async () => {
+      // On the list as its `claude` starts, before it writes any history.
+      await env.listSessions('3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9')
       await start()
 
       await env.writeHistory(env.projects.dotfiles, '3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9', [

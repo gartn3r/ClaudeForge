@@ -5,6 +5,7 @@ import { spawn, type IPty } from 'node-pty'
 import { folderMissingError, type HostedSession, type HostedSessionStatus, type TerminalSize } from '../shared/api'
 import { envVar, type Environment } from './claude-code'
 import { HistoryStatus } from './history-status'
+import { followRegistryEntry } from './live-sessions'
 import { PROBE_REPLY, ProgramStatusReader, type ProgramStatusState } from './program-status'
 import { isFolder } from './worktree'
 
@@ -41,6 +42,8 @@ interface HostedProcess {
   reader: ProgramStatusReader
   /** Follows its Session history until `claude` shows it reports its status itself. */
   history?: HistoryStatus
+  /** Stops following its registry entry for the Sessions `/clear` and `/resume` move it to. */
+  stopFollowingRegistry: () => void
   /** Resolves once `claude` has ended. */
   ended: Promise<void>
 }
@@ -88,6 +91,8 @@ export interface SessionHostOptions {
   claudeHome: string
   /** The `claude` to run; rejects when there is none. */
   claudePath(): Promise<string>
+  /** Puts a Session id on ClaudeForge's list of Sessions (ADR 0005); resolves once it is saved. */
+  recordSession(sessionId: string): Promise<void>
   onOutput(id: string, data: string): void
   onExit(id: string, exitCode: number): void
   onStatus(id: string, status: HostedSessionStatus): void
@@ -107,6 +112,10 @@ export interface SessionHostOptions {
  * query Claude Code sends after it. Until `claude` asks about status reports,
  * which a Claude Code older than 2.1.295 never does, the status follows the Session history, found
  * by the Session id: the resumed Session's, or one the Session host gives `claude`.
+ *
+ * Every Session id that appears in a Hosted session goes on ClaudeForge's list of Sessions: the one
+ * `claude` starts with, before it starts, then each one `/clear` or `/resume` moves it to, which its
+ * entry in Claude Code's live-session registry names.
  */
 export class SessionHost {
   private readonly sessions = new Map<string, HostedProcess>()
@@ -128,6 +137,7 @@ export class SessionHost {
     const batch = /^\.(cmd|bat)$/i.test(extname(claude))
     const changed = batch ? claudeArgs.find((arg) => CMD_CHANGES.test(arg)) : undefined
     if (changed !== undefined) throw new Error(`cmd.exe cannot pass ${JSON.stringify(changed)} to ${claude} as it is`)
+    await this.options.recordSession(sessionId)
     const pty = batch
       ? spawn(
           envVar(env, 'COMSPEC') ?? 'cmd.exe',
@@ -144,6 +154,10 @@ export class SessionHost {
       pty,
       status: 'idle',
       reader: new ProgramStatusReader(),
+      // A Session id that fails to save now is lost to the list, as the Session goes on regardless.
+      stopFollowingRegistry: followRegistryEntry(this.options.claudeHome, sessionId, (next) =>
+        void this.options.recordSession(next).catch(() => undefined)
+      ),
       ended: new Promise((resolve) => (ended = resolve))
     }
     session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
@@ -161,6 +175,7 @@ export class SessionHost {
     })
     pty.onExit(({ exitCode }) => {
       stopFollowingHistory(session)
+      session.stopFollowingRegistry()
       this.sessions.delete(id)
       this.options.onExit(id, exitCode)
       ended()
@@ -206,6 +221,7 @@ export class SessionHost {
   dispose(): void {
     for (const session of this.sessions.values()) {
       stopFollowingHistory(session)
+      session.stopFollowingRegistry()
       session.pty.kill()
     }
     this.sessions.clear()

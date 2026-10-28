@@ -24,7 +24,12 @@
     "collapse": "Collapse the explorer",
     "expand": "Expand the explorer",
     "resize": "Resize the explorer",
-    "empty": "Find every Session here, grouped by Project.",
+    "empty": "Find every Session you run in ClaudeForge here, grouped by Project.",
+    "listProblem": {
+      "setAside": "ClaudeForge could not read its list of Sessions, so it started a new one: the Sessions it named are no longer listed. The old list is kept as {{file}}.",
+      "inPlace": "ClaudeForge could not read its list of Sessions, at {{file}}: the Sessions it named are no longer listed, and the Sessions you run now are listed only until ClaudeForge closes.",
+      "dismiss": "Dismiss"
+    },
     "untitled": "New Session",
     "openElsewhere": "Open elsewhere",
     "openElsewhereTooltip": "Open elsewhere. It can be resumed here once it ends.",

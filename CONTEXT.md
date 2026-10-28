@@ -11,20 +11,36 @@ The folder a Session runs in; the explorer groups Sessions by Project.
 _Avoid_: workspace, repo
 
 **Session**:
-One Claude Code conversation, identified by its session id, whether finished or still running.
+One Claude Code conversation that has run at least once in a ClaudeForge terminal (started, forked, or reached there through `/clear` or `/resume`), identified by its session id, whether finished or still running. A conversation that never ran in ClaudeForge is not a Session: ClaudeForge neither lists nor manages it, and offers no way to bring it in other than resuming it from a ClaudeForge terminal.
 _Avoid_: chat, conversation, tab
 
 **Hosted session**:
 A Session whose `claude` process runs inside ClaudeForge, in its own terminal; several can run at once.
 
 **External session**:
-A Session whose `claude` process runs outside ClaudeForge (another terminal, another app); ClaudeForge can see it but not drive its terminal.
+A Session whose `claude` process now runs outside ClaudeForge (resumed from another terminal or app); ClaudeForge still lists it but cannot drive its terminal.
 
 ### Extensions
 
 **Extension**:
 Anything that extends Claude Code for a Session: a skill, a subagent, an MCP server or a plugin, at user (global) or Project scope.
 _Avoid_: capability, tool, add-on
+
+### Shortcuts
+
+**Shortcut**:
+An entry the user keeps, in their own order, in the Shortcuts card above the Sessions; the same for every Project. It is a Web shortcut or a Skill shortcut.
+_Avoid_: link (a Session's link is something else), favorite, bookmark
+
+**Web shortcut**:
+A Shortcut to a web address, opened in a Web tab.
+
+**Skill shortcut**:
+A Shortcut to a command that is typed, never sent, into a Hosted session: a skill chosen among the Extensions with optional arguments, or a command written freely.
+
+**Web tab**:
+A tab beside the Hosted session tabs that shows a Web shortcut's page inside ClaudeForge.
+_Avoid_: webview, browser tab
 
 ### Wayfinder
 

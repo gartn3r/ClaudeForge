@@ -220,6 +220,33 @@ body {
   overflow: auto;
   padding: var(--space-2);
 }
+.explorer__problem {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+.explorer__problem > .cf-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--danger);
+}
+.explorer__problem p {
+  flex: 1;
+  margin: 0;
+}
+.explorer__problem .cf-btn--icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
 .extbar {
   flex: none;
   border-top: 1px solid var(--line);

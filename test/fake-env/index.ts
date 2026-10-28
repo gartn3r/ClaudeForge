@@ -1,6 +1,7 @@
 // The shared fake environment behind both test seams: a temporary folder
-// holding a Claude Code home, fixture Projects, ClaudeForge's data folder and
-// fake `claude` and `gh` executables first on PATH.
+// holding a Claude Code home, fixture Projects, ClaudeForge's data folder (its
+// list of Session ids holding the fixture Sessions) and fake `claude` and `gh`
+// executables first on PATH.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -8,6 +9,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 import { standInContents, standInRecycleBin } from '../../src/backend/recycle-bin'
+import { SESSION_IDS_FILE } from '../../src/backend/session-ids'
 
 const FIXTURES = resolve(__dirname, '../fixtures')
 const BIN_SOURCES = resolve(__dirname, 'bin')
@@ -54,6 +56,14 @@ export interface LiveSessionEntry {
   procStart?: string
 }
 
+export interface ListingOptions {
+  /**
+   * Whether the conversation ran in ClaudeForge, so its id is on ClaudeForge's list of Session ids
+   * (the default); false for one from the CLI or another app, which ClaudeForge does not list.
+   */
+  listed?: boolean
+}
+
 export interface FakeEnvironmentOptions {
   /** Windows display languages ClaudeForge should see; defaults to English. */
   systemLanguages?: string[]
@@ -86,9 +96,18 @@ export interface FakeEnvironment {
   /** The original paths of everything in the fake Recycle Bin, oldest first. */
   recycled(): Promise<string[]>
   /** Writes (or replaces) a Session history for a folder, one history entry per line. */
-  writeHistory(cwd: string, sessionId: string, entries: object[]): Promise<void>
+  writeHistory(cwd: string, sessionId: string, entries: object[], options?: ListingOptions): Promise<void>
   /** Writes a live-session registry entry (`sessions/<pid>.json`) as a running `claude` does. */
-  writeLiveSession(entry: LiveSessionEntry): Promise<string>
+  writeLiveSession(entry: LiveSessionEntry, options?: ListingOptions): Promise<string>
+  /**
+   * Puts Session ids on ClaudeForge's list, as if they had run in ClaudeForge. ClaudeForge reads
+   * the list as it starts, so a test lists ids before starting it.
+   */
+  listSessions(...sessionIds: string[]): Promise<void>
+  /** ClaudeForge's list of Session ids, in its data folder. */
+  readonly sessionIdsFile: string
+  /** The ids on ClaudeForge's list, as its file holds them now. */
+  listedSessions(): Promise<string[]>
   /** Installs a fake `claude` (replacing any at the same place) and returns its path. */
   installClaude(options?: FakeClaudeOptions): Promise<string>
   /** Every recorded call of a fake executable, oldest first. */
@@ -205,6 +224,8 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
 
   await Promise.all([mkdir(binDir, { recursive: true }), mkdir(logDir), mkdir(userDataDir), mkdir(recycleBin)])
   await cp(join(FIXTURES, 'projects'), projectsDir, { recursive: true })
+  // ClaudeForge's list of Session ids, holding every fixture Session.
+  await cp(join(FIXTURES, 'claudeforge-data'), userDataDir, { recursive: true })
   // A copy, as the fake `claude` changes it when told to add, remove, install or switch Extensions.
   await cp(join(FIXTURES, 'claude'), claudeState, { recursive: true })
   // A copy too, so a test can change an issue as GitHub would.
@@ -253,6 +274,14 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   }
   if (options.claude !== false) await installClaude(options.claude)
 
+  const sessionIdsFile = join(userDataDir, SESSION_IDS_FILE)
+  const listedSessions = async (): Promise<string[]> =>
+    (JSON.parse(await readFile(sessionIdsFile, 'utf8')) as { ids: string[] }).ids
+  const listSessions = async (...sessionIds: string[]): Promise<void> => {
+    const ids = [...new Set([...(await listedSessions()), ...sessionIds])]
+    await writeFile(sessionIdsFile, JSON.stringify({ version: 1, ids }, null, 2))
+  }
+
   return {
     root,
     claudeHome,
@@ -270,13 +299,18 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     // ClaudeForge's own stand-in, the one the main process uses when CLAUDEFORGE_RECYCLE_BIN is set.
     trashItem: standInRecycleBin(recycleBin),
     recycled: () => standInContents(recycleBin),
-    async writeHistory(cwd, sessionId, entries) {
+    listSessions,
+    sessionIdsFile,
+    listedSessions,
+    async writeHistory(cwd, sessionId, entries, { listed = true } = {}) {
+      if (listed) await listSessions(sessionId)
       const folder = join(claudeHome, 'projects', encodeProjectPath(cwd))
       await mkdir(folder, { recursive: true })
       const lines = entries.map((entry) => JSON.stringify({ sessionId, ...entry }) + '\n')
       await writeFile(join(folder, `${sessionId}.jsonl`), lines.join(''))
     },
-    async writeLiveSession(entry) {
+    async writeLiveSession(entry, { listed = true } = {}) {
+      if (listed) await listSessions(entry.sessionId)
       const file = join(claudeHome, 'sessions', `${entry.pid}.json`)
       await writeFile(file, JSON.stringify({ kind: 'interactive', entrypoint: 'cli', status: 'idle', ...entry }))
       return file

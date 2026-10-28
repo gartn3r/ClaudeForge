@@ -26,6 +26,7 @@ import { MapRefresh } from './maps/refresh'
 import type { TrashItem } from './recycle-bin'
 import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
+import { SessionIdStore } from './session-ids'
 import { Updates, type Updater } from './updates'
 
 export type { Updater } from './updates'
@@ -55,7 +56,7 @@ export interface WindowHost {
 }
 
 export interface BackendOptions {
-  /** ClaudeForge's own data folder, where app state is kept. */
+  /** ClaudeForge's own data folder, where app state and the list of Session ids are kept. */
   stateDir: string
   /** The Claude Code home (`CLAUDE_CONFIG_DIR`, else `~/.claude`), whose Sessions the catalog lists. */
   claudeHome: string
@@ -114,11 +115,13 @@ async function openIssue(shell: DesktopShell | undefined, path: string): Promise
 export function createBackend(options: BackendOptions): Backend {
   const events = new BackendEventEmitter()
   const appState = new AppStateStore(options.stateDir)
+  const sessionIds = new SessionIdStore(options.stateDir)
   const maps = createMapService(options.env)
   const sessions = new SessionCatalog(
     options.claudeHome,
     (projects) => events.emit('sessions.changed', projects),
     async () => (await appState.read()).sessions,
+    () => sessionIds.ids(),
     (project, args) => resolveWayfinderLink(maps, project, args)
   )
   const language = resolveLanguage(options.systemLanguages)
@@ -156,6 +159,7 @@ export function createBackend(options: BackendOptions): Backend {
     env: options.env,
     claudeHome: options.claudeHome,
     claudePath,
+    recordSession: (sessionId) => sessionIds.add(sessionId),
     onOutput: (id, data) => events.emit('sessionHost.output', { id, data }),
     onExit: (id, exitCode) => events.emit('sessionHost.exit', { id, exitCode }),
     onStatus: (id, status) => events.emit('sessionHost.status', { id, status }),
@@ -182,20 +186,28 @@ export function createBackend(options: BackendOptions): Backend {
   }
 
   /**
-   * Drops the saved tabs whose Session's folder is gone: they could only fail to resume. Done once,
-   * before the interface first reads the state, so they never come back at startup.
+   * Drops the saved tabs that could never resume: those of conversations that are not Sessions (ADR
+   * 0005), and those whose Session's folder is gone. Done once, before the interface first reads the
+   * state, so they never come back at startup.
    */
-  const dropTabsOfMissingFolders = async (): Promise<void> => {
+  const dropUnresumableTabs = async (): Promise<void> => {
     const { tabs } = await appState.read()
     if (!tabs.length) return
-    const missing = new Set((await sessions.current()).filter((s) => s.folderMissing).map((s) => s.id))
-    const kept = tabs.filter((tab) => !missing.has(tab.sessionId))
+    const listed = await sessionIds.ids()
+    // A catalog that cannot be read leaves the Sessions' tabs as they are: each still says why it cannot resume.
+    const missing = await sessions.current().then(
+      (all) => new Set(all.filter((s) => s.folderMissing).map((s) => s.id)),
+      () => new Set<string>()
+    )
+    const kept = tabs.filter((tab) => listed.has(tab.sessionId) && !missing.has(tab.sessionId))
     if (kept.length < tabs.length) await writeAppState({ tabs: kept })
   }
   let savedTabsChecked: Promise<void> | undefined
 
   /** Stores how the user tidied one Session, then pushes the catalog as it now looks. */
   const tidySession = async (id: string, preferences: NonNullable<AppStatePatch['sessions']>[string]): Promise<void> => {
+    // A conversation that never ran in ClaudeForge is not managed from it: its preferences stay as they are.
+    if (!(await sessionIds.ids()).has(id)) throw new Error(`There is no Session ${id}`)
     await writeAppState({ sessions: { [id]: preferences } })
     await sessions.refresh()
   }
@@ -248,14 +260,14 @@ export function createBackend(options: BackendOptions): Backend {
     extensions,
     appState: {
       read: async () => {
-        // A catalog that cannot be read leaves the tabs as they are: each still says why it cannot resume.
-        await (savedTabsChecked ??= dropTabsOfMissingFolders().catch(() => undefined))
+        await (savedTabsChecked ??= dropUnresumableTabs().catch(() => undefined))
         return appState.read()
       },
       write: writeAppState
     },
     sessions: {
       list: () => sessions.list(),
+      listProblem: () => sessionIds.problem(),
       rename: (id, title) => tidySession(id, { title }),
       setHidden: (id, hidden) => tidySession(id, { hidden }),
       delete: async (ids) => {
