@@ -410,6 +410,18 @@ describe('the ClaudeForge CLI', () => {
       expect((await claudeforge([], { as: hosted })).stdout).toBe(help.stdout)
     })
 
+    it("takes an option's value as it is, even one that looks like an option", async () => {
+      await start()
+      const hosted = await hostSession()
+      await claudeforge(['create', 'panel-tab:tests'], { as: hosted })
+
+      const run = await claudeforge(['add', 'panel-tab:tests', '--id', 'flags', '--text', '-h'], { as: hosted })
+      const list = await claudeforge(['add', 'panel-tab:tests', '--id', 'list', '--text=- one\n- two'], { as: hosted })
+
+      expect([run.stdout, list.stdout]).toEqual(['Added flags to panel-tab:tests.\n', 'Added list to panel-tab:tests.\n'])
+      expect((await elementOf('recipe-box', 'panel-tab:tests'))!.items.map((item) => 'text' in item && item.text)).toEqual(['-h', '- one\n- two'])
+    })
+
     it('answers a command it does not know, or one used wrongly, with what to run instead', async () => {
       await start()
       const hosted = await hostSession()

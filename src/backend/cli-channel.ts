@@ -28,6 +28,9 @@ export const CLI_INSTRUCTION =
 /** The longest call the channel reads, well above the longest text a Content item holds. */
 const CALL_MAX_LENGTH = 1024 * 1024
 
+/** How long a caller may stay connected without a word: `claudeforge` sends its call at once. */
+const IDLE_TIMEOUT_MS = 30_000
+
 const NOT_HOSTED: CliReply = { stdout: '', stderr: `claudeforge: ${describeRefusal({ code: 'not-hosted' })}\n`, exitCode: 1 }
 
 /** A call as `claudeforge` sends it, or null when it is not one. */
@@ -52,11 +55,15 @@ const channelPath = (): string => {
   return process.platform === 'win32' ? `\\\\.\\pipe\\${name}` : join(tmpdir(), `${name}.sock`)
 }
 
-export interface CliChannelOptions {
-  /** The folder holding the `claudeforge` command: its shims and the script they run (cli/ in the repository). */
+/** Where the `claudeforge` command is, and what runs it. */
+export interface CliPlace {
+  /** The folder holding the command: its shims and the script they run (cli/ in the repository). */
   folder: string
   /** What runs the script: ClaudeForge's own executable, as Node. */
   runtime: string
+}
+
+export interface CliChannelOptions extends CliPlace {
   /** The Elements contract in a Hosted session's name. */
   elements(hostedSession: string): BackendApi['elements']
 }
@@ -75,13 +82,17 @@ export class CliChannel implements CliAccess {
       this.server.once('error', failed)
       this.server.listen(this.path, listening)
     })
-    // A channel that cannot listen fails each grant instead.
+    // A channel that cannot listen grants nothing instead.
     this.listening.catch(() => undefined)
   }
 
   /** The variables that give one Hosted session's `claude` the CLI, in that Hosted session's name. */
-  async grant(id: string, env: Environment): Promise<Environment> {
-    await this.listening
+  async grant(id: string, env: Environment): Promise<Environment | null> {
+    try {
+      await this.listening
+    } catch {
+      return null
+    }
     const token = randomBytes(32).toString('hex')
     this.tokens.set(token, id)
     return {
@@ -105,6 +116,7 @@ export class CliChannel implements CliAccess {
   private serve(socket: Socket): void {
     let received = ''
     socket.setEncoding('utf8')
+    socket.setTimeout(IDLE_TIMEOUT_MS, () => socket.destroy())
     socket.on('error', () => undefined)
     const onData = (data: string): void => {
       received += data
@@ -114,12 +126,12 @@ export class CliChannel implements CliAccess {
         return
       }
       socket.off('data', onData)
-      void this.answer(received.slice(0, end)).then((reply) => socket.end(JSON.stringify(reply) + '\n'))
+      void this.reply(received.slice(0, end)).then((reply) => socket.end(JSON.stringify(reply) + '\n'))
     }
     socket.on('data', onData)
   }
 
-  private async answer(line: string): Promise<CliReply> {
+  private async reply(line: string): Promise<CliReply> {
     const call = readCall(line)
     const hostedSession = call ? this.tokens.get(call.token) : undefined
     if (!call || hostedSession === undefined) return NOT_HOSTED

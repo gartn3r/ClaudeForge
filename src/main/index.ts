@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from 'electron'
 import { autoUpdater, type Logger } from 'electron-updater'
-import { createBackend, type DesktopShell, type Dialogs, type Updater, type WindowHost } from '../backend'
+import { createBackend, type CliPlace, type DesktopShell, type Dialogs, type Updater, type WindowHost } from '../backend'
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
@@ -49,7 +49,7 @@ if (process.platform === 'win32')
  * in the app's resources once installed (electron-builder.config.mjs), else in the repository's cli/;
  * ClaudeForge's own executable runs its script as Node.
  */
-function cli(): { folder: string; runtime: string } {
+function cli(): CliPlace {
   const folder = app.isPackaged ? join(process.resourcesPath, 'cli') : join(__dirname, '../../cli')
   return { folder, runtime: process.execPath }
 }

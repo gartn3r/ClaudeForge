@@ -45,7 +45,7 @@ _Avoid_: webview, browser tab
 ### Piloting
 
 **ClaudeForge CLI**:
-The command through which a Hosted session's Claude drives ClaudeForge's interface: it changes an Element's properties or adds Content items to it. Only Hosted sessions can use it. ClaudeForge never reaches Claude unasked other than by typing into a Session's terminal, in view.
+The command through which a Hosted session's Claude drives ClaudeForge's interface: it creates and closes Created Elements, changes an Element's properties, and adds or removes Content items. Only Hosted sessions can use it. ClaudeForge never reaches Claude unasked other than by typing into a Session's terminal, in view.
 _Avoid_: headless mode, API, bridge
 
 **Element**:

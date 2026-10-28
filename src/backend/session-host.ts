@@ -91,8 +91,11 @@ const windowsPty = (): HostedSession['windowsPty'] =>
  * 0007): what its `claude` gets to reach the CLI in its name, and what it is told about it.
  */
 export interface CliAccess {
-  /** The variables to set on top of ClaudeForge's environment for one Hosted session's `claude`. */
-  grant(id: string, env: Environment): Promise<Environment>
+  /**
+   * The variables to set on top of ClaudeForge's environment for one Hosted session's `claude`; null
+   * when the CLI cannot be offered now.
+   */
+  grant(id: string, env: Environment): Promise<Environment | null>
   /** The Hosted session has ended: what it was granted no longer reaches anything. */
   revoke(id: string): void
   /** Appended to Claude's system prompt: one line that cmd.exe passes on as it is (CMD_CHANGES). */
@@ -151,19 +154,21 @@ export class SessionHost {
     if (!(await isFolder(folder))) throw folderMissingError(folder)
     const claude = await this.options.claudePath()
     const { cli } = this.options
-    const { sessionId, args: withId } = withSessionId(args)
-    const claudeArgs = cli ? [...withId, '--append-system-prompt', cli.instruction] : withId
-    // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
-    // Each option is quoted as is, so one that cmd.exe would expand or cut short is refused.
-    const batch = /^\.(cmd|bat)$/i.test(extname(claude))
-    const changed = batch ? claudeArgs.find((arg) => CMD_CHANGES.test(arg)) : undefined
-    if (changed !== undefined) throw new Error(`cmd.exe cannot pass ${JSON.stringify(changed)} to ${claude} as it is`)
-    await this.options.recordSession(sessionId)
     const id = randomUUID()
-    const env = withVariables(this.options.env, { ...HOSTED_ENVIRONMENT, ...(await cli?.grant(id, this.options.env)) })
+    // A Session goes on without the CLI when ClaudeForge cannot offer it, and is not told about it then.
+    const granted = (await cli?.grant(id, this.options.env)) ?? null
+    const { sessionId, args: startArgs } = withSessionId(args)
+    const claudeArgs = cli && granted ? [...startArgs, '--append-system-prompt', cli.instruction] : startArgs
+    const env = withVariables(this.options.env, { ...HOSTED_ENVIRONMENT, ...granted })
     const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
     let pty: IPty
     try {
+      // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
+      // Each option is quoted as is, so one that cmd.exe would expand or cut short is refused.
+      const batch = /^\.(cmd|bat)$/i.test(extname(claude))
+      const changed = batch ? claudeArgs.find((arg) => CMD_CHANGES.test(arg)) : undefined
+      if (changed !== undefined) throw new Error(`cmd.exe cannot pass ${JSON.stringify(changed)} to ${claude} as it is`)
+      await this.options.recordSession(sessionId)
       pty = batch
         ? spawn(
             envVar(env, 'COMSPEC') ?? 'cmd.exe',

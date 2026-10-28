@@ -141,8 +141,29 @@ export const CLI_HELP = [
   ''
 ].join('\n')
 
+type OptionKind = 'string' | 'boolean'
+
+/** The options each command takes, `--project` and `--help` aside. */
+const OPTIONS = {
+  list: { json: 'boolean' },
+  create: { title: 'string' },
+  close: {},
+  set: {},
+  add: {
+    ...(Object.fromEntries(CONTENT_KINDS.map((kind) => [kind, 'string'])) as Record<ContentKind, OptionKind>),
+    id: 'string',
+    title: 'string',
+    show: 'boolean'
+  },
+  remove: {}
+} satisfies Record<string, Record<string, OptionKind>>
+
+type Command = keyof typeof OPTIONS
+
+const isCommand = (name: string): name is Command => Object.hasOwn(OPTIONS, name)
+
 /** How each command is used, as a mistake names it. */
-const USAGE: Record<string, string> = {
+const USAGE: Record<Command, string> = {
   list: 'claudeforge list [--json]',
   create: 'claudeforge create <kind>:<name> [--title <title>]',
   close: 'claudeforge close <element>',
@@ -151,66 +172,58 @@ const USAGE: Record<string, string> = {
   remove: 'claudeforge remove <element> <item>'
 }
 
-type OptionKind = 'string' | 'boolean'
-
-/** The options each command takes, `--project` aside. */
-const OPTIONS: Record<string, Record<string, OptionKind>> = {
-  list: { json: 'boolean' },
-  create: { title: 'string' },
-  close: {},
-  set: {},
-  add: {
-    ...Object.fromEntries(CONTENT_KINDS.map((kind) => [kind, 'string' as const])),
-    id: 'string',
-    title: 'string',
-    show: 'boolean'
-  },
-  remove: {}
-}
-
 interface Parsed {
   positionals: string[]
   options: Record<string, string | true>
+  /** `--help` or `-h` was given as an option, not as an option's value. */
+  help: boolean
 }
 
 /**
  * Reads a command's arguments: `--name value` or `--name=value`, whatever the value holds (a markdown
  * list starts with `-`), and the rest in order.
  */
-function parse(command: string, args: readonly string[]): Parsed {
+function parse(command: Command, args: readonly string[]): Parsed {
   const taken: Record<string, OptionKind> = { ...OPTIONS[command], project: 'string' }
-  const parsed: Parsed = { positionals: [], options: {} }
+  const parsed: Parsed = { positionals: [], options: {}, help: false }
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!
-    if (!arg.startsWith('--')) {
+    if (arg === '--help' || arg === '-h') {
+      parsed.help = true
+    } else if (!arg.startsWith('--')) {
       parsed.positionals.push(arg)
-      continue
-    }
-    const [name, inline] = arg.slice(2).split(/=(.*)/s) as [string, string | undefined]
-    const kind = taken[name]
-    if (!kind) throw new Usage(`${command} takes no option --${name}.`)
-    if (name in parsed.options) throw new Usage(`--${name} is given twice.`)
-    if (kind === 'boolean') {
-      if (inline !== undefined) throw new Usage(`--${name} takes no value.`)
-      parsed.options[name] = true
     } else {
-      const value = inline ?? args[++i]
-      if (value === undefined) throw new Usage(`--${name} needs a value.`)
-      parsed.options[name] = value
+      readOption(command, taken, parsed, arg, () => args[++i])
     }
   }
   return parsed
 }
 
-const string = (parsed: Parsed, name: string): string | undefined => {
+/** Reads one `--name` option, taking its value from the next argument unless it is `--name=value`. */
+function readOption(command: Command, taken: Record<string, OptionKind>, parsed: Parsed, arg: string, next: () => string | undefined): void {
+  const [name, inline] = arg.slice(2).split(/=(.*)/s) as [string, string | undefined]
+  const kind = Object.hasOwn(taken, name) ? taken[name] : undefined
+  if (!kind) throw new Usage(`${command} takes no option --${name}.`)
+  if (name in parsed.options) throw new Usage(`--${name} is given twice.`)
+  if (kind === 'boolean') {
+    if (inline !== undefined) throw new Usage(`--${name} takes no value.`)
+    parsed.options[name] = true
+  } else {
+    const value = inline ?? next()
+    if (value === undefined) throw new Usage(`--${name} needs a value.`)
+    parsed.options[name] = value
+  }
+}
+
+const optionValue = (parsed: Parsed, name: string): string | undefined => {
   const value = parsed.options[name]
   return typeof value === 'string' ? value : undefined
 }
 
-/** A command's positionals, when it is given exactly that many. */
-function positionals(command: string, parsed: Parsed, count: number, atLeast = false): string[] {
+/** A command's positionals, when it is given that many: exactly, or at least with `{ orMore: true }`. */
+function positionals(command: Command, parsed: Parsed, count: number, { orMore = false } = {}): string[] {
   const given = parsed.positionals.length
-  if (atLeast ? given < count : given !== count) throw new Usage(`Use it as ${USAGE[command]}`)
+  if (orMore ? given < count : given !== count) throw new Usage(`Use it as ${USAGE[command]}`)
   return parsed.positionals
 }
 
@@ -258,9 +271,9 @@ function itemInput(parsed: Parsed, call: CliCall): ContentItemInput {
   const kinds = CONTENT_KINDS.filter((kind) => kind in parsed.options)
   if (kinds.length !== 1) throw new Usage(`Give add one content: ${CONTENT_KINDS.map((kind) => `--${kind}`).join(', ')}.`)
   const kind = kinds[0]!
-  let value = string(parsed, kind)!
-  const id = string(parsed, 'id')
-  const title = string(parsed, 'title')
+  let value = optionValue(parsed, kind)!
+  const id = optionValue(parsed, 'id')
+  const title = optionValue(parsed, 'title')
   if (kind === 'text' && title !== undefined) throw new Usage('A text has no title: --title is for any other content.')
   if (value === '-') {
     if (kind !== 'text') throw new Usage('Only --text reads what is piped in.')
@@ -281,8 +294,8 @@ function itemInput(parsed: Parsed, call: CliCall): ContentItemInput {
 }
 
 /** Runs one command, in the name of the Hosted session whose Elements contract is given. */
-async function answer(command: string, parsed: Parsed, call: CliCall, elements: Elements): Promise<string> {
-  const projectOption = string(parsed, 'project')
+async function answer(command: Command, parsed: Parsed, call: CliCall, elements: Elements): Promise<string> {
+  const projectOption = optionValue(parsed, 'project')
   const project = projectOption === undefined ? {} : { project: resolve(call.cwd, projectOption) }
   /** Asks, and answers a refusal as the command's failure. */
   const ask = async <Op extends ElementOp>(request: Extract<ElementRequest, { op: Op }>): Promise<ElementAnswers[Op]> => {
@@ -302,7 +315,7 @@ async function answer(command: string, parsed: Parsed, call: CliCall, elements: 
       const [id] = positionals(command, parsed, 1)
       const at = id!.indexOf(':')
       if (at < 0) throw new Usage(`Name the Element to create as <kind>:<name>, such as panel-tab:${id}.`)
-      const title = string(parsed, 'title')
+      const title = optionValue(parsed, 'title')
       const kind = id!.slice(0, at) as CreatedElementKind
       await ask({ op: 'create', ...project, kind, name: id!.slice(at + 1), ...(title !== undefined && { title }) })
       return `Created ${id}.\n`
@@ -313,7 +326,7 @@ async function answer(command: string, parsed: Parsed, call: CliCall, elements: 
       return `Closed ${element}.\n`
     }
     case 'set': {
-      const [element, ...assignments] = positionals(command, parsed, 2, true)
+      const [element, ...assignments] = positionals(command, parsed, 2, { orMore: true })
       const properties: Record<string, unknown> = {}
       for (const assignment of assignments) {
         const at = assignment.indexOf('=')
@@ -336,19 +349,19 @@ async function answer(command: string, parsed: Parsed, call: CliCall, elements: 
       await ask({ op: 'remove', ...project, element: element!, item: item! })
       return `Removed ${item} from ${element}.\n`
     }
-    default:
-      throw new Usage(`${command} is not a command.`)
   }
 }
 
 /** Runs `claudeforge` with these arguments, in the name of the Hosted session whose Elements contract is given. */
 export async function runCli(call: CliCall, elements: Elements): Promise<CliReply> {
   const [command, ...rest] = call.args
-  if (command === undefined || command === 'help' || call.args.includes('--help') || call.args.includes('-h'))
-    return { stdout: CLI_HELP, stderr: '', exitCode: 0 }
+  const help = { stdout: CLI_HELP, stderr: '', exitCode: 0 }
+  if (command === undefined || ['help', '--help', '-h'].includes(command)) return help
   try {
-    if (!(command in OPTIONS)) throw new Usage(`${command} is not a command.`)
-    return { stdout: await answer(command, parse(command, rest), call, elements), stderr: '', exitCode: 0 }
+    if (!isCommand(command)) throw new Usage(`${command} is not a command.`)
+    const parsed = parse(command, rest)
+    if (parsed.help) return help
+    return { stdout: await answer(command, parsed, call, elements), stderr: '', exitCode: 0 }
   } catch (error) {
     if (error instanceof Refusal) return { stdout: '', stderr: `claudeforge: ${error.message}\n`, exitCode: 1 }
     if (error instanceof Usage)
