@@ -62,11 +62,11 @@ test('starts empty without a list, then lists the first Session started in Claud
   await window.keyboard.press('Enter')
 
   await expect(explorer.getByRole('heading')).toHaveText(['dotfiles'])
-  await expect(explorer.getByRole('list', { name: 'dotfiles' })).toHaveText(/\/work 300/)
+  await expect(explorer.getByRole('group', { name: 'dotfiles' })).toHaveText(/\/work 300/)
 
   await claudeforge.close()
   claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
-  await expect(explorerOf('Sessions').getByRole('list', { name: 'dotfiles' })).toHaveText(/\/work 300/)
+  await expect(explorerOf('Sessions').getByRole('group', { name: 'dotfiles' })).toHaveText(/\/work 300/)
 })
 
 test('warns, with its new place, that an unreadable list was set aside, until dismissed', async () => {

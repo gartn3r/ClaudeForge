@@ -4,6 +4,7 @@ import {
   EyeOff,
   ExternalLink,
   Folder,
+  FolderX,
   GitBranch,
   GitFork,
   History,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ProjectSessions, SessionListProblem, SessionSummary } from '../../../shared/api'
+import type { ProjectSessions, SessionDeletion, SessionListProblem, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import type { EditorTarget } from '../editor/editor-tabs'
 import type { HostedTab } from '../terminal/hosted-sessions'
@@ -74,11 +75,29 @@ function useNow(): number {
   return now
 }
 
-/** What the user is doing to one Session: its menu is open, or it is being renamed or deleted. */
+/** What the user is doing to Sessions: one's menu is open, one is being renamed, or some are being deleted. */
 type Tidying =
-  | { kind: 'menu'; session: SessionSummary; project: string; at: { x: number; y: number } }
+  | {
+      kind: 'menu'
+      session: SessionSummary
+      project: string
+      at: { x: number; y: number }
+      /** What its Delete acts on: the selection, when the Session is in it. */
+      targets: SessionSummary[]
+    }
   | { kind: 'rename'; session: SessionSummary }
-  | { kind: 'delete'; session: SessionSummary }
+  | { kind: 'delete'; sessions: SessionSummary[] }
+
+/** The Sessions picked by clicks, as in a Windows list, and the one a Shift+click ranges from. */
+interface Selection {
+  ids: string[]
+  anchor: string | null
+}
+
+const NO_SELECTION: Selection = { ids: [], anchor: null }
+
+/** The keys held during a click on a row: Ctrl adds or removes one Session, Shift ranges from the last clicked. */
+type Picking = Pick<MouseEvent, 'ctrlKey' | 'shiftKey'>
 
 /** How every row reaches the user's tidying. */
 interface RowActions {
@@ -91,6 +110,9 @@ interface RowActions {
   rename(session: SessionSummary, title: string | null): void
   /** The id of the Session shown in the centre, whose Map the Map panel follows. */
   displayed: string | null
+  selected: ReadonlySet<string>
+  /** A click on a row: a plain one displays the Session and picks it alone; Ctrl or Shift pick more. */
+  click(session: SessionSummary, picking: Picking): void
   display(session: SessionSummary): void
   /** Starts a new Session in the Project. */
   startNew(project: string): void
@@ -112,11 +134,58 @@ export function Explorer({
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
   const closeMenu = useCallback(() => setTidying((current) => (current?.kind === 'menu' ? null : current)), [])
+  const [selection, setSelection] = useState(NO_SELECTION)
+  const tree = useRef<HTMLUListElement>(null)
+  const byId = new Map(projects?.flatMap((project) => project.sessions.map((session) => [session.id, session])))
+  const selected = new Set(selection.ids)
+
+  /** The ids of the rows the explorer shows, in its order, across Projects. */
+  const shownIds = (): string[] =>
+    [...(tree.current?.querySelectorAll<HTMLElement>('[data-session]') ?? [])].map((row) => row.dataset.session!)
+
+  /** What an action on a row acts on: the whole selection when the row is in it, else the row alone. */
+  const targetsOf = (session: SessionSummary): SessionSummary[] =>
+    selected.has(session.id) && selected.size > 1
+      ? shownIds().flatMap((id) => (selected.has(id) ? [byId.get(id)!] : []))
+      : [session]
+
+  const pick = ({ id }: SessionSummary, { ctrlKey, shiftKey }: Picking): void => {
+    if (shiftKey) {
+      const shown = shownIds()
+      const anchor = selection.anchor !== null && shown.includes(selection.anchor) ? selection.anchor : id
+      const ends = [shown.indexOf(anchor), shown.indexOf(id)]
+      setSelection({ ids: shown.slice(Math.min(...ends), Math.max(...ends) + 1), anchor })
+    } else if (ctrlKey) {
+      const ids = selected.has(id) ? selection.ids.filter((other) => other !== id) : [...selection.ids, id]
+      setSelection({ ids, anchor: id })
+    } else {
+      setSelection({ ids: [id], anchor: id })
+    }
+  }
+
+  /** Asks to delete the Sessions, when any of them can be. */
+  const askToDelete = (sessions: SessionSummary[]): void => {
+    if (sessions.some((session) => session.state === 'past')) setTidying({ kind: 'delete', sessions })
+  }
+
+  // Escape lets go of the selection; Delete deletes it, or the focused row when outside it.
+  const onTreeKeyDown = (event: KeyboardEvent): void => {
+    const target = event.target as Element
+    if (target.closest('input')) return
+    if (event.key === 'Escape') setSelection(NO_SELECTION)
+    const row = target.closest<HTMLElement>('[data-session]')
+    const session = row && byId.get(row.dataset.session!)
+    if (event.key === 'Delete' && session) askToDelete(targetsOf(session))
+  }
 
   const actions: RowActions = {
     renaming: tidying?.kind === 'rename' ? tidying.session.id : null,
     menuOpen: tidying?.kind === 'menu' ? tidying.session.id : null,
-    openMenu: (session, project, at) => setTidying({ kind: 'menu', session, project, at }),
+    // As in Windows, the menu of a row outside the selection picks that row alone.
+    openMenu: (session, project, at) => {
+      if (!selected.has(session.id)) setSelection({ ids: [session.id], anchor: session.id })
+      setTidying({ kind: 'menu', session, project, at, targets: targetsOf(session) })
+    },
     // The catalog pushes the new title once the backend has stored it. An emptied field is sent
     // too: it gives the Session back Claude Code's name.
     rename: (session, title) => {
@@ -125,20 +194,40 @@ export function Explorer({
       if (!unchanged) void api.sessions.rename(session.id, title)
     },
     displayed: displayedSessionId,
+    selected,
+    click: (session, picking) => {
+      pick(session, picking)
+      if (!picking.ctrlKey && !picking.shiftKey && session.state !== 'external') onDisplaySession(session.id)
+    },
     display: (session) => onDisplaySession(session.id),
     startNew: (project) => onStartSession(project, { kind: 'new' })
   }
 
-  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends.
+  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends,
+  // and one whose folder is gone has nowhere to run.
   const startItem = (session: SessionSummary, project: string, kind: 'resume' | 'fork', icon: LucideIcon): MenuItem => ({
     label: t(`explorer.${kind}`),
     icon,
-    disabled: session.state !== 'past',
-    disabledReason: t('explorer.openElsewhereTooltip'),
+    disabled: session.state !== 'past' || session.folderMissing,
+    disabledReason:
+      session.state !== 'past' ? t('explorer.openElsewhereTooltip') : t('explorer.folderMissing', { folder: session.cwd }),
     onSelect: () => onStartSession(project, { kind, sessionId: session.id })
   })
 
-  const menuItems = (session: SessionSummary, project: string): MenuItem[] => [
+  const deleteItem = (targets: SessionSummary[]): MenuItem => {
+    const many = targets.length > 1
+    return {
+      label: many ? t('explorer.delete.actionMany', { count: targets.length }) : t('explorer.delete.action'),
+      icon: Trash2,
+      danger: true,
+      separated: true,
+      disabled: !targets.some((target) => target.state === 'past'),
+      disabledReason: t(many ? 'explorer.delete.nonePast' : 'explorer.delete.onlyPast'),
+      onSelect: () => askToDelete(targets)
+    }
+  }
+
+  const menuItems = (session: SessionSummary, project: string, targets: SessionSummary[]): MenuItem[] => [
     startItem(session, project, 'resume', History),
     startItem(session, project, 'fork', GitFork),
     {
@@ -150,15 +239,7 @@ export function Explorer({
     session.hidden
       ? { label: t('explorer.unhide'), icon: Eye, onSelect: () => void api.sessions.setHidden(session.id, false) }
       : { label: t('explorer.hide'), icon: EyeOff, onSelect: () => void api.sessions.setHidden(session.id, true) },
-    {
-      label: t('explorer.delete.action'),
-      icon: Trash2,
-      danger: true,
-      separated: true,
-      disabled: session.state !== 'past',
-      disabledReason: t('explorer.delete.onlyPast'),
-      onSelect: () => setTidying({ kind: 'delete', session })
-    }
+    deleteItem(targets)
   ]
 
   return (
@@ -171,7 +252,14 @@ export function Explorer({
         <ListProblem />
         {projects?.length === 0 && <p className="empty">{t('explorer.empty')}</p>}
         {projects && projects.length > 0 && (
-          <ul className="explorer__projects">
+          <ul
+            ref={tree}
+            className="explorer__projects"
+            role="tree"
+            aria-label={t('explorer.label')}
+            aria-multiselectable="true"
+            onKeyDown={onTreeKeyDown}
+          >
             {projects.map((project) => (
               <ProjectGroup key={project.path} project={project} now={now} actions={actions} />
             ))}
@@ -185,9 +273,9 @@ export function Explorer({
         onEdit={onEditExtension}
       />
       {tidying?.kind === 'menu' && (
-        <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project)} onClose={closeMenu} />
+        <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project, tidying.targets)} onClose={closeMenu} />
       )}
-      {tidying?.kind === 'delete' && <DeleteDialog session={tidying.session} onDone={() => setTidying(null)} />}
+      {tidying?.kind === 'delete' && <DeleteDialog sessions={tidying.sessions} onDone={() => setTidying(null)} />}
     </>
   )
 }
@@ -230,7 +318,7 @@ function ProjectGroup({ project, now, actions }: ProjectGroupProps): ReactNode {
   if (showHidden && hiddenCount === 0) setShowHidden(false)
   const sessions = showHidden ? project.sessions : project.sessions.filter((session) => !session.hidden)
   return (
-    <li>
+    <li role="none">
       <div className="cf-project" title={project.path}>
         <Folder className="cf-icon" aria-hidden="true" />
         <h3 className="cf-project__name">{project.name}</h3>
@@ -240,7 +328,7 @@ function ProjectGroup({ project, now, actions }: ProjectGroupProps): ReactNode {
           onClick={() => actions.startNew(project.path)}
         />
       </div>
-      <ul className="cf-sessions" aria-label={project.name}>
+      <ul className="cf-sessions" role="group" aria-label={project.name}>
         {sessions.map((session) => (
           <SessionRow key={session.id} session={session} project={project.path} now={now} actions={actions} />
         ))}
@@ -278,33 +366,43 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
   const external = session.state === 'external'
   const renaming = actions.renaming === session.id
   const title = session.title ?? t('explorer.untitled')
-  // Rows never show ids: the tooltip carries the Session id under the title or the External notice.
-  const tooltip = `${external ? t('explorer.openElsewhereTooltip') : title}\n${session.id}`
+  // A Session whose folder is gone is greyed out, and says why in its tooltip.
+  const missing = !external && session.folderMissing
+  // Rows never show ids: the tooltip carries the Session id under the title or the notice.
+  const notice = external
+    ? t('explorer.openElsewhereTooltip')
+    : missing
+      ? t('explorer.folderMissing', { folder: session.cwd })
+      : title
+  const tooltip = `${notice}\n${session.id}`
   const link = session.wayfinder
   const hasSubtitle = external || session.worktree !== null || link !== null
-  const classes = ['cf-row', hasSubtitle && 'cf-row--two', session.hidden && 'explorer__row--hidden'].filter(Boolean)
-  // An External session runs elsewhere: it cannot be displayed here. Clicks and keys meant
-  // for the row's own controls (its menu button, the rename field) do not display it either.
-  const displayHandlers = external
-    ? {}
-    : {
-        tabIndex: 0,
-        onClick: (event: MouseEvent) => {
-          if (!renaming && !(event.target as Element).closest('button, input')) actions.display(session)
-        },
-        onKeyDown: (event: KeyboardEvent) => {
-          if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
-          event.preventDefault()
-          actions.display(session)
-        }
-      }
+  const classes = [
+    'cf-row',
+    hasSubtitle && 'cf-row--two',
+    session.hidden && 'explorer__row--hidden',
+    missing && 'explorer__row--missing'
+  ].filter(Boolean)
+  // An External session runs elsewhere: it cannot be displayed here, only picked, so it stays out of
+  // the Tab order. Clicks and keys meant for the row's own controls (its menu button, the rename
+  // field) neither display nor pick it.
   return (
     <li
       className={classes.join(' ')}
+      role="treeitem"
+      data-session={session.id}
       title={renaming ? undefined : tooltip}
-      aria-disabled={external || undefined}
       aria-current={actions.displayed === session.id || undefined}
-      {...displayHandlers}
+      aria-selected={actions.selected.has(session.id)}
+      tabIndex={external ? -1 : 0}
+      onClick={(event) => {
+        if (!renaming && !(event.target as Element).closest('button, input')) actions.click(session, event)
+      }}
+      onKeyDown={(event) => {
+        if (external || event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+        event.preventDefault()
+        actions.display(session)
+      }}
       onContextMenu={(event) => {
         if (renaming) return
         event.preventDefault()
@@ -314,6 +412,10 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
       {external ? (
         <span className="cf-status cf-status--external">
           <ExternalLink className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </span>
+      ) : missing ? (
+        <span className="cf-status">
+          <FolderX className="cf-icon cf-icon--sm" aria-hidden="true" />
         </span>
       ) : (
         <span className="cf-status">
@@ -394,26 +496,58 @@ function RenameField({ session, onDone }: { session: SessionSummary; onDone(titl
   )
 }
 
-/** Confirms moving a past Session to the Recycle Bin, then asks the backend to. */
-function DeleteDialog({ session, onDone }: { session: SessionSummary; onDone(): void }): ReactNode {
-  const { t } = useTranslation()
+/**
+ * Confirms moving past Sessions to the Recycle Bin, then asks the backend to. Those still running are
+ * left out. Each goes on its own: the dialog stays open on the ones that failed, by title.
+ */
+function DeleteDialog({ sessions, onDone }: { sessions: SessionSummary[]; onDone(): void }): ReactNode {
+  const { t, i18n } = useTranslation()
+  const [remaining, setRemaining] = useState(() => sessions.filter((session) => session.state === 'past'))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const only = sessions.length === 1 ? sessions[0] : undefined
+  const skipped = sessions.length - sessions.filter((session) => session.state === 'past').length
+  const titleOf = (session: SessionSummary): string => session.title ?? t('explorer.untitled')
+  const titlesOf = (failures: Failure[]): string =>
+    new Intl.ListFormat(i18n.language).format(
+      failures.map(({ session }) => t('explorer.delete.quoted', { title: titleOf(session) }))
+    )
+
+  const describe = (failures: Failure[]): string => {
+    const held = failures.filter((failure) => failure.held)
+    if (only) return t(held.length > 0 ? 'explorer.delete.failed' : 'explorer.delete.onlyPast')
+    const started = failures.filter((failure) => !failure.held)
+    return [
+      held.length > 0 && t('explorer.delete.failedMany', { count: held.length, titles: titlesOf(held) }),
+      started.length > 0 && t('explorer.delete.startedMany', { count: started.length, titles: titlesOf(started) })
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+
   const confirm = async (): Promise<void> => {
     setBusy(true)
     setError(null)
     try {
-      const deletion = await api.sessions.delete(session.id)
-      if (deletion.deleted) return onDone()
-      setError(t(deletion.reason === 'unknown' ? 'explorer.delete.gone' : 'explorer.delete.onlyPast'))
+      const deletions = await api.sessions.delete(remaining.map((session) => session.id))
+      const failures = remaining.flatMap((session): Failure[] => {
+        const deletion: SessionDeletion = deletions[session.id] ?? { deleted: false, reason: 'failed' }
+        // A Session no longer in Claude Code's history is as good as deleted.
+        if (deletion.deleted || deletion.reason === 'unknown') return []
+        return [{ session, held: deletion.reason === 'failed' }]
+      })
+      if (failures.length === 0) return onDone()
+      setRemaining(failures.map(({ session }) => session))
+      setError(describe(failures))
     } catch {
       setError(t('explorer.delete.failed'))
     }
     setBusy(false)
   }
+
   return (
     <ConfirmDialog
-      title={t('explorer.delete.title')}
+      title={only ? t('explorer.delete.title') : t('explorer.delete.titleMany', { count: remaining.length })}
       actionLabel={t('explorer.delete.action')}
       actionIcon={Trash2}
       busy={busy}
@@ -421,10 +555,30 @@ function DeleteDialog({ session, onDone }: { session: SessionSummary; onDone(): 
       onConfirm={() => void confirm()}
       onCancel={onDone}
     >
-      <p>{t('explorer.delete.body', { title: session.title ?? t('explorer.untitled') })}</p>
-      <code className="cf-mono cf-muted">{session.id}.jsonl</code>
+      {only ? (
+        <>
+          <p>{t('explorer.delete.body', { title: titleOf(only) })}</p>
+          <code className="cf-mono cf-muted">{only.id}.jsonl</code>
+        </>
+      ) : (
+        <>
+          <p>{t('explorer.delete.bodyMany', { count: remaining.length })}</p>
+          <ul className="confirm-dialog__sessions">
+            {remaining.map((session) => (
+              <li key={session.id}>{titleOf(session)}</li>
+            ))}
+          </ul>
+          {skipped > 0 && <p className="cf-muted">{t('explorer.delete.skipped', { count: skipped })}</p>}
+        </>
+      )}
     </ConfirmDialog>
   )
+}
+
+/** A Session of a batch that is still here: its files were held open (`held`), or it started running since. */
+interface Failure {
+  session: SessionSummary
+  held: boolean
 }
 
 type Translate = ReturnType<typeof useTranslation>['t']

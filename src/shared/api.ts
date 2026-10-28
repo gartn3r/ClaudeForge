@@ -249,14 +249,19 @@ export interface SessionSummary {
   state: SessionState
   /** Hidden by the user: the explorer lists it only when asked to show hidden Sessions. */
   hidden: boolean
+  /** Its folder (`cwd`) is no longer there, a removed worktree say: it cannot be resumed or forked. */
+  folderMissing: boolean
   /** What the Session works on, when its latest `/wayfinder` invocation names one of its Project's Maps. */
   wayfinder: WayfinderLink | null
 }
 
-/** What came of asking to delete a Session: only a past one can be, so nothing running is ever lost. */
+/**
+ * What came of asking to delete a Session: only a past one can be, so nothing running is ever lost.
+ * `failed` when Windows refused to move one of its files (one held open), leaving it in the catalog.
+ */
 export type SessionDeletion =
   | { deleted: true }
-  | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' }
+  | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' | 'failed' }
 
 /**
  * ClaudeForge found its list of Session ids unreadable, so it started a new, empty one. `file` is
@@ -290,6 +295,18 @@ export interface SessionStartOptions {
    */
   prefill?: string
 }
+
+const FOLDER_MISSING = /This folder no longer exists: (.+)$/
+
+/** The error the Session host refuses a start with when its folder is no longer there; it names the folder. */
+export const folderMissingError = (folder: string): Error => new Error(`This folder no longer exists: ${folder}`)
+
+/**
+ * The folder a refused start names as no longer there; null for any other failure. An error
+ * crosses IPC as its message only, wrapped in Electron's own words, so the message is searched.
+ */
+export const missingFolderOf = (failure: unknown): string | null =>
+  FOLDER_MISSING.exec(failure instanceof Error ? failure.message : String(failure))?.[1] ?? null
 
 /** A Hosted session as the Session host started it. */
 export interface HostedSession {
@@ -503,7 +520,8 @@ export interface BackendApi {
     chooseProject(): Promise<string | null>
     /**
      * Starts `claude` in a Project, as a new Session with an id ClaudeForge picks (`--session-id`);
-     * its output, status and exit arrive as events.
+     * its output, status and exit arrive as events. Like resume and fork, refused with
+     * `folderMissingError` when the folder is no longer there.
      */
     start(project: string, size: TerminalSize, options?: SessionStartOptions): Promise<HostedSession>
     /**
@@ -556,6 +574,7 @@ export interface BackendApi {
     save(project: string, file: string, text: string): Promise<ExtensionFileSave>
   }
   appState: {
+    /** The state; the first read drops the saved tabs whose Session's folder is gone, as they cannot resume. */
     read(): Promise<AppState>
     write(patch: AppStatePatch): Promise<AppState>
   }
@@ -571,8 +590,11 @@ export interface BackendApi {
     rename(id: string, title: string): Promise<void>
     /** Hides the Session from the explorer's list, or shows it again. */
     setHidden(id: string, hidden: boolean): Promise<void>
-    /** Moves a past Session's history files to the Windows Recycle Bin; refused for any other. */
-    delete(id: string): Promise<SessionDeletion>
+    /**
+     * Moves each past Session's history files to the Windows Recycle Bin; refused for any other.
+     * Each Session goes on its own, so one that fails does not stop the others. By id.
+     */
+    delete(ids: string[]): Promise<Record<string, SessionDeletion>>
   }
   system: {
     info(): Promise<SystemInfo>

@@ -39,7 +39,7 @@ test('the Map panel follows the displayed Session, its Ticket highlighted and ot
   const explorer = window.getByRole('complementary', { name: 'Sessions' })
   const panel = window.getByRole('complementary', { name: 'Map' })
   const row = (title: string): Locator =>
-    explorer.getByRole('list', { name: 'recipe-box' }).getByRole('listitem').filter({ hasText: title })
+    explorer.getByRole('group', { name: 'recipe-box' }).getByRole('treeitem').filter({ hasText: title })
   const ticket = (name: string): Locator => panel.getByRole('region', { name: 'Open work' }).getByRole('group', { name })
 
   // Each Session names what it works on.
@@ -67,7 +67,7 @@ test('the Map panel follows the displayed Session, its Ticket highlighted and ot
   await expect(ticket('Shape of the week view').getByRole('button', { name: '/wayfinder meal-planner 02' })).toBeVisible()
 
   // A Session of another Project brings that Project's Map panel.
-  await explorer.getByRole('list', { name: 'harbor-api' }).getByRole('listitem').filter({ hasText: 'Add an OpenAPI export' }).click()
+  await explorer.getByRole('group', { name: 'harbor-api' }).getByRole('treeitem').filter({ hasText: 'Add an OpenAPI export' }).click()
   await expect(panel.getByRole('heading', { name: 'Rate limiting' })).toBeVisible()
 })
 
@@ -83,7 +83,7 @@ test('a Session’s Map shows even when every Ticket on it is decided, without t
   const { window } = claudeforge
   const panel = window.getByRole('complementary', { name: 'Map' })
 
-  await window.getByRole('list', { name: 'dotfiles' }).getByRole('listitem').click()
+  await window.getByRole('group', { name: 'dotfiles' }).getByRole('treeitem').click()
 
   await expect(panel.getByRole('heading', { name: 'Shell setup' })).toBeVisible()
   await expect(panel.getByRole('list', { name: 'Decided' }).getByRole('listitem').filter({ hasText: 'Which shell' })).toHaveAttribute('aria-current', 'true')
@@ -106,8 +106,8 @@ test('the Map selector shows another Map of the Project until another Session is
 
   await window
     .getByRole('complementary', { name: 'Sessions' })
-    .getByRole('list', { name: 'recipe-box' })
-    .getByRole('listitem')
+    .getByRole('group', { name: 'recipe-box' })
+    .getByRole('treeitem')
     .filter({ hasText: '/wayfinder meal-planner 02' })
     .click()
   await expect(panel.getByRole('heading', { name: 'Meal planner' })).toBeVisible()

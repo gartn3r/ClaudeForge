@@ -11,7 +11,7 @@ import type {
 import { readLiveSessions, type LiveSession } from './live-sessions'
 import type { TrashItem } from './recycle-bin'
 import { readHistory, type HistorySummary } from './session-history'
-import { pathKey, placeFolder, type FolderPlace } from './worktree'
+import { isFolder, pathKey, placeFolder, type FolderPlace } from './worktree'
 
 /** How long to let a burst of file changes settle before re-reading. */
 const SETTLE_MS = 150
@@ -88,9 +88,14 @@ export class SessionCatalog {
     return projects
   }
 
+  /** Every Session as Claude Code's files show it now, without starting to watch them. */
+  async current(): Promise<SessionSummary[]> {
+    return (await this.read()).flatMap((project) => project.sessions)
+  }
+
   /** The Session with this id as Claude Code's files show it now; undefined when there is none. */
   async find(id: string): Promise<SessionSummary | undefined> {
-    return (await this.read()).flatMap((project) => project.sessions).find((s) => s.id === id)
+    return (await this.current()).find((s) => s.id === id)
   }
 
   /**
@@ -203,6 +208,8 @@ export class SessionCatalog {
       lastActivity: Math.max(history?.lastActivity ?? 0, live?.updatedAt ?? 0),
       state: live ? 'external' : 'past',
       hidden: preferences.hidden ?? false,
+      // Looked at on every read, so a worktree created again at that path brings the Session back.
+      folderMissing: !(await isFolder(cwd)),
       wayfinder: history?.wayfinder ? await this.linkOf(project, history.wayfinder) : null
     }
     return { project, session }

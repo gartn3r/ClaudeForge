@@ -33,6 +33,7 @@
     "untitled": "Nouvelle Session",
     "openElsewhere": "Ouverte ailleurs",
     "openElsewhereTooltip": "Ouverte ailleurs. Elle pourra être reprise ici une fois terminée.",
+    "folderMissing": "Son dossier n’existe plus, elle ne peut donc pas être reprise ici : {{folder}}",
     "activity": {
       "now": "maintenant",
       "minutes": "{{n}} min",
@@ -57,8 +58,20 @@
       "title": "Mettre cette Session à la corbeille ?",
       "body": "« {{title}} » et son historique quittent ClaudeForge et Claude Code. Vous pouvez les restaurer depuis la corbeille de Windows.",
       "onlyPast": "Seule une Session terminée peut être mise à la corbeille.",
-      "gone": "Cette Session n’est plus dans l’historique de Claude Code.",
-      "failed": "ClaudeForge n’a pas pu mettre son historique à la corbeille. Fermez ce qui garde ses fichiers ouverts, puis réessayez."
+      "failed": "ClaudeForge n’a pas pu mettre son historique à la corbeille. Fermez ce qui garde ses fichiers ouverts, puis réessayez.",
+      "actionMany": "Mettre {{count}} Sessions à la corbeille",
+      "nonePast": "Aucune de ces Sessions n’est terminée : seule une Session terminée peut être mise à la corbeille.",
+      "titleMany_one": "Mettre {{count}} Session à la corbeille ?",
+      "titleMany_other": "Mettre {{count}} Sessions à la corbeille ?",
+      "bodyMany_one": "Cette Session et son historique quittent ClaudeForge et Claude Code. Vous pouvez les restaurer depuis la corbeille de Windows.",
+      "bodyMany_other": "Ces {{count}} Sessions et leurs historiques quittent ClaudeForge et Claude Code. Vous pouvez les restaurer depuis la corbeille de Windows.",
+      "skipped_one": "{{count}} Session de la sélection tourne encore, elle reste donc : seule une Session terminée peut être mise à la corbeille.",
+      "skipped_other": "{{count}} Sessions de la sélection tournent encore, elles restent donc : seule une Session terminée peut être mise à la corbeille.",
+      "quoted": "« {{title}} »",
+      "failedMany_one": "ClaudeForge n’a pas pu mettre l’historique de {{titles}} à la corbeille. Fermez ce qui garde ses fichiers ouverts, puis réessayez.",
+      "failedMany_other": "ClaudeForge n’a pas pu mettre les historiques de {{titles}} à la corbeille. Fermez ce qui garde leurs fichiers ouverts, puis réessayez.",
+      "startedMany_one": "{{titles}} a démarré depuis, elle reste donc.",
+      "startedMany_other": "{{titles}} ont démarré depuis, elles restent donc."
     }
   },
   "extensions": {
@@ -186,6 +199,7 @@
     "openFolder": "Ouvrir un dossier",
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
     "failed": "Claude Code n'a pas pu démarrer dans ce dossier.",
+    "folderMissing": "Claude Code ne peut pas démarrer : ce dossier n’existe plus : {{folder}}",
     "typed": {
       "label": "Tapée, non envoyée",
       "ticket": "Prêt à démarrer <b>{{ticket}}</b> de <m>{{map}}</m>. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.",

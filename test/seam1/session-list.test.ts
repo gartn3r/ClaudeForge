@@ -118,7 +118,7 @@ describe('the list of Session ids', () => {
       await expect(api.sessionHost.fork(CLI_HISTORY, SIZE)).rejects.toThrow()
       await expect(api.sessions.rename(CLI_HISTORY, 'Shell aliases')).rejects.toThrow()
       await expect(api.sessions.setHidden(CLI_HISTORY, false)).rejects.toThrow()
-      expect(await api.sessions.delete(CLI_HISTORY)).toEqual({ deleted: false, reason: 'unknown' })
+      expect(await api.sessions.delete([CLI_HISTORY])).toEqual({ [CLI_HISTORY]: { deleted: false, reason: 'unknown' } })
 
       expect(await env.recycled()).toEqual([])
       expect(await env.listedSessions()).not.toContain(CLI_HISTORY)
@@ -130,7 +130,7 @@ describe('the list of Session ids', () => {
 
     it('keeps a deleted Session on the list, so putting its history back brings it back', async () => {
       const backend = start()
-      expect(await backend.api.sessions.delete(OPENAPI_EXPORT)).toEqual({ deleted: true })
+      expect(await backend.api.sessions.delete([OPENAPI_EXPORT])).toEqual({ [OPENAPI_EXPORT]: { deleted: true } })
       expect(await ids(backend)).not.toContain(OPENAPI_EXPORT)
       expect(await env.listedSessions()).toContain(OPENAPI_EXPORT)
 

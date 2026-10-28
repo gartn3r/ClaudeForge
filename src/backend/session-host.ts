@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { release } from 'node:os'
 import { extname } from 'node:path'
 import { spawn, type IPty } from 'node-pty'
-import type { HostedSession, HostedSessionStatus, TerminalSize } from '../shared/api'
+import { folderMissingError, type HostedSession, type HostedSessionStatus, type TerminalSize } from '../shared/api'
 import { envVar, type Environment } from './claude-code'
 import { HistoryStatus } from './history-status'
 import { followRegistryEntry } from './live-sessions'
 import { PROBE_REPLY, ProgramStatusReader, type ProgramStatusState } from './program-status'
+import { isFolder } from './worktree'
 
 /** What every Hosted session's `claude` gets on top of ClaudeForge's own environment. */
 const HOSTED_ENVIRONMENT: Environment = {
@@ -121,8 +122,12 @@ export class SessionHost {
 
   constructor(private readonly options: SessionHostOptions) {}
 
-  /** Starts `claude` with the given options in the folder the Session runs in: its Project, or a git worktree of it. */
+  /**
+   * Starts `claude` with the given options in the folder the Session runs in: its Project, or a git
+   * worktree of it. Refused when that folder is gone, as ConPTY would only report an exit code.
+   */
   async start(folder: string, { cols, rows }: TerminalSize, args: readonly string[] = []): Promise<HostedSession> {
+    if (!(await isFolder(folder))) throw folderMissingError(folder)
     const claude = await this.options.claudePath()
     const env = withVariables(this.options.env, HOSTED_ENVIRONMENT)
     const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }

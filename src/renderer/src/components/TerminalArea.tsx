@@ -95,9 +95,11 @@ export function TerminalArea({
       {active?.end && (
         <div className="terminal-ended" role="status">
           <span>
-            {active.end.exitCode === null
-              ? t('terminal.failed')
-              : t('terminal.exited', { code: active.end.exitCode })}
+            {active.end.exitCode !== null
+              ? t('terminal.exited', { code: active.end.exitCode })
+              : active.end.missingFolder !== null
+                ? t('terminal.folderMissing', { folder: active.end.missingFolder })
+                : t('terminal.failed')}
           </span>
           {openFolderButton(false)}
         </div>

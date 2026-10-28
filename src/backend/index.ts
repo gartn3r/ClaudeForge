@@ -11,6 +11,7 @@ import type {
   ClaudeCodeStatus,
   EventName,
   HostedSession,
+  SessionDeletion,
   TerminalSize,
   WindowNotification
 } from '../shared/api'
@@ -185,14 +186,23 @@ export function createBackend(options: BackendOptions): Backend {
   }
 
   /**
-   * The app state, without the saved tabs of conversations that are not Sessions (ADR 0005): those
-   * are never reopened, and are dropped from the state for good.
+   * Drops the saved tabs that could never resume: those of conversations that are not Sessions (ADR
+   * 0005), and those whose Session's folder is gone. Done once, before the interface first reads the
+   * state, so they never come back at startup.
    */
-  const readAppState = async (): Promise<AppState> => {
-    const [state, listed] = await Promise.all([appState.read(), sessionIds.ids()])
-    const tabs = state.tabs.filter((tab) => listed.has(tab.sessionId))
-    return tabs.length === state.tabs.length ? state : appState.write({ tabs })
+  const dropUnresumableTabs = async (): Promise<void> => {
+    const { tabs } = await appState.read()
+    if (!tabs.length) return
+    const listed = await sessionIds.ids()
+    // A catalog that cannot be read leaves the Sessions' tabs as they are: each still says why it cannot resume.
+    const missing = await sessions.current().then(
+      (all) => new Set(all.filter((s) => s.folderMissing).map((s) => s.id)),
+      () => new Set<string>()
+    )
+    const kept = tabs.filter((tab) => listed.has(tab.sessionId) && !missing.has(tab.sessionId))
+    if (kept.length < tabs.length) await writeAppState({ tabs: kept })
   }
+  let savedTabsChecked: Promise<void> | undefined
 
   /** Stores how the user tidied one Session, then pushes the catalog as it now looks. */
   const tidySession = async (id: string, preferences: NonNullable<AppStatePatch['sessions']>[string]): Promise<void> => {
@@ -249,7 +259,10 @@ export function createBackend(options: BackendOptions): Backend {
     },
     extensions,
     appState: {
-      read: readAppState,
+      read: async () => {
+        await (savedTabsChecked ??= dropUnresumableTabs().catch(() => undefined))
+        return appState.read()
+      },
       write: writeAppState
     },
     sessions: {
@@ -257,12 +270,20 @@ export function createBackend(options: BackendOptions): Backend {
       listProblem: () => sessionIds.problem(),
       rename: (id, title) => tidySession(id, { title }),
       setHidden: (id, hidden) => tidySession(id, { hidden }),
-      delete: async (id) => {
+      delete: async (ids) => {
+        const deletions: Record<string, SessionDeletion> = {}
         try {
-          const deletion = await sessions.delete(id, options.trashItem)
+          for (const id of ids) {
+            try {
+              deletions[id] = await sessions.delete(id, options.trashItem)
+            } catch {
+              deletions[id] = { deleted: false, reason: 'failed' }
+            }
+          }
           // Forgotten, so a Session restored from the Recycle Bin comes back as Claude Code left it.
-          if (deletion.deleted) await writeAppState({ sessions: { [id]: null } })
-          return deletion
+          const deleted = ids.filter((id) => deletions[id]?.deleted)
+          if (deleted.length > 0) await writeAppState({ sessions: Object.fromEntries(deleted.map((id) => [id, null])) })
+          return deletions
         } finally {
           // Even a delete that failed midway (a file held open) may have moved some files.
           await sessions.refresh()
