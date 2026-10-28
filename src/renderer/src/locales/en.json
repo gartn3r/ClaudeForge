@@ -475,6 +475,35 @@
       "web-page": "Web page",
       "action": "Action"
     },
+    "own": {
+      "titleBar": "Title bar",
+      "explorer": "Explorer",
+      "shortcuts": "Shortcuts",
+      "sessions": "Sessions",
+      "extensions": "Extensions",
+      "terminalArea": "Terminal area",
+      "rightPanel": "Right panel",
+      "mapTab": "Map"
+    },
+    "mark": "Updated",
+    "card": {
+      "new": "New card",
+      "empty": "Nothing here yet. Right-click to add content."
+    },
+    "menuNew": "New menu",
+    "menuEmpty": "Nothing here yet. Right-click the menu to add a link or an action.",
+    "create": {
+      "panel-tab": "New Panel tab",
+      "card": "New card",
+      "menu": "New menu",
+      "inProject": "In {{project}}.",
+      "title": "Title",
+      "name": "Identifier",
+      "nameHint": "Unique in the Project: the name Claude uses to write to it.",
+      "action": "Create"
+    },
+    "restoreDefault": "Restore default layout",
+    "restoreDefaultHint": "Gives ClaudeForge’s own panels and cards back their places, sizes, titles and colours, and shows every card and menu again. Nothing is removed.",
     "menu": {
       "label": "{{name}} actions",
       "rename": "Rename",
@@ -483,7 +512,11 @@
       "addItem": "Add content",
       "hide": "Hide",
       "copyId": "Copy identifier",
-      "close": "Close"
+      "close": "Close",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
     },
     "itemMenu": {
       "label": "Content actions",

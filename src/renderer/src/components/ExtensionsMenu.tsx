@@ -28,6 +28,7 @@ import type {
 } from '../../../shared/api'
 import { api } from '../api'
 import type { EditorTarget } from '../editor/editor-tabs'
+import type { ElementFrame } from '../elements/interface-elements'
 import { tabsHosting, type HostedTab } from '../terminal/hosted-sessions'
 import { ConfirmDialog } from './ConfirmDialog'
 import { AddMcpServerDialog, InstallPluginDialog, NewExtensionFileDialog } from './ExtensionDialogs'
@@ -130,10 +131,12 @@ interface ExtensionsBarProps {
   onShowHostedSession(key: string): void
   /** Opens a skill's or subagent's file in an editor tab. */
   onEdit(target: EditorTarget): void
+  /** What it takes from its Element: its title, collapsed state (counts hidden), colours and right-click menu. */
+  frame?: ElementFrame
 }
 
 /** Docked under the explorer: one count per kind of Extension, opening the Extensions menu. */
-export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit }: ExtensionsBarProps): ReactNode {
+export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit, frame }: ExtensionsBarProps): ReactNode {
   const { t } = useTranslation()
   const { listing, refresh } = useExtensions(project)
   /** Where the open menu sits; null while it is closed. */
@@ -162,7 +165,13 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit
   })
 
   return (
-    <section className="extbar cf-on-slate" aria-label={t('extensions.heading')}>
+    <section
+      className="extbar cf-on-slate"
+      aria-label={frame?.title ?? t('extensions.heading')}
+      data-element={frame?.id}
+      style={frame?.style}
+      onContextMenu={frame?.onContextMenu}
+    >
       <button
         type="button"
         ref={button}
@@ -177,8 +186,9 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit
         }
         onClick={(event) => toggle(event.currentTarget)}
       >
-        <span className="cf-eyebrow">{t('extensions.heading')}</span>
+        <span className="cf-eyebrow">{frame?.title ?? t('extensions.heading')}</span>
         {extensions &&
+          !frame?.collapsed &&
           counts.map(({ kind, count, failing, label }) => {
             const Icon = failing ? CircleAlert : ICONS[kind]
             return (

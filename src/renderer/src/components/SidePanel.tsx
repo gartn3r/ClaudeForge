@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { PANEL_BOUNDS, RAIL_WIDTH, clampPanelWidth, type PanelId, type PanelLayout } from '../../../shared/api'
 import { api } from '../api'
 
@@ -16,6 +16,9 @@ interface SidePanelProps {
   rail: ReactNode
   children: ReactNode
   onResizingChange(resizing: boolean): void
+  /** Its Element's colours. */
+  style?: CSSProperties
+  onContextMenu?(event: MouseEvent): void
 }
 
 /**
@@ -24,7 +27,7 @@ interface SidePanelProps {
  * width is shown live while dragging and written to app state on release.
  */
 export function SidePanel(props: SidePanelProps): ReactNode {
-  const { id, side, layout, label, resizeLabel, rail, children, onResizingChange } = props
+  const { id, side, layout, label, resizeLabel, rail, children, onResizingChange, style, onContextMenu } = props
   const { min, max } = PANEL_BOUNDS[id]
   const [liveWidth, setLiveWidth] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -84,7 +87,9 @@ export function SidePanel(props: SidePanelProps): ReactNode {
       aria-label={label}
       data-panel={id}
       data-collapsed={layout.collapsed}
-      style={{ width: layout.collapsed ? RAIL_WIDTH : current }}
+      data-colored={style?.background !== undefined || undefined}
+      style={{ ...style, width: layout.collapsed ? RAIL_WIDTH : current }}
+      onContextMenu={onContextMenu}
     >
       {layout.collapsed ? (
         <div className="rail">{rail}</div>

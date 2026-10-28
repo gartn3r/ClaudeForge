@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import type { Extension, Shortcut, ShortcutCommand } from '../../../shared/api'
 import { SHORTCUT_NAME_MAX_LENGTH, commandText, shortcutProblems, type ShortcutProblem } from '../../../shared/shortcuts'
 import { api } from '../api'
+import type { ElementFrame } from '../elements/interface-elements'
 import { folderName, useExtensions } from './ExtensionsMenu'
 import { Menu } from './Menu'
 
@@ -56,6 +57,8 @@ interface ShortcutsCardProps {
   onOpen(shortcut: Shortcut): void
   onAdd(): void
   onEdit(shortcut: Shortcut): void
+  /** What it takes from its Element: its title, collapsed state, colours and right-click menu. */
+  frame?: ElementFrame
 }
 
 /**
@@ -63,7 +66,7 @@ interface ShortcutsCardProps {
  * same for every Project. Each opens on a click; its menu edits or deletes it; a drag moves it.
  */
 export function ShortcutsCard(props: ShortcutsCardProps): ReactNode {
-  const { shortcuts, target, skills, shownWebShortcut, onOpen, onAdd, onEdit } = props
+  const { shortcuts, target, skills, shownWebShortcut, onOpen, onAdd, onEdit, frame } = props
   const { t } = useTranslation()
   const headingId = useId()
   const [menu, setMenu] = useState<{ shortcut: Shortcut; at: { x: number; y: number } } | null>(null)
@@ -86,10 +89,16 @@ export function ShortcutsCard(props: ShortcutsCardProps): ReactNode {
   }
 
   return (
-    <section className="shortcuts cf-tile cf-tile--card" aria-labelledby={headingId}>
+    <section
+      className="shortcuts cf-tile cf-tile--card"
+      aria-labelledby={headingId}
+      data-element={frame?.id}
+      style={frame?.style}
+      onContextMenu={frame?.onContextMenu}
+    >
       <div className="shortcuts__head">
         <h2 className="cf-heading" id={headingId}>
-          {t('shortcuts.heading')}
+          {frame?.title ?? t('shortcuts.heading')}
         </h2>
         <button
           type="button"
@@ -101,7 +110,7 @@ export function ShortcutsCard(props: ShortcutsCardProps): ReactNode {
           <Plus className="cf-icon" aria-hidden="true" />
         </button>
       </div>
-      {shortcuts.length > 0 && (
+      {shortcuts.length > 0 && !frame?.collapsed && (
         <ul className="shortcuts__list" aria-label={t('shortcuts.label')}>
           {shortcuts.map((shortcut, index) => {
             const missing = lacksSkill(shortcut, skills)

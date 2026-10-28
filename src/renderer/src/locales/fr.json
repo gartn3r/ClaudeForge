@@ -475,6 +475,35 @@
       "web-page": "Page web",
       "action": "Action"
     },
+    "own": {
+      "titleBar": "Barre de titre",
+      "explorer": "Explorateur",
+      "shortcuts": "Raccourcis",
+      "sessions": "Sessions",
+      "extensions": "Extensions",
+      "terminalArea": "Zone des terminaux",
+      "rightPanel": "Right panel",
+      "mapTab": "Map"
+    },
+    "mark": "Mis à jour",
+    "card": {
+      "new": "Nouvelle card",
+      "empty": "Rien ici pour l’instant. Clic droit pour ajouter un contenu."
+    },
+    "menuNew": "Nouveau menu",
+    "menuEmpty": "Rien ici pour l’instant. Clic droit sur le menu pour ajouter un lien ou une action.",
+    "create": {
+      "panel-tab": "Nouveau Panel tab",
+      "card": "Nouvelle card",
+      "menu": "Nouveau menu",
+      "inProject": "Dans {{project}}.",
+      "title": "Titre",
+      "name": "Identifiant",
+      "nameHint": "Unique dans le Project : c’est le nom que Claude utilise pour y écrire.",
+      "action": "Créer"
+    },
+    "restoreDefault": "Disposition par défaut",
+    "restoreDefaultHint": "Rend aux panneaux et aux cards de ClaudeForge leur place, leur taille, leur titre et leurs couleurs, et affiche de nouveau chaque card et chaque menu. Rien n’est supprimé.",
     "menu": {
       "label": "Actions de {{name}}",
       "rename": "Renommer",
@@ -483,7 +512,11 @@
       "addItem": "Ajouter un contenu",
       "hide": "Masquer",
       "copyId": "Copier l’identifiant",
-      "close": "Fermer"
+      "close": "Fermer",
+      "collapse": "Replier",
+      "expand": "Déplier",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
     },
     "itemMenu": {
       "label": "Actions du contenu",
