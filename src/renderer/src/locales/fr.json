@@ -28,6 +28,7 @@
     "untitled": "Nouvelle Session",
     "openElsewhere": "Ouverte ailleurs",
     "openElsewhereTooltip": "Ouverte ailleurs. Elle pourra être reprise ici une fois terminée.",
+    "folderMissing": "Son dossier n’existe plus, elle ne peut donc pas être reprise ici : {{folder}}",
     "activity": {
       "now": "maintenant",
       "minutes": "{{n}} min",
@@ -181,6 +182,7 @@
     "openFolder": "Ouvrir un dossier",
     "exited": "Claude Code s'est arrêté avec le code {{code}}.",
     "failed": "Claude Code n'a pas pu démarrer dans ce dossier.",
+    "folderMissing": "Claude Code ne peut pas démarrer : ce dossier n’existe plus : {{folder}}",
     "typed": {
       "label": "Tapée, non envoyée",
       "ticket": "Prêt à démarrer <b>{{ticket}}</b> de <m>{{map}}</m>. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.",

@@ -550,7 +550,11 @@ body {
 }
 .explorer__row--hidden .cf-row__title,
 .explorer__row--hidden .cf-row__sub,
-.explorer__row--hidden .cf-row__meta {
+.explorer__row--hidden .cf-row__meta,
+.explorer__row--missing .cf-row__title,
+.explorer__row--missing .cf-row__sub,
+.explorer__row--missing .cf-row__meta,
+.explorer__row--missing .cf-status {
   color: var(--text-faint);
 }
 .explorer__rename {

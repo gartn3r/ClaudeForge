@@ -28,6 +28,7 @@
     "untitled": "New Session",
     "openElsewhere": "Open elsewhere",
     "openElsewhereTooltip": "Open elsewhere. It can be resumed here once it ends.",
+    "folderMissing": "Its folder no longer exists, so it cannot be resumed here: {{folder}}",
     "activity": {
       "now": "now",
       "minutes": "{{n}} min",
@@ -181,6 +182,7 @@
     "openFolder": "Open folder",
     "exited": "Claude Code exited with code {{code}}.",
     "failed": "Claude Code could not start in this folder.",
+    "folderMissing": "Claude Code cannot start: this folder no longer exists: {{folder}}",
     "typed": {
       "label": "Typed, not sent",
       "ticket": "Ready to start <b>{{ticket}}</b> from <m>{{map}}</m>. Check the command below, then press Enter.",

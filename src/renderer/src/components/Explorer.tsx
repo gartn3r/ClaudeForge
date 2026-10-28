@@ -3,6 +3,7 @@ import {
   EyeOff,
   ExternalLink,
   Folder,
+  FolderX,
   GitBranch,
   GitFork,
   History,
@@ -127,12 +128,14 @@ export function Explorer({
     startNew: (project) => onStartSession(project, { kind: 'new' })
   }
 
-  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends.
+  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends,
+  // and one whose folder is gone has nowhere to run.
   const startItem = (session: SessionSummary, project: string, kind: 'resume' | 'fork', icon: LucideIcon): MenuItem => ({
     label: t(`explorer.${kind}`),
     icon,
-    disabled: session.state !== 'past',
-    disabledReason: t('explorer.openElsewhereTooltip'),
+    disabled: session.state !== 'past' || session.folderMissing,
+    disabledReason:
+      session.state !== 'past' ? t('explorer.openElsewhereTooltip') : t('explorer.folderMissing', { folder: session.cwd }),
     onSelect: () => onStartSession(project, { kind, sessionId: session.id })
   })
 
@@ -251,11 +254,23 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
   const external = session.state === 'external'
   const renaming = actions.renaming === session.id
   const title = session.title ?? t('explorer.untitled')
-  // Rows never show ids: the tooltip carries the Session id under the title or the External notice.
-  const tooltip = `${external ? t('explorer.openElsewhereTooltip') : title}\n${session.id}`
+  // A Session whose folder is gone is greyed out, and says why in its tooltip.
+  const missing = !external && session.folderMissing
+  // Rows never show ids: the tooltip carries the Session id under the title or the notice.
+  const notice = external
+    ? t('explorer.openElsewhereTooltip')
+    : missing
+      ? t('explorer.folderMissing', { folder: session.cwd })
+      : title
+  const tooltip = `${notice}\n${session.id}`
   const link = session.wayfinder
   const hasSubtitle = external || session.worktree !== null || link !== null
-  const classes = ['cf-row', hasSubtitle && 'cf-row--two', session.hidden && 'explorer__row--hidden'].filter(Boolean)
+  const classes = [
+    'cf-row',
+    hasSubtitle && 'cf-row--two',
+    session.hidden && 'explorer__row--hidden',
+    missing && 'explorer__row--missing'
+  ].filter(Boolean)
   // An External session runs elsewhere: it cannot be displayed here. Clicks and keys meant
   // for the row's own controls (its menu button, the rename field) do not display it either.
   const displayHandlers = external
@@ -287,6 +302,10 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
       {external ? (
         <span className="cf-status cf-status--external">
           <ExternalLink className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </span>
+      ) : missing ? (
+        <span className="cf-status">
+          <FolderX className="cf-icon cf-icon--sm" aria-hidden="true" />
         </span>
       ) : (
         <span className="cf-status">
