@@ -2,7 +2,6 @@
 // It answers the `mcp` and `plugin` subcommands ClaudeForge runs from the fake environment's copy of
 // test/fixtures/claude, which its changes change, and runs a scriptable stand-in for Claude Code's
 // prompt that sends the status signals Claude Code sends its terminal.
-import { randomUUID } from 'node:crypto'
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, relative } from 'node:path'
 import { record } from './record.mjs'
@@ -346,7 +345,7 @@ function submit() {
     work(300, fail)
   } else if (text === '/clear' || resumed) {
     // Into another Session: a new one, or the one named. Its history starts with the next prompt.
-    sessionId = resumed ?? randomUUID()
+    sessionId = resumed ?? crypto.randomUUID()
     register()
     write(`${resumed ? 'Resumed' : 'Cleared'}: ${sessionId}\r\n> `)
   } else if (text.startsWith('/wayfinder ')) {
@@ -390,10 +389,12 @@ process.stdin.on('end', exit)
 // Only now that it reads its terminal in raw mode, so nothing typed after the banner is lost. Like
 // Claude Code, it asks about status reports as it starts: before its banner, so the terminal's answer
 // comes before anything the user types once the banner shows.
-register()
 if (reportsStatus) write('\x1b]7501;?\x1b\\')
 write(`Fake Claude Code\r\nTerminal ${size()}\r\n> `)
 // Like Claude Code's `--prefill`, its prompt starts holding that text, unsent.
 prompt = optionValue('--prefill') ?? ''
 write(prompt)
 process.stdout.on('resize', () => write(`\r\nTerminal resized to ${size()}\r\n> ${prompt.replaceAll('\n', '\r\n  ')}`))
+// Registered last: writing the entry between the support probe and the first read of the terminal
+// would let keys typed before the banner be read ahead of the terminal's answer.
+register()
