@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CreateElementDialog, suggestedName } from '../../src/renderer/src/elements/CreateElementDialog'
+import { NewPanelTabDialog, suggestedName } from '../../src/renderer/src/elements/NewPanelTabDialog'
 import { RightPanel } from '../../src/renderer/src/elements/RightPanel'
 import { DEFAULT_MAP_TAB, rightPanelState } from '../../src/renderer/src/elements/right-panel'
 import { CONTENT_KINDS, PROPERTIES_TAKEN, type ContentItem, type ElementView } from '../../src/shared/elements'
@@ -67,8 +67,8 @@ describe('the Right panel', () => {
 
   it('marks a Panel tab whose content changed while not on show', async () => {
     const [, , marked] = tabsOf(await panel(null))
-    expect(marked).toContain('aria-label="Changed"')
-    expect(tabsOf(await panel(null, 'fr'))[2]).toContain('aria-label="Modifié"')
+    expect(marked).toContain('aria-label="Updated"')
+    expect(tabsOf(await panel(null, 'fr'))[2]).toContain('aria-label="Mis à jour"')
   })
 
   it('shows a Created Panel tab’s title, identifier and Content items', async () => {
@@ -104,9 +104,9 @@ describe('the Right panel', () => {
   })
 })
 
-describe('the dialog that creates an Element', () => {
-  it('asks for a title and an identifier under the kind’s prefix', async () => {
-    const html = await render(<CreateElementDialog kind="panel-tab" project={project} onDone={() => undefined} />)
+describe('the dialog that creates a Panel tab', () => {
+  it('asks for a title and an identifier under the Panel tab prefix', async () => {
+    const html = await render(<NewPanelTabDialog project={project} onDone={() => undefined} />)
     expect(html).toContain('New Panel tab')
     expect(html).toContain('In recipe-box.')
     expect(html).toContain('Title')
@@ -116,8 +116,8 @@ describe('the dialog that creates an Element', () => {
   })
 
   it('speaks French', async () => {
-    const html = await render(<CreateElementDialog kind="panel-tab" project={project} onDone={() => undefined} />, 'fr')
-    expect(html).toContain('Nouveau Panel tab')
+    const html = await render(<NewPanelTabDialog project={project} onDone={() => undefined} />, 'fr')
+    expect(html).toContain('Nouvel onglet de panneau')
     expect(html).toContain('Identifiant')
     expect(html).toContain('Créer')
   })

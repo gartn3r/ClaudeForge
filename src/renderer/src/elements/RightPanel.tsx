@@ -1,17 +1,17 @@
 import { Map as MapIcon, PanelRightClose, PanelRightOpen, Plus } from 'lucide-react'
-import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { ContentItem, ElementView } from '../../../shared/elements'
-import { api, onEvent } from '../api'
+import { api } from '../api'
 import { IconButton } from '../components/IconButton'
-import { samePath } from '../terminal/typing'
 import { ContentItemView, type ItemHandlers } from './ContentItemView'
-import { CreateElementDialog } from './CreateElementDialog'
 import { ContentItemMenu, ElementMenu } from './ElementMenus'
+import { NewPanelTabDialog } from './NewPanelTabDialog'
 import { MAP_TAB, rightPanelState, tabToBringForward, tabsToMarkSeen, type RightPanelState } from './right-panel'
 
 /** A Panel tab's name: its title, the Map Panel tab's own words by default. */
-export function useTabName(): (tab: ElementView) => string {
+function useTabName(): (tab: ElementView) => string {
   const { t } = useTranslation()
   return (tab) => tab.properties.title ?? (tab.id === MAP_TAB ? t('map.label') : tab.id)
 }
@@ -37,33 +37,6 @@ const coloursOf = ({ properties }: ElementView): CSSProperties => ({
   ...(properties.textColor ? { color: properties.textColor } : {}),
   ...(properties.backgroundColor ? { background: properties.backgroundColor } : {})
 })
-
-/**
- * ClaudeForge's own Elements and the Project's Created Elements, as the contract lists them, listed
- * again whenever the backend says they changed; null until the Project's are read.
- */
-export function useElements(project: string): ElementView[] | null {
-  const [listed, setListed] = useState<{ project: string; elements: ElementView[] } | null>(null)
-  const [revision, setRevision] = useState(0)
-  useEffect(
-    () =>
-      onEvent('elements.changed', (change) => {
-        if (change.project === null || samePath(change.project, project)) setRevision((each) => each + 1)
-      }),
-    [project]
-  )
-  useEffect(() => {
-    let current = true
-    api.elements.request({ op: 'list', project }).then(
-      (result) => current && result.ok && setListed({ project, elements: result.elements }),
-      () => undefined
-    )
-    return () => {
-      current = false
-    }
-  }, [project, revision])
-  return listed?.project === project ? listed.elements : null
-}
 
 interface UseRightPanel {
   project: string
@@ -104,10 +77,15 @@ export function useRightPanel({ project, elements, hasMap, layoutCollapsed, expa
     setBroughtForward(forwardKey)
     if (forward) setChosen({ project, id: forward })
   }
+  // It expands the panel the user collapsed, once: collapsing it again holds.
+  const expandedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (forward && layoutCollapsed) expand()
-  }, [forward, layoutCollapsed, expand])
+    if (!forwardKey || expandedFor.current === forwardKey) return
+    expandedFor.current = forwardKey
+    if (layoutCollapsed) expand()
+  }, [forwardKey, layoutCollapsed, expand])
 
+  // Said again with each new listing that still shows it, so a change made meanwhile leaves no mark.
   const seen = tabsToMarkSeen(state, { collapsed })
     .map((tab) => tab.id)
     .join(' ')
@@ -115,7 +93,7 @@ export function useRightPanel({ project, elements, hasMap, layoutCollapsed, expa
     for (const element of seen ? seen.split(' ') : []) {
       void api.elements.request({ op: 'seen', project, element }).catch(() => undefined)
     }
-  }, [project, seen])
+  }, [project, seen, elements])
 
   return {
     state,
@@ -125,9 +103,8 @@ export function useRightPanel({ project, elements, hasMap, layoutCollapsed, expa
   }
 }
 
-type OpenMenu =
-  | { element: ElementView; item?: undefined; at: { x: number; y: number } }
-  | { element: ElementView; item: ContentItem; at: { x: number; y: number } }
+/** The right-click menu open: a Panel tab's, or one of its Content items'. */
+type OpenMenu = { element: ElementView; item: ContentItem | null; at: { x: number; y: number } }
 
 interface RightPanelProps {
   state: RightPanelState
@@ -151,10 +128,10 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
   const [menu, setMenu] = useState<OpenMenu | null>(null)
   const [creating, setCreating] = useState(false)
   const { shown } = state
-  const openMenu = (event: MouseEvent, element: ElementView, item?: ContentItem): void => {
+  const openMenu = (event: MouseEvent, element: ElementView, item: ContentItem | null = null): void => {
     event.preventDefault()
     event.stopPropagation()
-    setMenu({ element, item, at: { x: event.clientX, y: event.clientY } } as OpenMenu)
+    setMenu({ element, item, at: { x: event.clientX, y: event.clientY } })
   }
   const closeMenu = (): void => setMenu(null)
 
@@ -204,13 +181,17 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
           )}
         </div>
       )}
+      {/* Over the window, not inside the column: the panel's landmark holds only what it shows. */}
       {menu &&
-        (menu.item ? (
-          <ContentItemMenu element={menu.element} item={menu.item} at={menu.at} onClose={closeMenu} />
-        ) : (
-          <ElementMenu element={menu.element} at={menu.at} onClose={closeMenu} />
-        ))}
-      {creating && <CreateElementDialog kind="panel-tab" project={project} onDone={() => setCreating(false)} />}
+        createPortal(
+          menu.item ? (
+            <ContentItemMenu element={menu.element} item={menu.item} at={menu.at} onClose={closeMenu} />
+          ) : (
+            <ElementMenu element={menu.element} at={menu.at} onClose={closeMenu} />
+          ),
+          document.body
+        )}
+      {creating && createPortal(<NewPanelTabDialog project={project} onDone={() => setCreating(false)} />, document.body)}
     </>
   )
 }
@@ -218,7 +199,7 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
 interface PanelTabViewProps {
   tab: ElementView
   onType: ItemHandlers['type']
-  onMenu(event: MouseEvent, element: ElementView, item?: ContentItem): void
+  onMenu(event: MouseEvent, element: ElementView, item?: ContentItem | null): void
 }
 
 /** A Created Panel tab: its title and identifier, then its Content items, every kind shown in full. */

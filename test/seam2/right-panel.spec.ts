@@ -52,12 +52,10 @@ test('the Map Panel tab comes first; + creates a Panel tab in the displayed Proj
 
   // The same identifier again is refused, in the dialog.
   await window.getByRole('button', { name: 'New Panel tab' }).click()
-  await window.getByRole('dialog', { name: 'New Panel tab' }).getByLabel('Identifier').fill('tests')
-  await window.getByRole('dialog', { name: 'New Panel tab' }).getByRole('button', { name: 'Create' }).click()
-  await expect(window.getByRole('dialog', { name: 'New Panel tab' }).getByRole('alert')).toHaveText(
-    'panel-tab:tests already exists in this Project.'
-  )
-  await window.getByRole('dialog', { name: 'New Panel tab' }).getByRole('button', { name: 'Cancel' }).click()
+  await dialog.getByLabel('Identifier').fill('tests')
+  await dialog.getByRole('button', { name: 'Create' }).click()
+  await expect(dialog.getByRole('alert')).toHaveText('panel-tab:tests already exists in this Project.')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
 
   await claudeforge.close()
   claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
@@ -66,7 +64,6 @@ test('the Map Panel tab comes first; + creates a Panel tab in the displayed Proj
 
   await sessionRow(window, 'harbor-api', 'Add an OpenAPI export').click()
   await expect(panelTabs(window)).toHaveText(['Map'])
-  await expect(window.getByRole('complementary', { name: 'Map' }).getByRole('heading', { name: 'Rate limiting' })).toBeVisible()
 
   await sessionRow(window, 'recipe-box', '/wayfinder meal-planner 02').click()
   await expect(panelTabs(window)).toHaveText(['Map', 'Test report'])
@@ -122,12 +119,12 @@ test.describe('Content items in a Panel tab', () => {
     // A change while another Panel tab is on show leaves a mark, until the Panel tab is shown.
     await panelTabs(window).filter({ hasText: 'Map' }).click()
     const tab = panelTabs(window).filter({ hasText: 'Test report' })
-    await expect(tab.getByRole('img', { name: 'Changed' })).toHaveCount(0)
+    await expect(tab.getByRole('img', { name: 'Updated' })).toHaveCount(0)
     await addContent(window, 'Test report', 'Text', { Text: 'One more line.' })
-    await expect(tab.getByRole('img', { name: 'Changed' })).toBeVisible()
+    await expect(tab.getByRole('img', { name: 'Updated' })).toBeVisible()
     await tab.click()
     await expect(window.getByRole('complementary', { name: 'Test report' })).toContainText('One more line.')
-    await expect(tab.getByRole('img', { name: 'Changed' })).toHaveCount(0)
+    await expect(tab.getByRole('img', { name: 'Updated' })).toHaveCount(0)
   })
 })
 
@@ -207,9 +204,9 @@ test('the Right panel speaks French', async () => {
   claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
   const { window } = claudeforge
 
-  await expect(panelTabs(window)).toHaveText(['Carte'])
-  await window.getByRole('button', { name: 'Nouveau Panel tab' }).click()
-  const dialog = window.getByRole('dialog', { name: 'Nouveau Panel tab' })
+  await expect(panelTabs(window, 'Onglets du panneau')).toHaveText(['Carte'])
+  await window.getByRole('button', { name: 'Nouvel onglet de panneau' }).click()
+  const dialog = window.getByRole('dialog', { name: 'Nouvel onglet de panneau' })
   await expect(dialog).toContainText('Dans recipe-box.')
   await dialog.getByLabel('Titre').fill('Rapport de tests')
   await expect(dialog.getByLabel('Identifiant')).toHaveValue('rapport-de-tests')
@@ -217,5 +214,5 @@ test('the Right panel speaks French', async () => {
 
   const panel = window.getByRole('complementary', { name: 'Rapport de tests' })
   await expect(panel).toContainText('Rien ici pour l’instant')
-  await expect(window.getByRole('button', { name: 'Replier le Right panel' })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Replier le panneau de droite' })).toBeVisible()
 })

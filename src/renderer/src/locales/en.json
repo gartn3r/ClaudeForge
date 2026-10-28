@@ -465,25 +465,21 @@
     "label": "Right panel",
     "tabs": "Panel tabs",
     "new": "New Panel tab",
-    "changed": "Changed",
+    "changed": "Updated",
     "empty": "Nothing here yet. Right-click this Panel tab to add content, or ask Claude to fill it.",
     "collapse": "Collapse the Right panel",
     "expand": "Expand the Right panel",
-    "resize": "Resize the Right panel"
-  },
-  "elements": {
+    "resize": "Resize the Right panel",
     "create": {
-      "title": {
-        "panel-tab": "New Panel tab",
-        "card": "New card",
-        "menu": "New menu"
-      },
+      "title": "New Panel tab",
       "in": "In {{project}}.",
       "titleLabel": "Title",
       "nameLabel": "Identifier",
       "nameHint": "Unique in this Project: the name Claude uses to write to it.",
       "create": "Create"
-    },
+    }
+  },
+  "elements": {
     "item": {
       "typeHint": "Types this command without sending it",
       "missing": "missing",

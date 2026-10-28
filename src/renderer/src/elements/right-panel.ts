@@ -2,10 +2,10 @@
 // own (CONTEXT.md, Right panel): pure rules over the Elements the contract lists for the displayed
 // Project.
 
-import { PROPERTIES_TAKEN, defaultOwnProperties, inOrder, type ElementView } from '../../../shared/elements'
+import { PROPERTIES_TAKEN, defaultOwnProperties, inOrder, type ElementView, type OwnElementId } from '../../../shared/elements'
 
 /** The first Panel tab, ClaudeForge's own: it shows what the Map panel always showed. */
-export const MAP_TAB = 'panel-tab:map'
+export const MAP_TAB = 'panel-tab:map' satisfies OwnElementId
 
 /** The Map Panel tab as the Default layout has it, shown while the Elements are still being read. */
 export const DEFAULT_MAP_TAB: ElementView = {

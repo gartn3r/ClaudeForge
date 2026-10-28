@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ELEMENT_NAME_MAX_LENGTH, ELEMENT_TITLE_MAX_LENGTH, isElementName, type CreatedElementKind } from '../../../shared/elements'
+import { ELEMENT_NAME_MAX_LENGTH, ELEMENT_TITLE_MAX_LENGTH, isElementName } from '../../../shared/elements'
 import { folderName } from '../components/ExtensionsMenu'
 import { FormDialog, useSubmit } from './ElementMenus'
 
@@ -15,19 +15,20 @@ export const suggestedName = (title: string): string =>
     .slice(0, ELEMENT_NAME_MAX_LENGTH)
     .replace(/-+$/, '')
 
-interface CreateElementDialogProps {
-  kind: CreatedElementKind
-  /** The displayed Project, which the Created Element belongs to. */
+interface NewPanelTabDialogProps {
+  /** The displayed Project, which the Panel tab belongs to. */
   project: string
   /** Once it is created (it then comes to the front on its own), or the user cancelled. */
   onDone(): void
 }
 
+const KIND = 'panel-tab'
+
 /**
- * The **+** that creates an Element by hand: its title, and the identifier Claude names it by,
- * unique within the Project. The identifier follows the title until the user types one.
+ * The Right panel's **+**: a Panel tab's title, and the identifier Claude names it by, unique within
+ * the Project. The identifier follows the title until the user types one.
  */
-export function CreateElementDialog({ kind, project, onDone }: CreateElementDialogProps): ReactNode {
+export function NewPanelTabDialog({ project, onDone }: NewPanelTabDialogProps): ReactNode {
   const { t } = useTranslation()
   const id = useId()
   const [title, setTitle] = useState('')
@@ -36,22 +37,22 @@ export function CreateElementDialog({ kind, project, onDone }: CreateElementDial
   const { busy, refusal, send, setRefusal } = useSubmit(onDone)
 
   const submit = (): void => {
-    if (!isElementName(kind, name)) return setRefusal(t('elements.refusal.bad-name'))
-    send({ op: 'create', project, kind, name, ...(title.trim() ? { title: title.trim() } : {}) })
+    if (!isElementName(KIND, name)) return setRefusal(t('elements.refusal.bad-name'))
+    send({ op: 'create', project, kind: KIND, name, ...(title.trim() ? { title: title.trim() } : {}) })
   }
 
   return (
     <FormDialog
-      title={t(`elements.create.title.${kind}`)}
-      submitLabel={t('elements.create.create')}
+      title={t('rightPanel.create.title')}
+      submitLabel={t('rightPanel.create.create')}
       error={refusal}
       busy={busy}
       onSubmit={submit}
       onCancel={onDone}
     >
-      <p className="cf-muted element-dialog__lead">{t('elements.create.in', { project: folderName(project) })}</p>
+      <p className="cf-muted element-dialog__lead">{t('rightPanel.create.in', { project: folderName(project) })}</p>
       <label className="element-dialog__field">
-        <span>{t('elements.create.titleLabel')}</span>
+        <span>{t('rightPanel.create.titleLabel')}</span>
         <input
           className="extdialog__input"
           value={title}
@@ -61,9 +62,9 @@ export function CreateElementDialog({ kind, project, onDone }: CreateElementDial
         />
       </label>
       <div className="element-dialog__field">
-        <label htmlFor={`${id}-name`}>{t('elements.create.nameLabel')}</label>
+        <label htmlFor={`${id}-name`}>{t('rightPanel.create.nameLabel')}</label>
         <span className="element-dialog__prefixed">
-          <span className="cf-mono element-dialog__prefix" aria-hidden="true">{`${kind}:`}</span>
+          <span className="cf-mono element-dialog__prefix" aria-hidden="true">{`${KIND}:`}</span>
           <input
             id={`${id}-name`}
             className="cf-mono"
@@ -75,7 +76,7 @@ export function CreateElementDialog({ kind, project, onDone }: CreateElementDial
           />
         </span>
         <span className="extdialog__hint" id={`${id}-hint`}>
-          {t('elements.create.nameHint')}
+          {t('rightPanel.create.nameHint')}
         </span>
       </div>
     </FormDialog>
