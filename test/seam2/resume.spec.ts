@@ -32,8 +32,8 @@ async function launch(): Promise<Page> {
 const row = (window: Page, project: FixtureProject, title: string): Locator =>
   window
     .getByRole('complementary', { name: 'Sessions' })
-    .getByRole('list', { name: project })
-    .getByRole('listitem')
+    .getByRole('group', { name: project })
+    .getByRole('treeitem')
     .filter({ hasText: title })
 
 test('resumes a past Session of another Project in a new tab, and that Project becomes the active one', async () => {

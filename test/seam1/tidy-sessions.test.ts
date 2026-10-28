@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, open, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend } from '../../src/backend'
@@ -9,6 +9,9 @@ import { startBackend } from './backend'
 const OPENAPI_EXPORT = '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11'
 /** Runs in another terminal: External. */
 const RATE_LIMITER = '9c1e4b2a-6d3f-4e8b-8a17-3b5d2e9f0c42'
+const AUDIT_LOG = 'c3d2a8f1-1b7e-4c59-9e64-7f0a1d2b3c4d'
+const MEAL_PLANNER = '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7'
+const UNKNOWN = '00000000-0000-4000-8000-000000000000'
 
 describe('tidying the explorer', () => {
   let env: FakeEnvironment
@@ -99,7 +102,7 @@ describe('tidying the explorer', () => {
       ])
       const backend = start()
 
-      expect(await backend.api.sessions.delete(OPENAPI_EXPORT)).toEqual({ deleted: true })
+      expect(await backend.api.sessions.delete([OPENAPI_EXPORT])).toEqual({ [OPENAPI_EXPORT]: { deleted: true } })
 
       expect((await env.recycled()).sort()).toEqual(
         [
@@ -119,7 +122,7 @@ describe('tidying the explorer', () => {
         pushed.push(projects.some((project) => project.sessions.some((session) => session.id === OPENAPI_EXPORT)))
       )
 
-      await backend.api.sessions.delete(OPENAPI_EXPORT)
+      await backend.api.sessions.delete([OPENAPI_EXPORT])
 
       expect(pushed).toEqual([false])
     })
@@ -131,7 +134,7 @@ describe('tidying the explorer', () => {
       const historyFile = join(historyFolder(env.projects['harbor-api']), `${OPENAPI_EXPORT}.jsonl`)
       const history = await readFile(historyFile, 'utf8')
 
-      await backend.api.sessions.delete(OPENAPI_EXPORT)
+      await backend.api.sessions.delete([OPENAPI_EXPORT])
       await writeFile(historyFile, history)
 
       expect(await sessionOf(start(), OPENAPI_EXPORT)).toMatchObject({ title: 'Add an OpenAPI export', hidden: false })
@@ -140,7 +143,7 @@ describe('tidying the explorer', () => {
     it('is refused for an External session, whose history stays where it is', async () => {
       const backend = start()
 
-      expect(await backend.api.sessions.delete(RATE_LIMITER)).toEqual({ deleted: false, reason: 'external' })
+      expect(await backend.api.sessions.delete([RATE_LIMITER])).toEqual({ [RATE_LIMITER]: { deleted: false, reason: 'external' } })
 
       expect(await env.recycled()).toEqual([])
       expect((await sessionOf(backend, RATE_LIMITER))?.state).toBe('external')
@@ -149,11 +152,46 @@ describe('tidying the explorer', () => {
     it('is refused for a Session the catalog does not know', async () => {
       const backend = start()
 
-      expect(await backend.api.sessions.delete('00000000-0000-4000-8000-000000000000')).toEqual({
-        deleted: false,
-        reason: 'unknown'
-      })
+      expect(await backend.api.sessions.delete([UNKNOWN])).toEqual({ [UNKNOWN]: { deleted: false, reason: 'unknown' } })
       expect(await env.recycled()).toEqual([])
+    })
+
+    it('deletes each Session of a batch on its own: one whose files are held open fails, the others still go', async () => {
+      const harbor = historyFolder(env.projects['harbor-api'])
+      // A subagent transcript held open, as an editor would: Windows refuses to move its folder.
+      await mkdir(join(harbor, AUDIT_LOG, 'subagents'), { recursive: true })
+      const transcript = join(harbor, AUDIT_LOG, 'subagents', 'agent-a1.jsonl')
+      await writeFile(transcript, '')
+      const held = await open(transcript)
+      const backend = start()
+      const pushed: string[][] = []
+      backend.on('sessions.changed', (projects) =>
+        pushed.push(projects.flatMap((project) => project.sessions.map((session) => session.id)))
+      )
+      await backend.api.sessions.setHidden(MEAL_PLANNER, true)
+      pushed.length = 0
+
+      try {
+        expect(await backend.api.sessions.delete([OPENAPI_EXPORT, AUDIT_LOG, RATE_LIMITER, MEAL_PLANNER])).toEqual({
+          [OPENAPI_EXPORT]: { deleted: true },
+          [AUDIT_LOG]: { deleted: false, reason: 'failed' },
+          [RATE_LIMITER]: { deleted: false, reason: 'external' },
+          [MEAL_PLANNER]: { deleted: true }
+        })
+      } finally {
+        await held.close()
+      }
+
+      expect(await env.recycled()).toEqual([
+        join(harbor, `${OPENAPI_EXPORT}.jsonl`),
+        join(historyFolder(env.projects['recipe-box']), `${MEAL_PLANNER}.jsonl`)
+      ])
+      // One push once the whole batch is done, without the deleted Sessions.
+      expect(pushed).toHaveLength(1)
+      expect(pushed[0]).not.toContain(OPENAPI_EXPORT)
+      expect(pushed[0]).not.toContain(MEAL_PLANNER)
+      expect(pushed[0]).toEqual(expect.arrayContaining([AUDIT_LOG, RATE_LIMITER]))
+      expect(JSON.stringify((await backend.api.appState.read()).sessions)).not.toContain(MEAL_PLANNER)
     })
   })
 })

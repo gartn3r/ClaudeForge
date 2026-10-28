@@ -11,6 +11,7 @@ import type {
   ClaudeCodeStatus,
   EventName,
   HostedSession,
+  SessionDeletion,
   TerminalSize,
   WindowNotification
 } from '../shared/api'
@@ -240,12 +241,20 @@ export function createBackend(options: BackendOptions): Backend {
       list: () => sessions.list(),
       rename: (id, title) => tidySession(id, { title }),
       setHidden: (id, hidden) => tidySession(id, { hidden }),
-      delete: async (id) => {
+      delete: async (ids) => {
+        const deletions: Record<string, SessionDeletion> = {}
         try {
-          const deletion = await sessions.delete(id, options.trashItem)
+          for (const id of ids) {
+            try {
+              deletions[id] = await sessions.delete(id, options.trashItem)
+            } catch {
+              deletions[id] = { deleted: false, reason: 'failed' }
+            }
+          }
           // Forgotten, so a Session restored from the Recycle Bin comes back as Claude Code left it.
-          if (deletion.deleted) await writeAppState({ sessions: { [id]: null } })
-          return deletion
+          const deleted = ids.filter((id) => deletions[id]?.deleted)
+          if (deleted.length > 0) await writeAppState({ sessions: Object.fromEntries(deleted.map((id) => [id, null])) })
+          return deletions
         } finally {
           // Even a delete that failed midway (a file held open) may have moved some files.
           await sessions.refresh()

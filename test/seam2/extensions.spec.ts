@@ -78,8 +78,8 @@ test('This Project follows the displayed Session', async () => {
 
   await window
     .getByRole('complementary', { name: 'Sessions' })
-    .getByRole('list', { name: 'harbor-api' })
-    .getByRole('listitem')
+    .getByRole('group', { name: 'harbor-api' })
+    .getByRole('treeitem')
     .filter({ hasText: 'Paginate the audit log endpoint with cursors' })
     .click()
 

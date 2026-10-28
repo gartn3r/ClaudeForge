@@ -533,6 +533,12 @@ body {
 /* Explorer: tidying Sessions (row menu, rename field, hidden Sessions, Recycle Bin dialog) */
 .explorer__projects .cf-row {
   position: relative;
+  /* Shift+click picks a range of rows, not their text. */
+  user-select: none;
+}
+/* Picked rows, in brass, apart from the displayed Session's raised ground. */
+.explorer__projects .cf-row[aria-selected="true"] {
+  background: var(--selection);
 }
 .explorer__row-actions {
   position: absolute;
@@ -640,6 +646,13 @@ dialog.cf-dialog::backdrop {
 }
 .confirm-dialog__error {
   color: var(--danger);
+}
+.confirm-dialog__sessions {
+  max-height: 160px;
+  margin: 0;
+  padding-left: var(--space-4);
+  overflow-y: auto;
+  color: var(--text);
 }
 .close-warning__sessions {
   margin: 0;

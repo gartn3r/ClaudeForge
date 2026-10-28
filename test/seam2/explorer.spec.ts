@@ -21,7 +21,7 @@ const OPEN_ELSEWHERE = 'Open elsewhere. It can be resumed here once it ends.'
 test('lists every Session by Project, newest first, with worktrees folded and External sessions marked', async () => {
   claudeforge = await launchClaudeForge(env)
   const explorer = claudeforge.window.getByRole('complementary', { name: 'Sessions' })
-  const sessionsOf = (project: string): Locator => explorer.getByRole('list', { name: project }).getByRole('listitem')
+  const sessionsOf = (project: string): Locator => explorer.getByRole('group', { name: project }).getByRole('treeitem')
 
   await expect(explorer.getByRole('heading')).toHaveText(['harbor-api', 'recipe-box'])
   await expect(sessionsOf('harbor-api')).toHaveText([
@@ -36,14 +36,15 @@ test('lists every Session by Project, newest first, with worktrees folded and Ex
   ])
 
   const external = sessionsOf('harbor-api').first()
-  await expect(external).toHaveAttribute('aria-disabled', 'true')
+  // It can be picked, not displayed: out of the Tab order.
+  await expect(external).toHaveAttribute('tabindex', '-1')
   await expect(external).toHaveAttribute('title', new RegExp(`^${OPEN_ELSEWHERE}\\n9c1e4b2a-6d3f-4e8b-8a17-3b5d2e9f0c42`))
 
   // Ids stay out of the rows, in the tooltip.
   const past = sessionsOf('harbor-api').last()
   await expect(past).not.toContainText('5b0c7f0e')
   await expect(past).toHaveAttribute('title', /5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11/)
-  await expect(past).not.toHaveAttribute('aria-disabled', 'true')
+  await expect(past).toHaveAttribute('tabindex', '0')
 })
 
 test('updates the explorer by itself when a Session starts and when an External session ends', async () => {
@@ -56,12 +57,12 @@ test('updates the explorer by itself when a Session starts and when an External 
   ])
 
   await expect(explorer.getByRole('heading')).toHaveText(['dotfiles', 'harbor-api', 'recipe-box'])
-  await expect(explorer.getByRole('list', { name: 'dotfiles' })).toHaveText(/Sync my dotfiles/)
+  await expect(explorer.getByRole('group', { name: 'dotfiles' })).toHaveText(/Sync my dotfiles/)
 
   // The External session's claude exits, removing its registry entry.
   await rm(env.liveSessions['harbor-api/rate-limiter']!)
 
-  const rateLimiter = explorer.getByRole('list', { name: 'harbor-api' }).getByRole('listitem').first()
-  await expect(rateLimiter).not.toHaveAttribute('aria-disabled', 'true')
+  const rateLimiter = explorer.getByRole('group', { name: 'harbor-api' }).getByRole('treeitem').first()
+  await expect(rateLimiter).toHaveAttribute('tabindex', '0')
   await expect(rateLimiter).not.toContainText('Open elsewhere')
 })

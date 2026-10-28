@@ -253,10 +253,13 @@ export interface SessionSummary {
   wayfinder: WayfinderLink | null
 }
 
-/** What came of asking to delete a Session: only a past one can be, so nothing running is ever lost. */
+/**
+ * What came of asking to delete a Session: only a past one can be, so nothing running is ever lost.
+ * `failed` when Windows refused to move one of its files (one held open), leaving it in the catalog.
+ */
 export type SessionDeletion =
   | { deleted: true }
-  | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' }
+  | { deleted: false; reason: Exclude<SessionState, 'past'> | 'unknown' | 'failed' }
 
 /** A Project and its Sessions, the most recently active first. */
 export interface ProjectSessions {
@@ -556,8 +559,11 @@ export interface BackendApi {
     rename(id: string, title: string): Promise<void>
     /** Hides the Session from the explorer's list, or shows it again. */
     setHidden(id: string, hidden: boolean): Promise<void>
-    /** Moves a past Session's history files to the Windows Recycle Bin; refused for any other. */
-    delete(id: string): Promise<SessionDeletion>
+    /**
+     * Moves each past Session's history files to the Windows Recycle Bin; refused for any other.
+     * Each Session goes on its own, so one that fails does not stop the others. By id.
+     */
+    delete(ids: string[]): Promise<Record<string, SessionDeletion>>
   }
   system: {
     info(): Promise<SystemInfo>

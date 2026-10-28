@@ -52,8 +52,20 @@
       "title": "Move this Session to the Recycle Bin?",
       "body": "\"{{title}}\" and its history leave ClaudeForge and Claude Code. You can restore them from the Windows Recycle Bin.",
       "onlyPast": "Only a Session that has ended can be moved to the Recycle Bin.",
-      "gone": "This Session is no longer in Claude Code’s history.",
-      "failed": "ClaudeForge could not move its history to the Recycle Bin. Close anything that has its files open, then try again."
+      "failed": "ClaudeForge could not move its history to the Recycle Bin. Close anything that has its files open, then try again.",
+      "actionMany": "Move {{count}} Sessions to Recycle Bin",
+      "nonePast": "None of these Sessions has ended: only a Session that has ended can be moved to the Recycle Bin.",
+      "titleMany_one": "Move {{count}} Session to the Recycle Bin?",
+      "titleMany_other": "Move {{count}} Sessions to the Recycle Bin?",
+      "bodyMany_one": "This Session and its history leave ClaudeForge and Claude Code. You can restore them from the Windows Recycle Bin.",
+      "bodyMany_other": "These {{count}} Sessions and their histories leave ClaudeForge and Claude Code. You can restore them from the Windows Recycle Bin.",
+      "skipped_one": "{{count}} Session of the selection is still running, so it stays: only a Session that has ended can be moved to the Recycle Bin.",
+      "skipped_other": "{{count}} Sessions of the selection are still running, so they stay: only a Session that has ended can be moved to the Recycle Bin.",
+      "quoted": "\"{{title}}\"",
+      "failedMany_one": "ClaudeForge could not move the history of {{titles}} to the Recycle Bin. Close anything that has its files open, then try again.",
+      "failedMany_other": "ClaudeForge could not move the histories of {{titles}} to the Recycle Bin. Close anything that has their files open, then try again.",
+      "startedMany_one": "{{titles}} started running since, so it stays.",
+      "startedMany_other": "{{titles}} started running since, so they stay."
     }
   },
   "extensions": {
