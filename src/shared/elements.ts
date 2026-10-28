@@ -1,7 +1,8 @@
 // The Elements of the interface and their Content items (CONTEXT.md, Piloting; ADR 0007), and the
 // one contract the ClaudeForge CLI and the interface both go through to read and change them: a
 // request and its result, plain data that crosses IPC or a local channel as it is. This file holds
-// types and pure rules only, so the backend, the interface and the tests all share them.
+// types, pure rules and the English words the CLI answers refusals with, so the backend, the
+// interface and the tests all share them.
 
 import { PANEL_BOUNDS, type PanelId } from './api'
 import { hasForbiddenCharacter, isWebAddress, opensInBrowser } from './shortcuts'
@@ -258,11 +259,13 @@ export const elementId = (kind: CreatedElementKind, name: string): string => `${
 
 export const isOwnElement = (id: string): id is OwnElementId => (OWN_ELEMENTS as readonly string[]).includes(id)
 
+export const isCreatedKind = (kind: unknown): kind is CreatedElementKind => (CREATED_KINDS as readonly unknown[]).includes(kind)
+
 /** The kind and name of a Created Element's identifier; null for any other. */
 export function parseElementId(id: string): { kind: CreatedElementKind; name: string } | null {
   const [kind, name, ...rest] = id.split(':')
-  if (rest.length || !name || !(CREATED_KINDS as readonly string[]).includes(kind!)) return null
-  return { kind: kind as CreatedElementKind, name }
+  if (rest.length || !name || !isCreatedKind(kind)) return null
+  return { kind, name }
 }
 
 /** Whether a Created Element may take this name: not one an own Element's identifier holds (`panel-tab:map`). */
@@ -320,7 +323,7 @@ export function propertyValueRefusal(
 export type ItemField = 'id' | 'kind' | 'text' | 'title' | 'address' | 'path' | 'command'
 
 /** Whether a path is absolute, on Windows (`C:\…`, `\\server\…`) or elsewhere. */
-export const isAbsolutePath = (path: string): boolean => /^(?:[a-zA-Z]:[\\/]|\\\\[^\\]|\/)/.test(path)
+const isAbsolutePath = (path: string): boolean => /^(?:[a-zA-Z]:[\\/]|\\\\[^\\]|\/)/.test(path)
 
 /**
  * The first field of a Content item the contract refuses, or null when the item can be added. A

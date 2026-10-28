@@ -1,19 +1,19 @@
 import { unwatchFile, watchFile, type Stats } from 'node:fs'
 import { mkdir, open, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PANEL_BOUNDS, type AppState, type AppStatePatch, type BackendApi } from '../shared/api'
+import type { AppState, AppStatePatch, BackendApi } from '../shared/api'
 import {
   COLUMN_PANELS,
   CONTAINER_OF,
   CONTENT_KINDS,
   CONTENT_TAKEN,
-  CREATED_KINDS,
   OWN_CONTAINERS,
   OWN_ELEMENTS,
   PROPERTIES,
   PROPERTIES_TAKEN,
   defaultOwnProperties,
   elementId,
+  isCreatedKind,
   isElementName,
   isOwnElement,
   itemProblem,
@@ -40,6 +40,7 @@ import {
   type PropertyName,
   type Writer
 } from '../shared/elements'
+import { defaultAppState } from './app-state'
 import { pathKey } from './worktree'
 
 export const ELEMENTS_FILE = 'elements.json'
@@ -78,6 +79,9 @@ interface ElementsState {
 }
 
 const emptyState = (): ElementsState => ({ version: 1, own: {}, projects: {} })
+
+const findCreated = (elements: readonly StoredElement[], kind: CreatedElementKind, name: string): StoredElement | undefined =>
+  elements.find((each) => each.kind === kind && each.name === name)
 
 export interface ElementsOptions {
   /** ClaudeForge's own data folder. */
@@ -144,9 +148,9 @@ function readState(raw: unknown): ElementsState {
     for (const element of project.elements) {
       if (!isRecord(element)) continue
       const { kind, name, items, attention } = element
-      if (!(CREATED_KINDS as readonly unknown[]).includes(kind) || typeof name !== 'string') continue
-      const created = kind as CreatedElementKind
-      if (!isElementName(created, name) || elements.some((each) => each.kind === kind && each.name === name)) continue
+      if (!isCreatedKind(kind) || typeof name !== 'string') continue
+      const created = kind
+      if (!isElementName(created, name) || findCreated(elements, created, name)) continue
       const properties = { ...createdProperties(created, name, 0), ...keptProperties(element.properties, PROPERTIES_TAKEN[created], null) }
       // A Created Element always has a title: its name when none was given.
       if (properties.title === null) properties.title = name
@@ -154,7 +158,7 @@ function readState(raw: unknown): ElementsState {
         kind: created,
         name,
         properties,
-        items: Array.isArray(items) ? items.flatMap((item) => keptItem(item, created)) : [],
+        items: Array.isArray(items) ? items.flatMap((item) => keptItems(item, created)) : [],
         attention: attention === 'front' || attention === 'mark' ? attention : null
       })
     }
@@ -163,7 +167,8 @@ function readState(raw: unknown): ElementsState {
   return state
 }
 
-function keptItem(item: unknown, kind: CreatedElementKind): StoredItem[] {
+/** The item as a list of one when it holds, else none, for `flatMap`. */
+function keptItems(item: unknown, kind: CreatedElementKind): StoredItem[] {
   if (!isRecord(item) || typeof item.id !== 'string' || !isRecord(item.writtenBy)) return []
   const input = item as ContentItemInput & { id: string }
   if (!CONTENT_TAKEN[kind].includes(input.kind) || itemProblem(input)) return []
@@ -347,14 +352,14 @@ export class Elements {
 
   private async create(caller: Caller, request: Extract<ElementRequest, { op: 'create' }>): Promise<ElementView> {
     const { kind, name, title } = request
-    if (!(CREATED_KINDS as readonly unknown[]).includes(kind)) return refuse({ code: 'bad-kind', kind: String(kind) })
+    if (!isCreatedKind(kind)) return refuse({ code: 'bad-kind', kind: String(kind) })
     if (typeof name !== 'string' || !isElementName(kind, name)) return refuse({ code: 'bad-name', name: String(name) })
     const badTitle = title === undefined ? null : propertyValueRefusal('title', title, null)
     if (badTitle || title === null) return refuse(badTitle ?? { code: 'bad-request' })
     if (caller.project === null) return refuse({ code: 'no-project' })
     const key = pathKey(caller.project)
     const project = (this.state!.projects[key] ??= { path: caller.project, elements: [] })
-    if (project.elements.some((each) => each.kind === kind && each.name === name))
+    if (findCreated(project.elements, kind, name))
       return refuse({ code: 'name-taken', element: elementId(kind, name) })
 
     // After every other Element of its container, ClaudeForge's own included.
@@ -453,10 +458,7 @@ export class Elements {
   private async restoreDefault(): Promise<object> {
     const state = this.state!
     state.own = {}
-    await this.options.layout.write({
-      explorer: { width: PANEL_BOUNDS.explorer.default, collapsed: false },
-      map: { width: PANEL_BOUNDS.map.default, collapsed: false }
-    })
+    await this.options.layout.write(defaultAppState().layout)
     for (const project of Object.values(state.projects)) {
       for (const created of project.elements) {
         const shown = pick({ visible: true, collapsed: false }, PROPERTIES_TAKEN[created.kind])
@@ -477,7 +479,7 @@ export class Elements {
     if (!parsed) return refuse({ code: 'unknown-element', element })
     if (caller.project === null) return refuse({ code: 'no-project' })
     const project = this.state!.projects[pathKey(caller.project)]
-    const created = project?.elements.find((each) => each.kind === parsed.kind && each.name === parsed.name)
+    const created = project && findCreated(project.elements, parsed.kind, parsed.name)
     if (!project || !created) return refuse({ code: 'unknown-element', element })
     return { created, project }
   }

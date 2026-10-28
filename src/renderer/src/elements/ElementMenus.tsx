@@ -48,10 +48,10 @@ function useRefusalText(): (refusal: ElementRefusal) => string {
   const { t } = useTranslation()
   return (refusal) => {
     if (refusal.code === 'bad-item') return t(`elements.itemProblem.${refusal.field}`)
-    const words = Object.fromEntries(
+    const values = Object.fromEntries(
       Object.entries(refusal).map(([key, value]) => [key, Array.isArray(value) ? value.join(', ') : value])
     )
-    return t(`elements.refusal.${refusal.code}`, words)
+    return t(`elements.refusal.${refusal.code}`, values)
   }
 }
 
@@ -62,7 +62,7 @@ type Step<D extends string> = 'menu' | 'done' | D
 
 /**
  * Closes the menu, then calls the parent back once nothing more is on show. Menu calls its own
- * close before the entry chosen, so an entry opening a dialog wins over the close.
+ * close before the menu item chosen, so one opening a dialog wins over the close.
  */
 function useSteps<D extends string>(onClose: () => void): [Step<D>, (step: Step<D>) => void, () => void] {
   const [step, setStep] = useState<Step<D>>('menu')
@@ -279,14 +279,14 @@ function useSubmit(onDone: () => void): {
   send(request: ElementRequest): void
   setRefusal(text: string | null): void
 } {
-  const words = useRefusalText()
+  const refusalText = useRefusalText()
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
   const send = (request: ElementRequest): void => {
     setBusy(true)
     void ask(request).then((refused) => {
       setBusy(false)
-      if (refused) setRefusal(words(refused))
+      if (refused) setRefusal(refusalText(refused))
       else onDone()
     })
   }
@@ -440,7 +440,7 @@ function fieldsOf(item: ContentItem | null): ItemFields {
 }
 
 /** The hint under a field: a link's address opens in the browser, a web page's shows here. */
-const hintOf = (kind: ContentKind, field: FormField) =>
+const hintKey = (kind: ContentKind, field: FormField) =>
   field === 'address' ? (kind === 'link' ? 'linkAddress' : 'pageAddress') : field
 
 /**
@@ -492,7 +492,7 @@ function ItemDialog({ element, editing, onDone }: { element: ElementView; editin
           <div key={`${kind}-${field}`} className="element-dialog__field">
             <label htmlFor={props.id}>{t(`elements.itemForm.fields.${field}`)}</label>
             {field === 'text' ? <textarea rows={6} {...props} /> : <input {...props} />}
-            <span className="extdialog__hint">{t(`elements.itemForm.hints.${hintOf(kind, field)}`)}</span>
+            <span className="extdialog__hint">{t(`elements.itemForm.hints.${hintKey(kind, field)}`)}</span>
           </div>
         )
       })}

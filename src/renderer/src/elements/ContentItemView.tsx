@@ -5,6 +5,7 @@ import { WEB_TAB_PARTITION } from '../../../shared/api'
 import { itemLabel, opensAsDocument, type ContentItem, type ElementView } from '../../../shared/elements'
 import { api } from '../api'
 import { MapText } from '../components/MapText'
+import { reach } from './element-menus'
 
 /** How a Content item is used once clicked, given by the window around it. */
 export interface ItemHandlers {
@@ -26,15 +27,14 @@ export function activateItem(element: ElementView, item: ContentItem, handlers: 
   else if (item.kind === 'file' && element.kind !== 'panel-tab') handlers.openFile(item)
 }
 
+// Only a web page reaches the default browser; the contract took no other link.
+const openInBrowser = (address: string): void => void api.web.openInBrowser(address).catch(() => undefined)
+
 /** The handlers that reach the backend; only typing depends on the window's Sessions. */
 const handlersFor = (element: ElementView, onType: ItemHandlers['type']): ItemHandlers => ({
   type: onType,
-  // Only a web page reaches the default browser; the contract took no other link.
-  openInBrowser: (address) => void api.web.openInBrowser(address).catch(() => undefined),
-  openFile: (item) =>
-    void api.elements
-      .request({ op: 'open-file', project: element.project ?? undefined, element: element.id, item: item.id })
-      .catch(() => undefined)
+  openInBrowser,
+  openFile: (item) => void api.elements.request({ op: 'open-file', ...reach(element), item: item.id }).catch(() => undefined)
 })
 
 /** Where a link leads, short: its host, or the page's file name. */
@@ -174,7 +174,7 @@ function PageView({ address, label }: { address: string; label: string }): React
         <button
           type="button"
           className="cf-btn cf-btn--ghost content-item__browser"
-          onClick={() => void api.web.openInBrowser(address).catch(() => undefined)}
+          onClick={() => openInBrowser(address)}
         >
           <ExternalLink className="cf-icon cf-icon--sm" aria-hidden="true" />
           {t('web.openInBrowser')}

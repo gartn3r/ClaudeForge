@@ -1,5 +1,5 @@
 // What the right-click menus of an Element and of a Content item offer, and the request of the
-// Elements contract each entry makes: the same requests the ClaudeForge CLI makes for Claude.
+// Elements contract each menu item makes: the same requests the ClaudeForge CLI makes for Claude.
 
 import type { Shortcut } from '../../../shared/api'
 import {
@@ -14,7 +14,7 @@ import { SHORTCUT_NAME_MAX_LENGTH } from '../../../shared/shortcuts'
 export type ElementMenuKey = 'rename' | 'text-color' | 'background-color' | 'add-item' | 'hide' | 'copy-id' | 'close'
 
 /**
- * An Element's entries, in order, as far as it takes them: ClaudeForge's own Elements can only be
+ * An Element's menu items, in order, as far as it takes them: ClaudeForge's own Elements can only be
  * hidden, never closed.
  */
 export function elementMenuKeys(element: ElementView): ElementMenuKey[] {
@@ -31,22 +31,22 @@ export function elementMenuKeys(element: ElementView): ElementMenuKey[] {
 
 export type ItemMenuKey = 'keep-as-shortcut' | 'edit' | 'copy-id' | 'remove'
 
-/** A Content item's entries, in order: only a link or an action can be kept as a Shortcut. */
+/** A Content item's menu items, in order: only a link or an action can be kept as a Shortcut. */
 export const itemMenuKeys = (item: ContentItem): ItemMenuKey[] =>
   item.kind === 'link' || item.kind === 'action' ? ['keep-as-shortcut', 'edit', 'copy-id', 'remove'] : ['edit', 'copy-id', 'remove']
 
 /** Where a request reaches the Element: a Created Element in its Project, ClaudeForge's own anywhere. */
-const at = (element: ElementView): { project?: string; element: string } =>
+export const reach = (element: ElementView): { project?: string; element: string } =>
   element.project === null ? { element: element.id } : { project: element.project, element: element.id }
 
-export const hideRequest = (element: ElementView): ElementRequest => ({ op: 'set', ...at(element), properties: { visible: false } })
+export const hideRequest = (element: ElementView): ElementRequest => ({ op: 'set', ...reach(element), properties: { visible: false } })
 
-export const closeRequest = (element: ElementView): ElementRequest => ({ op: 'close', ...at(element) })
+export const closeRequest = (element: ElementView): ElementRequest => ({ op: 'close', ...reach(element) })
 
 /** An empty title gives back the default one. */
 export const renameRequest = (element: ElementView, title: string): ElementRequest => ({
   op: 'set',
-  ...at(element),
+  ...reach(element),
   properties: { title: title.trim() || null }
 })
 
@@ -55,14 +55,14 @@ export const colorRequest = (
   element: ElementView,
   property: 'textColor' | 'backgroundColor',
   color: string | null
-): ElementRequest => ({ op: 'set', ...at(element), properties: { [property]: color } })
+): ElementRequest => ({ op: 'set', ...reach(element), properties: { [property]: color } })
 
 /** Adds the Content item, or, under the id of one already there (an edit), replaces it. */
-export const itemRequest = (element: ElementView, item: ContentItemInput): ElementRequest => ({ op: 'add', ...at(element), item })
+export const itemRequest = (element: ElementView, item: ContentItemInput): ElementRequest => ({ op: 'add', ...reach(element), item })
 
 export const removeRequest = (element: ElementView, item: ContentItem): ElementRequest => ({
   op: 'remove',
-  ...at(element),
+  ...reach(element),
   item: item.id
 })
 
