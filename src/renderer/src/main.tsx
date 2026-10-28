@@ -14,6 +14,7 @@ import './styles/shell.css'
 import './styles/first-run.css'
 import './styles/shortcuts.css'
 import './styles/elements.css'
+import './styles/right-panel.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

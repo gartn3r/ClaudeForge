@@ -461,7 +461,29 @@
       "foundAt": "Trouvé dans"
     }
   },
+  "rightPanel": {
+    "label": "Right panel",
+    "tabs": "Panel tabs",
+    "new": "Nouveau Panel tab",
+    "changed": "Modifié",
+    "empty": "Rien ici pour l’instant. Faites un clic droit sur ce Panel tab pour y ajouter un contenu, ou demandez à Claude de le remplir.",
+    "collapse": "Replier le Right panel",
+    "expand": "Déplier le Right panel",
+    "resize": "Redimensionner le Right panel"
+  },
   "elements": {
+    "create": {
+      "title": {
+        "panel-tab": "Nouveau Panel tab",
+        "card": "Nouvelle card",
+        "menu": "Nouveau menu"
+      },
+      "in": "Dans {{project}}.",
+      "titleLabel": "Titre",
+      "nameLabel": "Identifiant",
+      "nameHint": "Unique dans le Projet : c’est le nom que Claude utilise pour y écrire.",
+      "create": "Créer"
+    },
     "item": {
       "typeHint": "Tape cette commande sans l’envoyer",
       "missing": "introuvable",

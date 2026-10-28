@@ -1,0 +1,128 @@
+/* The Right panel: its Panel tabs in its header, then the Panel tab on show. */
+
+.right-panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 12px 10px 0 12px;
+}
+.right-panel__tabs {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.right-panel__tab {
+  height: 34px;
+  padding: 0 12px;
+  background: transparent;
+  font: inherit;
+}
+.right-panel__new {
+  width: 30px;
+  height: 30px;
+}
+/* A Panel tab whose content changed while it was not on show. */
+.right-panel__mark {
+  width: 7px;
+  height: 7px;
+  background: var(--slate);
+}
+.cf-tab[aria-selected='true'] .right-panel__mark {
+  background: var(--on-slate);
+}
+
+.right-panel__shown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.right-panel__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A Created Panel tab: its title and identifier, then its Content items. */
+.panel-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2) var(--space-4) var(--space-2);
+  border-radius: var(--radius-lg);
+}
+.panel-tab__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-1);
+}
+.panel-tab__title {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.panel-tab__id {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+.panel-tab__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.panel-tab__item > .content-item--file-full,
+.panel-tab__item > .content-item--text {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--ground);
+}
+.panel-tab__empty {
+  margin: 0;
+}
+
+/* The dialog that creates an Element: its identifier after the kind's prefix. */
+.element-dialog__lead {
+  margin: calc(-1 * var(--space-2)) 0 0;
+}
+.element-dialog__prefixed {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+.element-dialog__prefixed:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.element-dialog__prefix {
+  padding: 0 2px 0 14px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.element-dialog__prefixed input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 var(--space-3) 0 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+}

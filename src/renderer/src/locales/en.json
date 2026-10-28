@@ -461,7 +461,29 @@
       "foundAt": "Found at"
     }
   },
+  "rightPanel": {
+    "label": "Right panel",
+    "tabs": "Panel tabs",
+    "new": "New Panel tab",
+    "changed": "Changed",
+    "empty": "Nothing here yet. Right-click this Panel tab to add content, or ask Claude to fill it.",
+    "collapse": "Collapse the Right panel",
+    "expand": "Expand the Right panel",
+    "resize": "Resize the Right panel"
+  },
   "elements": {
+    "create": {
+      "title": {
+        "panel-tab": "New Panel tab",
+        "card": "New card",
+        "menu": "New menu"
+      },
+      "in": "In {{project}}.",
+      "titleLabel": "Title",
+      "nameLabel": "Identifier",
+      "nameHint": "Unique in this Project: the name Claude uses to write to it.",
+      "create": "Create"
+    },
     "item": {
       "typeHint": "Types this command without sending it",
       "missing": "missing",

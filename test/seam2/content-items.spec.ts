@@ -1,8 +1,8 @@
 import type { Server } from 'node:http'
 import { expect, test } from '@playwright/test'
-import { WEB_TAB_PARTITION } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { inWebTab, launchClaudeForge, serveFixturePages, type RunningClaudeForge } from './claudeforge'
+import { addContent, createPanelTab } from './panel-tabs'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -20,21 +20,11 @@ test.afterEach(async () => {
   pages.server.close()
 })
 
-// No window shows a web page Content item yet (the Right panel comes with #60), so the journey
-// attaches the `<webview>` the Content item view renders, with the same attributes, as it will.
 test('a web page Content item runs apart from the interface and cannot reach its bridge', async () => {
   claudeforge = await launchClaudeForge(env)
   const { app, window } = claudeforge
-  await window.evaluate(
-    ({ src, partition }) => {
-      const page = document.createElement('webview')
-      page.className = 'content-item__page'
-      page.setAttribute('src', src)
-      page.setAttribute('partition', partition)
-      document.body.append(page)
-    },
-    { src: `${pages.origin}/`, partition: WEB_TAB_PARTITION }
-  )
+  await createPanelTab(window, 'Dev', 'dev')
+  await addContent(window, 'Dev', 'Web page', { Address: `${pages.origin}/` })
 
   await expect.poll(() => inWebTab(app, 'document.title')).toBe('Fixture dev server')
   expect(await inWebTab(app, 'typeof window.claudeforge')).toBe('undefined')
