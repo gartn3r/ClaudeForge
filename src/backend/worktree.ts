@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
 
 /** The Project a folder belongs to, and the worktree's name when the folder is a git worktree of it. */
@@ -31,6 +31,15 @@ async function fromGit(folder: string): Promise<string | null> {
   if (commonDir === null) return null
   const repoGitDir = resolve(gitDir, commonDir.trim())
   return basename(repoGitDir).toLowerCase() === '.git' ? dirname(repoGitDir) : null
+}
+
+/** Whether a folder is there: a removed worktree is not, nor is a path that now names a file. */
+export async function isFolder(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory()
+  } catch {
+    return false
+  }
 }
 
 /** A path as Windows compares it: resolved, without regard to case. */

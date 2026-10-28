@@ -2,14 +2,17 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
-import type { HostedSession, HostedSessionStatus, TerminalSize } from '../../../shared/api'
+import { missingFolderOf, type HostedSession, type HostedSessionStatus, type TerminalSize } from '../../../shared/api'
 import { api, onEvent } from '../api'
 
 /** How long the terminal's area must keep its size before the terminal refits, so a drag resizes `claude` once. */
 const REFIT_DELAY_MS = 50
 
-/** How a Hosted session ended: `claude`'s exit code, or null when it could not start. */
-export type SessionEnd = { exitCode: number | null }
+/**
+ * How a Hosted session ended: `claude`'s exit code, or null when it could not start, with the
+ * folder it was refused in when that folder is no longer there.
+ */
+export type SessionEnd = { exitCode: number } | { exitCode: null; missingFolder: string | null }
 
 /**
  * A `/wayfinder` command ClaudeForge types in a new Session's prompt, unsent, with what it starts:
@@ -233,9 +236,9 @@ export class HostedTerminal {
     const { cols, rows } = this.terminal
     try {
       this.session = await this.startClaude({ cols, rows })
-    } catch {
+    } catch (failure) {
       this.eventsBeforeStart = []
-      this.finish({ exitCode: null })
+      this.finish({ exitCode: null, missingFolder: missingFolderOf(failure) })
       return
     }
     // Let go of a `claude` started for a terminal that was closed in the meantime.
