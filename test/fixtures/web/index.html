@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture dev server</title>
+  </head>
+  <body>
+    <h1>Recipe box dev server</h1>
+    <p><a id="next" href="/pricing.html">Pricing</a></p>
+    <p><a id="blank" href="https://example.com/docs" target="_blank">Docs in a new window</a></p>
+    <script>
+      // A sign-in a Web tab keeps across restarts: a cookie that lasts an hour.
+      if (!document.cookie.includes('visited=')) document.cookie = 'visited=first; max-age=3600; path=/'
+    </script>
+  </body>
+</html>

@@ -62,6 +62,23 @@ export interface SavedTab {
   title: string | null
 }
 
+/**
+ * The command a Skill shortcut types: a skill among the Extensions, as Claude Code names it
+ * (`wayfinder`, `<plugin>:<skill>` for a plugin's), with optional arguments; or one written freely.
+ */
+export type ShortcutCommand = { mode: 'skill'; skill: string; args: string } | { mode: 'free'; text: string }
+
+/**
+ * An entry of the Shortcuts card, the same for every Project: a Web shortcut, opened in a Web tab
+ * (ADR 0006), or a Skill shortcut, whose command is typed, never sent.
+ */
+export type Shortcut =
+  | { id: string; name: string; kind: 'web'; address: string }
+  | { id: string; name: string; kind: 'skill'; command: ShortcutCommand }
+
+/** Where every Web tab keeps its pages' storage, apart from the interface's: sign-ins survive a restart. */
+export const WEB_TAB_PARTITION = 'persist:web-tabs'
+
 export interface AppState {
   version: 1
   layout: Record<PanelId, PanelLayout>
@@ -77,6 +94,10 @@ export interface AppState {
   maps: Record<string, ProjectMapPreferences>
   /** The Hosted session tabs open when ClaudeForge last ran, in tab order: dormant tabs to restore. */
   tabs: SavedTab[]
+  /** The Shortcuts card, in the user's order. */
+  shortcuts: Shortcut[]
+  /** The Web tabs open when ClaudeForge last ran, in tab order, by their Web shortcut's id. */
+  webTabs: string[]
 }
 
 /** A partial update of the app state; nested objects merge. */
@@ -91,6 +112,10 @@ export interface AppStatePatch {
   maps?: Record<string, Record<string, { view?: MapPanelView | null; hideClosed?: boolean | null; folded?: string[] | null } | null>>
   /** Replaces every saved tab. */
   tabs?: SavedTab[]
+  /** Replaces every Shortcut, in order; those the Shortcut form would refuse are left out. */
+  shortcuts?: Shortcut[]
+  /** Replaces the open Web tabs; ids naming no Web shortcut are left out. */
+  webTabs?: string[]
 }
 
 export interface SystemInfo {
@@ -598,6 +623,10 @@ export interface BackendApi {
   }
   system: {
     info(): Promise<SystemInfo>
+  }
+  web: {
+    /** Opens a Web tab's address in the default browser; refused for anything but an http, https or file address. */
+    openInBrowser(address: string): Promise<void>
   }
   updates: {
     /** Whether a newer ClaudeForge is downloaded, waiting to install when ClaudeForge closes. */

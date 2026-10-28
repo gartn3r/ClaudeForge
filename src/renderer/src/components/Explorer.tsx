@@ -600,13 +600,16 @@ function formatActivity(time: number, now: number, language: string, t: Translat
 
 interface ExplorerRailProps {
   onExpand(): void
+  /** The Shortcuts, under the expand button. */
+  children?: ReactNode
 }
 
-export function ExplorerRail({ onExpand }: ExplorerRailProps): ReactNode {
+export function ExplorerRail({ onExpand, children }: ExplorerRailProps): ReactNode {
   const { t } = useTranslation()
   return (
     <>
       <IconButton icon={PanelLeftOpen} label={t('explorer.expand')} onClick={onExpand} />
+      {children}
       <div className="rail__end">
         <IconButton icon={Puzzle} label={t('extensions.heading')} onClick={onExpand} />
       </div>

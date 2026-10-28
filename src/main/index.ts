@@ -7,6 +7,7 @@ import { createBackend, type DesktopShell, type Dialogs, type Updater, type Wind
 import { standInRecycleBin, type TrashItem } from '../backend/recycle-bin'
 import { CLAUDE_CODE_INSTALLATION_GUIDE } from '../shared/api'
 import { bindBackendToIpc } from './ipc'
+import { isolateWebTabs } from './web-tabs'
 
 // Test and development overrides. The fake environment sets them all, so Seam 2
 // runs against a temporary data folder, a fixed language and a stand-in Recycle Bin.
@@ -195,7 +196,9 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       sandbox: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Web tabs show their pages in <webview>s, kept apart from the interface by isolateWebTabs.
+      webviewTag: true
     }
   })
 
@@ -224,6 +227,7 @@ function createWindow(): void {
     return { action: 'deny' }
   })
   win.webContents.on('will-navigate', (event) => event.preventDefault())
+  isolateWebTabs(win)
 
   win.once('ready-to-show', () => win.show())
 

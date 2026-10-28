@@ -18,6 +18,45 @@
     "notifications": "Notifications",
     "notificationsHint": "When a Session in the background waits for you or finishes."
   },
+  "shortcuts": {
+    "heading": "Shortcuts",
+    "label": "Shortcuts",
+    "add": "New Shortcut",
+    "actions": "Shortcut actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "missingSkill": "This skill doesn't exist in {{project}}",
+    "busy": "Claude is working in <b>{{session}}</b>. Nothing was typed: try again when the Session is ready.",
+    "dismiss": "Dismiss",
+    "form": {
+      "titleNew": "New Shortcut",
+      "titleEdit": "Edit Shortcut",
+      "lead": "The same for every Project.",
+      "kind": "Type",
+      "web": "Web page",
+      "skill": "Skill",
+      "name": "Name",
+      "address": "Address",
+      "addressHint": "An http, https or file address, localhost included. It opens in a Web tab.",
+      "command": "Command",
+      "chooseSkill": "Choose a skill",
+      "writeCommand": "Write a command",
+      "skillLabel": "Skill",
+      "skillOption": "{{name}} · {{origin}}",
+      "noSkills": "No skill among the Extensions of {{project}}.",
+      "args": "Arguments",
+      "freeCommand": "Command",
+      "preview": "Typed, never sent",
+      "previewHint": "Into the shown Session if it is ready, else into a new Session of the displayed Project.",
+      "commandHint": "No quotes, no % and on a single line.",
+      "nameMissing": "Give the Shortcut a name.",
+      "addressInvalid": "Enter an http, https or file address.",
+      "commandMissing": "Choose a skill or write a command.",
+      "commandForbidden": "The command cannot hold a \", a % or a line break.",
+      "add": "Add",
+      "save": "Save"
+    }
+  },
   "explorer": {
     "label": "Sessions",
     "heading": "Sessions",
@@ -203,7 +242,8 @@
     "typed": {
       "label": "Typed, not sent",
       "ticket": "Ready to start <b>{{ticket}}</b> from <m>{{map}}</m>. Check the command below, then press Enter.",
-      "map": "Ready to run Wayfinder on <b>{{ticket}}</b> as a Map of its own. Check the command below, then press Enter."
+      "map": "Ready to run Wayfinder on <b>{{ticket}}</b> as a Map of its own. Check the command below, then press Enter.",
+      "shortcut": "Ready to run <b>{{shortcut}}</b>. Check the command below, then press Enter."
     }
   },
   "tabs": {
@@ -235,6 +275,15 @@
       "body": "The tab closes and the file stays as it was last saved.",
       "action": "Discard"
     }
+  },
+  "web": {
+    "tab": "Web page",
+    "bar": "Page controls",
+    "back": "Back",
+    "forward": "Forward",
+    "reload": "Reload",
+    "address": "Address",
+    "openInBrowser": "Open in browser"
   },
   "editor": {
     "label": "Text of {{name}}",

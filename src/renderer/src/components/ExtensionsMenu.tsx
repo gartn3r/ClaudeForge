@@ -37,13 +37,14 @@ type Loaded = ExtensionListing | 'failed' | undefined
 
 /**
  * The Project's Extensions, read again on `refresh()`, which settles once they are; the last ones
- * read show meanwhile.
+ * read show meanwhile. With no Project, none are read.
  */
-function useExtensions(project: string): { listing: Loaded; refresh(): Promise<void> } {
-  const [loaded, setLoaded] = useState<{ project: string; listing: ExtensionListing | 'failed' } | null>(null)
+export function useExtensions(project: string | null): { listing: Loaded; refresh(): Promise<void> } {
+  const [loaded, setLoaded] = useState<{ project: string | null; listing: ExtensionListing | 'failed' } | null>(null)
   const [round, setRound] = useState(0)
   const waiting = useRef<Array<() => void>>([])
   useEffect(() => {
+    if (project === null) return
     let current = true
     const settle = (listing: ExtensionListing | 'failed'): void => {
       if (!current) return
@@ -63,7 +64,7 @@ function useExtensions(project: string): { listing: Loaded; refresh(): Promise<v
       }),
     []
   )
-  return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
+  return { listing: project !== null && loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
 /** Each kind's glyph, wherever an Extension shows: the bar, the menu, an editor and its tab. */

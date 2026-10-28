@@ -43,7 +43,7 @@ test('leaves out the conversations that never ran in ClaudeForge, finished or st
   claudeforge = await launchClaudeForge(env)
   const explorer = explorerOf('Sessions')
 
-  await expect(explorer.getByRole('heading')).toHaveText(['harbor-api', 'recipe-box'])
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveText(['harbor-api', 'recipe-box'])
   await expect(explorer).not.toContainText('Tidy my aliases')
 })
 
@@ -54,14 +54,14 @@ test('starts empty without a list, then lists the first Session started in Claud
   const { window } = claudeforge
   const explorer = explorerOf('Sessions')
   await expect(explorer).toContainText('Find every Session you run in ClaudeForge here, grouped by Project.')
-  await expect(explorer.getByRole('heading')).toHaveCount(0)
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveCount(0)
 
   await window.getByRole('button', { name: 'New Session', exact: true }).click()
   await expect.poll(async () => (await sessionRuns(env)).length).toBe(1)
   await window.keyboard.type('/work 300')
   await window.keyboard.press('Enter')
 
-  await expect(explorer.getByRole('heading')).toHaveText(['dotfiles'])
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveText(['dotfiles'])
   await expect(explorer.getByRole('group', { name: 'dotfiles' })).toHaveText(/\/work 300/)
 
   await claudeforge.close()
@@ -81,7 +81,7 @@ test('warns, with its new place, that an unreadable list was set aside, until di
   await expect(warning).toHaveText(
     `ClaudeForge could not read its list of Sessions, so it started a new one: the Sessions it named are no longer listed. The old list is kept as ${await setAsideFile()}.`
   )
-  await expect(explorer.getByRole('heading')).toHaveCount(0)
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveCount(0)
   await warning.getByRole('button', { name: 'Dismiss' }).click()
   await expect(warning).toHaveCount(0)
 })

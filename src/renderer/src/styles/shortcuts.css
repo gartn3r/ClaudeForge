@@ -1,0 +1,423 @@
+/* The Shortcuts card and rail, the Shortcut form, Web tabs, and the notice a busy Session raises. */
+
+/* Shortcuts card: a card above the Sessions tile, a row per Shortcut with its glyph well. */
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  max-height: 40%;
+  padding: 12px 10px 10px;
+}
+.shortcuts__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 6px 10px;
+}
+.shortcuts__head .cf-btn--icon {
+  width: 30px;
+  height: 30px;
+}
+.shortcuts__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.shortcuts__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--radius-md);
+}
+.shortcuts__row:hover {
+  background: var(--ground);
+}
+/* The Web shortcut whose Web tab is on show, in slate. */
+.shortcuts__row--shown {
+  background: var(--slate);
+  --text: var(--on-slate);
+  --text-muted: var(--on-slate-muted);
+  --surface-raised: rgba(245, 241, 227, 0.12);
+  --focus: var(--accent);
+}
+.shortcuts__row--shown:hover {
+  background: var(--slate);
+}
+.shortcuts__row--shown .shortcuts__mark--web {
+  background: var(--accent);
+}
+/* A skill the target Project lacks: greyed out, and it types nothing. */
+.shortcuts__row--missing .shortcuts__mark,
+.shortcuts__row--missing .shortcuts__open {
+  opacity: 0.5;
+}
+.shortcuts__row--missing .shortcuts__open {
+  cursor: default;
+}
+.shortcuts__row--dragged {
+  opacity: 0.4;
+}
+.shortcuts__row--drop-before::before,
+.shortcuts__row--drop-after::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--slate);
+}
+.shortcuts__row--drop-before::before {
+  top: -2px;
+}
+.shortcuts__row--drop-after::after {
+  bottom: -2px;
+}
+.shortcuts__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+.shortcuts__mark--skill {
+  background: var(--slate);
+  color: var(--accent);
+}
+.shortcuts__mark--web {
+  background: var(--tile);
+  color: var(--slate);
+}
+.shortcuts__open {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.shortcuts__open:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.shortcuts__name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shortcuts__detail {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shortcuts__actions {
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+.shortcuts__row:hover .shortcuts__actions,
+.shortcuts__row:focus-within .shortcuts__actions,
+.shortcuts__actions[aria-expanded='true'] {
+  opacity: 1;
+}
+
+/* Shortcuts on the collapsed explorer's rail: initials in rounded squares, between two hairlines. */
+.shortcuts-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 10px 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+.shortcuts-rail__item,
+.shortcuts-rail__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shortcuts-rail__item--skill {
+  background: var(--slate);
+  color: var(--on-slate);
+}
+.shortcuts-rail__item--web {
+  background: var(--ground);
+  color: var(--text);
+}
+.shortcuts-rail__item[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.shortcuts-rail__item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The Shortcut form: its title on cream, then the fields; a Skill shortcut's command shows in slate. */
+.shortcut-dialog {
+  width: 520px;
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  overflow: auto;
+}
+.shortcut-dialog__form {
+  display: flex;
+  flex-direction: column;
+}
+.shortcut-dialog__head {
+  padding: 24px 26px 18px;
+  background: var(--ground);
+}
+.shortcut-dialog__head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.shortcut-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 26px;
+}
+.shortcut-dialog__kind {
+  display: flex;
+  padding: 4px;
+}
+.shortcut-dialog__kind button {
+  flex: 1;
+  height: 38px;
+  font-size: 13.5px;
+}
+.shortcut-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+.shortcut-dialog__field .extdialog__hint,
+.shortcut-dialog__field .extdialog__input {
+  font-weight: 400;
+}
+.shortcut-dialog__field .extdialog__input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.shortcut-dialog__modes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.shortcut-dialog__modes legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+.shortcut-dialog__modes label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shortcut-dialog__modes input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--slate);
+}
+.shortcut-dialog__skill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.shortcut-dialog__field--skill {
+  flex: 2 1 200px;
+}
+.shortcut-dialog__field--args {
+  flex: 1 1 120px;
+}
+.shortcut-dialog__skill .extdialog__hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+.shortcut-dialog__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--slate);
+}
+.shortcut-dialog__preview-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.shortcut-dialog__preview code {
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.shortcut-dialog__preview code::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  margin-left: 4px;
+  vertical-align: -3px;
+  background: var(--accent);
+}
+.shortcut-dialog__preview-hint {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.shortcut-dialog__body > .extdialog__hint {
+  margin: -6px 0 0;
+}
+.shortcut-dialog__errors {
+  margin: 0;
+  padding: 10px 12px 10px 30px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.shortcut-dialog .cf-dialog__actions {
+  padding: 0 26px 24px;
+}
+
+/* A Web tab: its bar of controls, then the page, on a card in place of the terminal. */
+.web-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--card);
+}
+.web-tab[hidden] {
+  display: none;
+}
+.web-tab__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.web-tab__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  color: var(--text);
+  cursor: pointer;
+}
+.web-tab__nav:hover:not(:disabled) {
+  background: var(--tile);
+}
+.web-tab__nav:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.web-tab__nav:focus-visible,
+.web-tab__address:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.web-tab__address {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+.web-tab__browser {
+  height: 38px;
+  border-radius: var(--radius-md);
+}
+/* The page fills a rounded frame; the <webview> itself keeps its own display, sized by position. */
+.web-tab__frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 14px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.web-tab__page {
+  position: absolute;
+  inset: 0;
+}
+
+/* Why a Skill shortcut typed nothing: a slate notice at the foot of the window, for a few seconds. */
+.busy-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 12px 10px 12px 18px;
+  border-radius: 18px;
+  background: var(--slate);
+  /* An edge that still reads over the slate terminal. */
+  box-shadow: 0 0 0 1px rgba(245, 241, 227, 0.22), 0 18px 40px rgba(47, 53, 63, 0.3);
+  line-height: 20px;
+  transform: translateX(-50%);
+}
+.busy-notice > .cf-dot {
+  background: var(--accent);
+}
+.busy-notice strong {
+  font-weight: 700;
+}

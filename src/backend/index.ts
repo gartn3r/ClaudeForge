@@ -15,6 +15,7 @@ import type {
   TerminalSize,
   WindowNotification
 } from '../shared/api'
+import { isWebAddress } from '../shared/shortcuts'
 import { AppStateStore } from './app-state'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
@@ -292,6 +293,13 @@ export function createBackend(options: BackendOptions): Backend {
     },
     system: {
       info: async () => ({ language, startFolder })
+    },
+    web: {
+      openInBrowser: async (address) => {
+        // Only an address a Web tab could show, so the interface cannot have the desktop run a program.
+        if (!isWebAddress(address)) throw new Error(`${address} is not a web address`)
+        await options.shell?.openUrl(address)
+      }
     },
     updates: {
       status: async () => updates.current()

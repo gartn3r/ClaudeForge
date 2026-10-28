@@ -15,14 +15,19 @@ const REFIT_DELAY_MS = 50
 export type SessionEnd = { exitCode: number } | { exitCode: null; missingFolder: string | null }
 
 /**
- * A `/wayfinder` command ClaudeForge types in a new Session's prompt, unsent, with what it starts:
- * a Ticket of a Map, or, without a Map, a Ticket worked as a Map of its own.
+ * A command ClaudeForge types in a new Session's prompt, unsent, with what it starts: a `/wayfinder`
+ * command for a Ticket of a Map, or, without a Map, a Ticket worked as a Map of its own; or a Skill
+ * shortcut's command, named by its Shortcut.
  */
-export interface TypedCommand {
-  command: string
-  ticket: string
-  map: string | null
-}
+export type TypedCommand = { command: string; ticket: string; map: string | null } | { command: string; shortcut: string }
+
+/**
+ * Clears Claude Code's prompt before ClaudeForge types into it: Ctrl+E goes to the end of the
+ * current line, then Ctrl+U deletes back to the start of the line, and, repeated, across the lines
+ * of a multiline prompt. On an empty prompt both do nothing (unlike Ctrl+C, which would then exit,
+ * or Esc Esc, which would open the rewind menu).
+ */
+const CLEAR_PROMPT = `\x05${'\x15'.repeat(16)}`
 
 /**
  * How a Hosted session's `claude` starts: a new Session in its Project, maybe with a command
@@ -181,6 +186,17 @@ export class HostedTerminal {
 
   focus(): void {
     this.terminal.focus()
+  }
+
+  /**
+   * Clears the prompt, then types the command into it without sending it, for the user to check and
+   * send with Enter. Returns false when there is no `claude` to type into: not started, or ended.
+   */
+  typeCommand(command: string): boolean {
+    if (!this.session || this.ended) return false
+    this.write(CLEAR_PROMPT + command)
+    this.terminal.focus()
+    return true
   }
 
   /** The Session host's id for it, once `claude` has started. */
