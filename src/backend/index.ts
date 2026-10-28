@@ -15,10 +15,12 @@ import type {
   TerminalSize,
   WindowNotification
 } from '../shared/api'
+import type { Asker } from '../shared/elements'
 import { opensInBrowser } from '../shared/shortcuts'
 import { AppStateStore } from './app-state'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
+import { Elements } from './elements'
 import { createExtensionService } from './extensions'
 import { resolveLanguage } from './language'
 import { createMapService } from './maps'
@@ -29,6 +31,7 @@ import { SessionCatalog } from './session-catalog'
 import { SessionHost } from './session-host'
 import { SessionIdStore } from './session-ids'
 import { Updates, type Updater } from './updates'
+import { placeFolder } from './worktree'
 
 export type { Updater } from './updates'
 
@@ -97,6 +100,11 @@ export interface Dialogs {
 
 export interface Backend {
   api: BackendApi
+  /**
+   * The Elements contract as one asker reaches it: `api.elements` is the user's; the ClaudeForge CLI
+   * asks in the name of the Hosted session it proved it runs in (ADR 0007).
+   */
+  elements(asker: Asker): BackendApi['elements']
   on<E extends EventName>(event: E, listener: Listener<E>): () => void
   dispose(): void
 }
@@ -185,6 +193,20 @@ export function createBackend(options: BackendOptions): Backend {
     events.emit('appState.changed', state)
     return state
   }
+
+  const elements = new Elements({
+    stateDir: options.stateDir,
+    layout: {
+      read: async () => (await appState.read()).layout,
+      write: (layout) => writeAppState({ layout })
+    },
+    hostedSession: async (id) => {
+      const hosted = sessionHost.describe(id)
+      return hosted ? { sessionId: hosted.sessionId, project: (await placeFolder(hosted.folder)).project } : null
+    },
+    openFile: async (path) => options.shell?.openFile(path),
+    onChange: (project) => events.emit('elements.changed', { project })
+  })
 
   /**
    * Drops the saved tabs that could never resume: those of conversations that are not Sessions (ADR
@@ -304,6 +326,7 @@ export function createBackend(options: BackendOptions): Backend {
     updates: {
       status: async () => updates.current()
     },
+    elements: elements.as({ kind: 'user' }),
     claudeCode: {
       locate: locateWithChosenPath,
       choose: async () => {
@@ -328,8 +351,10 @@ export function createBackend(options: BackendOptions): Backend {
 
   return {
     api,
+    elements: (asker) => elements.as(asker),
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
+      elements.dispose()
       unsubscribeMaximized?.()
       unsubscribeVisibility?.()
       unsubscribeFocus?.()

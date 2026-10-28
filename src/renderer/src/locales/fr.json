@@ -461,6 +461,109 @@
       "foundAt": "Trouvé dans"
     }
   },
+  "elements": {
+    "item": {
+      "typeHint": "Tape cette commande sans l’envoyer",
+      "missing": "introuvable",
+      "fileMissing": "Ce fichier est introuvable : ClaudeForge l’affiche de nouveau dès qu’il revient.",
+      "fileNotShown": "Ce fichier ne peut pas s’afficher ici : ce n’est pas du texte, ou il est trop long."
+    },
+    "kinds": {
+      "text": "Texte",
+      "link": "Lien",
+      "file": "Fichier",
+      "web-page": "Page web",
+      "action": "Action"
+    },
+    "menu": {
+      "label": "Actions de {{name}}",
+      "rename": "Renommer",
+      "textColor": "Couleur du texte",
+      "backgroundColor": "Couleur de fond",
+      "addItem": "Ajouter un contenu",
+      "hide": "Masquer",
+      "copyId": "Copier l’identifiant",
+      "close": "Fermer"
+    },
+    "itemMenu": {
+      "label": "Actions du contenu",
+      "keepAsShortcut": "Garder comme Raccourci",
+      "edit": "Modifier",
+      "copyId": "Copier l’identifiant",
+      "remove": "Retirer"
+    },
+    "rename": {
+      "title": "Renommer {{name}}",
+      "label": "Titre",
+      "hint": "Laissez-le vide pour lui rendre son propre titre.",
+      "save": "Renommer"
+    },
+    "color": {
+      "textTitle": "Couleur du texte de {{name}}",
+      "backgroundTitle": "Couleur de fond de {{name}}",
+      "pick": "Choisir une couleur",
+      "label": "Couleur",
+      "invalid": "Donnez une couleur sous la forme #rrggbb, ou une couleur CSS comme rgb(…) ou oklch(…).",
+      "default": "Couleur par défaut",
+      "save": "Appliquer"
+    },
+    "close": {
+      "title": "Fermer {{name}} ?",
+      "body": "Il disparaît de ce Projet, avec tout ce qu’il contient. Rétablir la disposition par défaut ne le fait pas revenir.",
+      "action": "Fermer"
+    },
+    "itemForm": {
+      "titleNew": "Ajouter un contenu à {{name}}",
+      "titleEdit": "Modifier un contenu de {{name}}",
+      "kind": "Type de contenu",
+      "add": "Ajouter",
+      "save": "Enregistrer",
+      "fields": {
+        "text": "Texte",
+        "title": "Titre",
+        "address": "Adresse",
+        "path": "Fichier",
+        "command": "Commande"
+      },
+      "hints": {
+        "text": "En markdown : paragraphes, listes, **gras** et `code`.",
+        "title": "Facultatif : ce qu’il affiche.",
+        "linkAddress": "Une adresse http ou https, ouverte dans votre navigateur.",
+        "pageAddress": "Une adresse http, https ou file, affichée ici à l’écart de ClaudeForge.",
+        "path": "Le chemin complet du fichier. Il s’affiche tel qu’il est sur le disque.",
+        "command": "Tapée dans une Session de ce Projet, jamais envoyée : sans guillemet double, signe pourcent ni retour à la ligne."
+      }
+    },
+    "itemProblem": {
+      "id": "ClaudeForge n’accepte pas cet identifiant de contenu.",
+      "kind": "Ce type de contenu n’existe pas.",
+      "text": "Écrivez un texte.",
+      "title": "Un titre compte de 1 à 80 caractères.",
+      "address": "Donnez une adresse http ou https (une page web peut aussi être une adresse file).",
+      "path": "Donnez le chemin complet du fichier, comme C:\\rapports\\couverture.md.",
+      "command": "Écrivez une commande, sans guillemet double, signe pourcent ni retour à la ligne."
+    },
+    "refusal": {
+      "bad-request": "ClaudeForge n’a pas pu le faire.",
+      "not-hosted": "Seule une Session lancée dans ClaudeForge peut changer son interface.",
+      "user-only": "Vous seul pouvez le faire.",
+      "other-project": "Une Session de {{own}} ne peut pas changer les Éléments de {{project}}.",
+      "no-project": "Choisissez d’abord un Projet.",
+      "unknown-element": "{{element}} n’existe plus.",
+      "not-created": "{{element}} appartient à ClaudeForge : il peut être masqué, pas fermé.",
+      "bad-kind": "{{kind}} ne peut pas être créé.",
+      "bad-name": "Utilisez des minuscules, des chiffres et des tirets, 40 au plus.",
+      "name-taken": "{{element}} existe déjà dans ce Projet.",
+      "unknown-property": "{{property}} ne peut pas être changé.",
+      "property-not-taken": "{{element}} n’a pas de {{property}} à changer.",
+      "bad-value": "Cette valeur ne convient pas à {{property}}.",
+      "content-not-taken": "{{element}} n’accepte pas ce type de contenu.",
+      "bad-item": "ClaudeForge n’accepte pas ce contenu.",
+      "unknown-item": "Ce contenu n’existe plus.",
+      "not-a-file": "Ce contenu n’est pas un fichier.",
+      "not-a-document": "ClaudeForge n’ouvre pas {{path}} : ce pourrait être un programme."
+    }
+  },
   "dialog": {
     "cancel": "Annuler",
     "close": "Fermer"

@@ -3,6 +3,8 @@
 // pushes events. This file holds types and constants only, so the main
 // process, the preload script, the interface and the tests all share it.
 
+import type { ElementOp, ElementRequest, ElementResult } from './elements'
+
 export type Language = 'en' | 'fr'
 
 export const SUPPORTED_LANGUAGES: readonly Language[] = ['en', 'fr']
@@ -638,6 +640,13 @@ export interface BackendApi {
     /** Lets the user pick `claude.exe` in a file dialog, remembers it in app state, then locates again. */
     choose(): Promise<ClaudeCodeStatus>
   }
+  /**
+   * The Elements of the interface, as the user asks for them by hand: the same contract a Hosted
+   * session's Claude goes through with the ClaudeForge CLI (ADR 0007), there in that Session's name.
+   */
+  elements: {
+    request<Op extends ElementOp>(request: Extract<ElementRequest, { op: Op }>): Promise<ElementResult<Op>>
+  }
   window: {
     minimize(): Promise<void>
     toggleMaximize(): Promise<void>
@@ -687,6 +696,11 @@ export interface BackendEvents {
   'map.changed': { project: string }
   /** ClaudeForge's own update moved on: a newer version is downloaded. */
   'updates.changed': UpdateStatus
+  /**
+   * Elements changed, by a request or as a file Content item's file did: a Project's Created Elements,
+   * or ClaudeForge's own when `project` is null. List them again.
+   */
+  'elements.changed': { project: string | null }
 }
 
 export type EventName = keyof BackendEvents
@@ -703,7 +717,8 @@ const EVENTS: Record<EventName, true> = {
   'window.notificationClicked': true,
   'window.closeRequested': true,
   'map.changed': true,
-  'updates.changed': true
+  'updates.changed': true,
+  'elements.changed': true
 }
 
 /** Every pushed event, for the IPC transport. */

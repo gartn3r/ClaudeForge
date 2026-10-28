@@ -36,6 +36,8 @@ interface HostedProcess {
   id: string
   /** The folder `claude` runs in: its Project, or a git worktree of it. */
   folder: string
+  /** Claude Code's id for the Session it runs now: the one it started with, until `/clear` or `/resume` moves it on. */
+  sessionId: string
   pty: IPty
   status: HostedSessionStatus
   /** Reads the status signals in its output. */
@@ -151,13 +153,15 @@ export class SessionHost {
     const session: HostedProcess = {
       id,
       folder,
+      sessionId,
       pty,
       status: 'idle',
       reader: new ProgramStatusReader(),
       // A Session id that fails to save now is lost to the list, as the Session goes on regardless.
-      stopFollowingRegistry: followRegistryEntry(this.options.claudeHome, sessionId, (next) =>
+      stopFollowingRegistry: followRegistryEntry(this.options.claudeHome, sessionId, (next) => {
+        session.sessionId = next
         void this.options.recordSession(next).catch(() => undefined)
-      ),
+      }),
       ended: new Promise((resolve) => (ended = resolve))
     }
     session.history = new HistoryStatus(this.options.claudeHome, folder, sessionId, (status) =>
@@ -186,6 +190,12 @@ export class SessionHost {
   /** The Hosted sessions whose `claude` still runs, oldest first. */
   running(): Array<{ id: string; folder: string }> {
     return [...this.sessions.values()].map(({ id, folder }) => ({ id, folder }))
+  }
+
+  /** A Hosted session whose `claude` still runs: its folder, and the Session it runs now; undefined for any other. */
+  describe(id: string): { folder: string; sessionId: string } | undefined {
+    const session = this.sessions.get(id)
+    return session && { folder: session.folder, sessionId: session.sessionId }
   }
 
   /** The Hosted sessions in the middle of a turn Claude is working through, oldest first. */

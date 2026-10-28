@@ -461,6 +461,109 @@
       "foundAt": "Found at"
     }
   },
+  "elements": {
+    "item": {
+      "typeHint": "Types this command without sending it",
+      "missing": "missing",
+      "fileMissing": "This file is missing: ClaudeForge shows it again once it is back.",
+      "fileNotShown": "This file can’t be shown here: it isn’t text, or it is too long."
+    },
+    "kinds": {
+      "text": "Text",
+      "link": "Link",
+      "file": "File",
+      "web-page": "Web page",
+      "action": "Action"
+    },
+    "menu": {
+      "label": "{{name}} actions",
+      "rename": "Rename",
+      "textColor": "Text colour",
+      "backgroundColor": "Background colour",
+      "addItem": "Add content",
+      "hide": "Hide",
+      "copyId": "Copy identifier",
+      "close": "Close"
+    },
+    "itemMenu": {
+      "label": "Content actions",
+      "keepAsShortcut": "Keep as Shortcut",
+      "edit": "Edit",
+      "copyId": "Copy identifier",
+      "remove": "Remove"
+    },
+    "rename": {
+      "title": "Rename {{name}}",
+      "label": "Title",
+      "hint": "Leave it empty to give back its own title.",
+      "save": "Rename"
+    },
+    "color": {
+      "textTitle": "Text colour of {{name}}",
+      "backgroundTitle": "Background colour of {{name}}",
+      "pick": "Pick a colour",
+      "label": "Colour",
+      "invalid": "Give a colour as #rrggbb, or as a CSS colour such as rgb(…) or oklch(…).",
+      "default": "Default colour",
+      "save": "Apply"
+    },
+    "close": {
+      "title": "Close {{name}}?",
+      "body": "It goes, with everything it holds, from this Project. Restoring the default layout doesn’t bring it back.",
+      "action": "Close"
+    },
+    "itemForm": {
+      "titleNew": "Add content to {{name}}",
+      "titleEdit": "Edit content in {{name}}",
+      "kind": "Kind of content",
+      "add": "Add",
+      "save": "Save",
+      "fields": {
+        "text": "Text",
+        "title": "Title",
+        "address": "Address",
+        "path": "File",
+        "command": "Command"
+      },
+      "hints": {
+        "text": "Markdown: paragraphs, lists, **bold** and `code`.",
+        "title": "Optional: what it shows as.",
+        "linkAddress": "An http or https address, opened in your browser.",
+        "pageAddress": "An http, https or file address, shown here apart from ClaudeForge.",
+        "path": "The file’s full path. It shows as it is on disk now.",
+        "command": "Typed into a Session of this Project, never sent: no double quote, percent sign or line break."
+      }
+    },
+    "itemProblem": {
+      "id": "This content’s identifier is not one ClaudeForge takes.",
+      "kind": "This kind of content doesn’t exist.",
+      "text": "Write some text.",
+      "title": "A title holds 1 to 80 characters.",
+      "address": "Give an http or https address (a web page can also be a file address).",
+      "path": "Give the file’s full path, such as C:\\reports\\coverage.md.",
+      "command": "Write a command, without double quote, percent sign or line break."
+    },
+    "refusal": {
+      "bad-request": "ClaudeForge couldn’t do this.",
+      "not-hosted": "Only a Session running in ClaudeForge can change its interface.",
+      "user-only": "Only you can do this.",
+      "other-project": "A Session of {{own}} cannot change the Elements of {{project}}.",
+      "no-project": "Choose a Project first.",
+      "unknown-element": "{{element}} is no longer there.",
+      "not-created": "{{element}} belongs to ClaudeForge: it can be hidden, not closed.",
+      "bad-kind": "{{kind}} cannot be created.",
+      "bad-name": "Use lowercase letters, numbers and hyphens, 40 at most.",
+      "name-taken": "{{element}} already exists in this Project.",
+      "unknown-property": "{{property}} cannot be changed.",
+      "property-not-taken": "{{element}} has no {{property}} to change.",
+      "bad-value": "This value doesn’t fit {{property}}.",
+      "content-not-taken": "{{element}} doesn’t take this kind of content.",
+      "bad-item": "This content is not one ClaudeForge takes.",
+      "unknown-item": "This content is no longer there.",
+      "not-a-file": "This content is not a file.",
+      "not-a-document": "ClaudeForge doesn’t open {{path}}: it could be a program."
+    }
+  },
   "dialog": {
     "cancel": "Cancel",
     "close": "Close"
