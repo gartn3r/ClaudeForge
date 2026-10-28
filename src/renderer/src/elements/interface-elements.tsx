@@ -1,18 +1,25 @@
-import { useCallback, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import type { AppState } from '../../../shared/api'
 import {
+  COLUMN_PANELS,
   OWN_CONTAINERS,
   PROPERTIES_TAKEN,
   defaultOwnProperties,
   inOrder,
+  isOwnElement,
   type Container,
   type ContentItem,
+  type ElementRequest,
   type ElementView,
   type OwnElementId
 } from '../../../shared/elements'
 import { api } from '../api'
 import { ContentItemMenu, ElementMenu } from './ElementMenus'
+import { isShown, reach } from './element-menus'
 import { elementStyle } from './element-style'
 import { useElements } from './use-elements'
+
+export { isShown }
 
 /** What a piece of the window takes from the Element it is. */
 export interface ElementFrame {
@@ -57,7 +64,24 @@ export const columnProps = (
   }
 })
 
-export const isShown = (element: ElementView): boolean => element.properties.visible !== false
+/**
+ * What it takes for Created cards and menus that ask to come to the front to be on show: each shown
+ * and expanded, and for a card the explorer too.
+ */
+function revealing(views: readonly ElementView[], layout: AppState['layout']): { requests: ElementRequest[]; expandExplorer: boolean } {
+  const fronts = views.filter((view) => (view.kind === 'card' || view.kind === 'menu') && view.attention === 'front')
+  const requests: ElementRequest[] = fronts
+    .filter((view) => !isShown(view) || view.properties.collapsed === true)
+    .map((view) => ({
+      op: 'set',
+      ...reach(view),
+      properties: view.takes.includes('collapsed') ? { visible: true, collapsed: false } : { visible: true }
+    }))
+  const card = fronts.some((view) => view.kind === 'card')
+  const explorer = views.find((view) => view.id === 'explorer')
+  if (card && explorer && !isShown(explorer)) requests.push({ op: 'set', element: 'explorer', properties: { visible: true } })
+  return { requests, expandExplorer: card && layout.explorer.collapsed }
+}
 
 type Opened =
   | { kind: 'element'; element: ElementView; at: { x: number; y: number }; siblings?: readonly ElementView[] }
@@ -78,11 +102,28 @@ export interface InterfaceElements {
   menus: ReactNode
 }
 
-/** The window's Elements for the displayed Project, and their right-click menus. */
-export function useInterfaceElements(project: string): InterfaceElements {
-  const views = useElements(project)
+/**
+ * The window's Elements for the displayed Project, and their right-click menus. The explorer's and
+ * the Right panel's width and collapsed state are the app state's layout, as the window shows it now.
+ * A Created card or menu that asks to come to the front is put on show.
+ */
+export function useInterfaceElements(project: string, layout: AppState['layout']): InterfaceElements {
+  const listed = useElements(project)
   const [opened, setOpened] = useState<Opened | null>(null)
   const close = useCallback(() => setOpened(null), [])
+  const views = listed?.map((view) => {
+    const panel = isOwnElement(view.id) ? COLUMN_PANELS[view.id] : undefined
+    return panel ? { ...view, properties: { ...view.properties, width: layout[panel].width, collapsed: layout[panel].collapsed } } : view
+  })
+
+  // Asked for again only when what is needed changes, so nothing is asked twice while it is done.
+  const reveal = JSON.stringify(views ? revealing(views, layout) : null)
+  useEffect(() => {
+    const needed: ReturnType<typeof revealing> | null = JSON.parse(reveal)
+    if (!needed) return
+    for (const request of needed.requests) void api.elements.request(request).catch(() => undefined)
+    if (needed.expandExplorer) void api.appState.write({ layout: { explorer: { collapsed: false } } })
+  }, [reveal])
 
   const own = (id: OwnElementId): ElementView => views?.find((view) => view.id === id) ?? defaultView(id)
   const inside = (container: Container): ElementView[] =>

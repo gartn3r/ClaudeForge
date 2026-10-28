@@ -26,9 +26,12 @@ export type ElementMenuKey =
   | 'copy-id'
   | 'close'
 
+/** Whether an Element is on show: not hidden. */
+export const isShown = (element: Pick<ElementView, 'properties'>): boolean => element.properties.visible !== false
+
 /** The visible Elements of a container, in its order, the Element itself included. */
 const shownAmong = (siblings: readonly ElementView[], element: ElementView): ElementView[] =>
-  siblings.filter((each) => each.id === element.id || each.properties.visible !== false)
+  siblings.filter((each) => each.id === element.id || isShown(each))
 
 /**
  * An Element's menu items, in order, as far as it takes them: ClaudeForge's own Elements can only be

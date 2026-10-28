@@ -503,7 +503,7 @@
       "action": "Créer"
     },
     "restoreDefault": "Disposition par défaut",
-    "restoreDefaultHint": "Rend aux panneaux et aux fiches de ClaudeForge leur place, leur taille, leur titre et leurs couleurs, et affiche de nouveau chaque fiche et chaque menu. Rien n’est supprimé.",
+    "restoreDefaultHint": "Rend aux Elements de ClaudeForge leur place, leur taille, leur titre et leurs couleurs d’origine, et affiche et déplie de nouveau chaque fiche, menu et onglet de panneau, en gardant leur titre et leurs couleurs. Rien n’est supprimé.",
     "menu": {
       "label": "Actions de {{name}}",
       "rename": "Renommer",

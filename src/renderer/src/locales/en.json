@@ -503,7 +503,7 @@
       "action": "Create"
     },
     "restoreDefault": "Restore default layout",
-    "restoreDefaultHint": "Gives ClaudeForge’s own panels and cards back their places, sizes, titles and colours, and shows every card and menu again. Nothing is removed.",
+    "restoreDefaultHint": "Gives ClaudeForge’s own Elements back their original places, sizes, titles and colours, and shows and expands every card, menu and Panel tab again, keeping their titles and colours. Nothing is removed.",
     "menu": {
       "label": "{{name}} actions",
       "rename": "Rename",

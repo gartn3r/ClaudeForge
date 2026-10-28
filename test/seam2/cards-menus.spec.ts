@@ -161,7 +161,8 @@ test.describe('cards and menus', () => {
     await expect(window.getByRole('dialog', { name: 'Tests' }).getByRole('button')).toHaveText([/CI run/, /Run the tests/])
   })
 
-  test('a Created Element that is new comes to the front; one whose content changed shows a mark until it is seen', async () => {
+  test('a card asking to come to the front is put on show, the collapsed explorer expanded, and needs no more attention', async () => {
+    await writeFile(join(env.userDataDir, 'state.json'), JSON.stringify({ layout: { explorer: { collapsed: true } } }))
     await seedElements({
       version: 1,
       own: {},
@@ -169,25 +170,63 @@ test.describe('cards and menus', () => {
         any: {
           path: env.projects['recipe-box'],
           elements: [
-            { kind: 'card', name: 'release', properties: { title: 'Release', order: 4 }, items: [], attention: 'mark' },
+            {
+              kind: 'card',
+              name: 'release',
+              properties: { title: 'Release', order: 4, collapsed: true },
+              items: [{ id: 'notes', kind: 'text', text: 'Code freeze on Friday.', writtenBy: { kind: 'user' } }],
+              attention: 'front'
+            },
+            { kind: 'menu', name: 'tests', properties: { title: 'Tests', order: 1, visible: false }, items: [], attention: 'front' }
+          ]
+        }
+      }
+    })
+    const window = await launch()
+    await expect(card(window, 'Release')).toContainText('Code freeze on Friday.')
+    await expect(window.locator('[data-panel="explorer"]')).toHaveAttribute('data-collapsed', 'false')
+    await expect(menuButton(window, 'Tests')).toBeVisible()
+    await expect
+      .poll(async () => Object.values(JSON.parse(await readFile(join(env.userDataDir, 'elements.json'), 'utf8')).projects))
+      .toMatchObject([{ elements: [{ attention: null }, { attention: null }] }])
+  })
+
+  test("a card whose file changes on disk shows a mark until it is seen; a menu's mark goes once it is opened", async () => {
+    const report = join(env.projects['recipe-box'], 'report.md')
+    await writeFile(report, '# 248 passed')
+    await seedElements({
+      version: 1,
+      own: {},
+      projects: {
+        any: {
+          path: env.projects['recipe-box'],
+          elements: [
+            {
+              kind: 'card',
+              name: 'release',
+              properties: { title: 'Release', order: 4 },
+              items: [{ id: 'report', kind: 'file', title: 'Test report', path: report, writtenBy: { kind: 'user' } }],
+              attention: null
+            },
             { kind: 'menu', name: 'tests', properties: { title: 'Tests', order: 1 }, items: [], attention: 'mark' }
           ]
         }
       }
     })
     const window = await launch()
-    await expect(card(window, 'Release').getByRole('img', { name: 'Updated' })).toBeVisible()
-    await expect(menuButton(window, 'Tests')).toHaveAttribute('data-attention', 'mark')
+    const mark = card(window, 'Release').getByRole('img', { name: 'Updated' })
+    await expect(card(window, 'Release').getByRole('button', { name: /Test report/ })).toBeVisible()
+    await expect(mark).toHaveCount(0)
 
+    await writeFile(report, '# 248 passed, 2 failed')
+    await expect(mark).toBeVisible()
     await card(window, 'Release').hover()
-    await expect(card(window, 'Release').getByRole('img', { name: 'Updated' })).toHaveCount(0)
+    await expect(mark).toHaveCount(0)
+
+    await expect(menuButton(window, 'Tests')).toHaveAttribute('data-attention', 'mark')
     await menuButton(window, 'Tests').click()
     await window.keyboard.press('Escape')
     await expect(menuButton(window, 'Tests')).not.toHaveAttribute('data-attention', 'mark')
-
-    // Seen, the marks stay gone after a restart.
-    const saved = JSON.parse(await readFile(join(env.userDataDir, 'elements.json'), 'utf8'))
-    expect(saved.projects).toMatchObject({ [Object.keys(saved.projects)[0]!]: { elements: [{ attention: null }, { attention: null }] } })
   })
 })
 
@@ -230,11 +269,23 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     await window.keyboard.press('End')
     await expect(splitter).toHaveAttribute('aria-valuenow', '420')
 
+    const sessionsHead = card(window, 'Sessions').getByRole('heading', { name: 'Sessions' })
+    await elementAction(window, sessionsHead, 'Sessions', 'Collapse')
+    await expect(card(window, 'Sessions').getByRole('tree')).toBeHidden()
+
     window = await restart()
+    await expect(card(window, 'Sessions').getByRole('tree')).toBeHidden()
+    await elementAction(window, card(window, 'Sessions').getByRole('heading', { name: 'Sessions' }), 'Sessions', 'Expand')
+    await expect(card(window, 'Sessions').getByRole('tree')).toBeVisible()
     await expect(card(window, 'Favourites')).toHaveCSS('background-color', 'rgb(243, 214, 198)')
     expect(await explorerOrder(window)).toEqual(['sessions', 'shortcuts'])
     await expect(titleBar(window)).toHaveCSS('color', 'rgb(59, 63, 115)')
     await expect(window.getByRole('separator', { name: 'Resize the explorer' })).toHaveAttribute('aria-valuenow', '420')
+
+    // Collapsed by its own button, the explorer's menu on its rail offers to expand it.
+    await window.getByRole('button', { name: 'Collapse the explorer' }).click()
+    await elementAction(window, window.locator('[data-panel="explorer"] .rail'), 'Explorer', 'Expand')
+    await expect(window.locator('[data-panel="explorer"]')).toHaveAttribute('data-collapsed', 'false')
   })
 
   test('Restore default layout brings back their properties, shows and expands Created Elements, keeps their titles and colours, removes nothing', async () => {

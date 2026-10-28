@@ -16,7 +16,7 @@ import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
 import { useEditorTabs } from './editor/editor-tabs'
 import { ExplorerColumn } from './elements/ExplorerColumn'
-import { columnProps, useInterfaceElements } from './elements/interface-elements'
+import { columnProps, isShown, useInterfaceElements } from './elements/interface-elements'
 import { RestoreDefaultButton, TitleBarMenus } from './elements/TitleBarMenus'
 import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
@@ -71,7 +71,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // The start folder keeps its own spelling while the displayed Session runs in it.
   const project = samePath(displayedProject, startProject) ? startProject : displayedProject
   // ClaudeForge's own Elements and the displayed Project's Created ones, as the user or Claude set them.
-  const elements = useInterfaceElements(project)
+  const elements = useInterfaceElements(project, state.layout)
   const rightPanel = elements.own('right-panel')
 
   // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
@@ -218,7 +218,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
         frame={elements.frame(elements.own('title-bar'))}
       />
       <div className="columns">
-        {elements.own('explorer').properties.visible !== false && (
+        {isShown(elements.own('explorer')) && (
         <SidePanel
           id="explorer"
           side="left"
@@ -227,7 +227,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           resizeLabel={t('explorer.resize')}
           rail={
             <ExplorerRail onExpand={collapseHandler('explorer', false)}>
-              {elements.own('shortcuts').properties.visible !== false && <ShortcutsRail {...shortcutsProps} />}
+              {isShown(elements.own('shortcuts')) && <ShortcutsRail {...shortcutsProps} />}
             </ExplorerRail>
           }
           onResizingChange={setResizing}
@@ -279,7 +279,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           onEditorRename={(key, name) => editing.editors.rename(key, name)}
           frame={elements.frame(elements.own('terminal-area'))}
         />
-        {rightPanel.properties.visible !== false && (
+        {isShown(rightPanel) && (
         <SidePanel
           id="map"
           side="right"

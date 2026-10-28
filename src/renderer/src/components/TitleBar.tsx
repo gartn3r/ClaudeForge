@@ -8,7 +8,7 @@ import type { ElementFrame } from '../elements/interface-elements'
 interface TitleBarProps {
   /** The Hosted session tabs; the first-run screen has none. */
   tabs?: ReactNode
-  /** The displayed Project's menus and Restore default layout, after the tabs. */
+  /** The displayed Project's menus and Restore default layout, after the Hosted session tabs. */
   menus?: ReactNode
   /** The settings menu, beside the window controls. */
   settings?: ReactNode
