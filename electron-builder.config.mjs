@@ -80,7 +80,12 @@ export default {
   // Windows loads node-pty's native module, and the `conpty.dll` and `OpenConsole.exe` it ships
   // beside it, from real files: they cannot run from inside the app's archive (ADR 0001).
   asarUnpack: ['node_modules/node-pty/**'],
-  extraResources: [{ from: 'THIRD_PARTY_NOTICES.md', to: 'THIRD_PARTY_NOTICES.md' }],
+  extraResources: [
+    { from: 'THIRD_PARTY_NOTICES.md', to: 'THIRD_PARTY_NOTICES.md' },
+    // The `claudeforge` command Hosted sessions run (ADR 0007): its shims and the script ClaudeForge's
+    // own executable runs as Node, as real files on their PATH (src/main/index.ts).
+    { from: 'cli', to: 'cli' }
+  ],
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
     // Native modules are signed too; OpenConsole.exe keeps the Microsoft signature it ships with.

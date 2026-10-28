@@ -3,11 +3,15 @@ import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { join, resolve } from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { CLI_INSTRUCTION } from '../../src/backend/cli-channel'
 import type { FakeEnvironment, FixtureProject, Invocation } from '../fake-env'
 
 /** The runs of the fake `claude` that started a Session: not the locator's version checks, nor the Extension listings. */
 export const sessionRuns = async (env: FakeEnvironment): Promise<Invocation[]> =>
   (await env.invocations('claude')).filter(({ args }) => !['--version', 'mcp', 'plugin'].includes(args[0]!))
+
+/** The options every Hosted session's `claude` ends with, telling it about the ClaudeForge CLI. */
+export const TOLD_ABOUT_THE_CLI = ['--append-system-prompt', CLI_INSTRUCTION] as const
 
 const MAIN = resolve(__dirname, '../../out/main/index.js')
 

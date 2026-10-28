@@ -86,6 +86,19 @@ function stopFollowingHistory(session: HostedProcess): void {
 const windowsPty = (): HostedSession['windowsPty'] =>
   process.platform === 'win32' ? { backend: 'conpty', buildNumber: Number(release().split('.')[2]) } : null
 
+/**
+ * What lets a Hosted session's Claude pilot ClaudeForge's interface through the ClaudeForge CLI (ADR
+ * 0007): what its `claude` gets to reach the CLI in its name, and what it is told about it.
+ */
+export interface CliAccess {
+  /** The variables to set on top of ClaudeForge's environment for one Hosted session's `claude`. */
+  grant(id: string, env: Environment): Promise<Environment>
+  /** The Hosted session has ended: what it was granted no longer reaches anything. */
+  revoke(id: string): void
+  /** Appended to Claude's system prompt: one line that cmd.exe passes on as it is (CMD_CHANGES). */
+  instruction: string
+}
+
 export interface SessionHostOptions {
   /** ClaudeForge's environment, which `claude` inherits. */
   env: Environment
@@ -100,6 +113,8 @@ export interface SessionHostOptions {
   onStatus(id: string, status: HostedSessionStatus): void
   /** A turn ended, finished or interrupted. */
   onTurnEnd(id: string, cwd: string): void
+  /** The ClaudeForge CLI, for every Hosted session; absent, they go without. */
+  cli?: CliAccess
 }
 
 /**
@@ -118,6 +133,10 @@ export interface SessionHostOptions {
  * Every Session id that appears in a Hosted session goes on ClaudeForge's list of Sessions: the one
  * `claude` starts with, before it starts, then each one `/clear` or `/resume` moves it to, which its
  * entry in Claude Code's live-session registry names.
+ *
+ * With the ClaudeForge CLI, each `claude` also gets, in its environment, what lets its Claude run
+ * `claudeforge` in that Hosted session's name, until it ends, and one line about it at the end of
+ * its system prompt (ADR 0007).
  */
 export class SessionHost {
   private readonly sessions = new Map<string, HostedProcess>()
@@ -131,24 +150,32 @@ export class SessionHost {
   async start(folder: string, { cols, rows }: TerminalSize, args: readonly string[] = []): Promise<HostedSession> {
     if (!(await isFolder(folder))) throw folderMissingError(folder)
     const claude = await this.options.claudePath()
-    const env = withVariables(this.options.env, HOSTED_ENVIRONMENT)
-    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
-    const { sessionId, args: claudeArgs } = withSessionId(args)
+    const { cli } = this.options
+    const { sessionId, args: withId } = withSessionId(args)
+    const claudeArgs = cli ? [...withId, '--append-system-prompt', cli.instruction] : withId
     // Batch files (an npm install's claude.cmd) only run through cmd.exe, as one quoted command line.
     // Each option is quoted as is, so one that cmd.exe would expand or cut short is refused.
     const batch = /^\.(cmd|bat)$/i.test(extname(claude))
     const changed = batch ? claudeArgs.find((arg) => CMD_CHANGES.test(arg)) : undefined
     if (changed !== undefined) throw new Error(`cmd.exe cannot pass ${JSON.stringify(changed)} to ${claude} as it is`)
     await this.options.recordSession(sessionId)
-    const pty = batch
-      ? spawn(
-          envVar(env, 'COMSPEC') ?? 'cmd.exe',
-          `/d /s /c ""${claude}"${claudeArgs.map((arg) => ` "${arg}"`).join('')}"`,
-          ptyOptions
-        )
-      : spawn(claude, claudeArgs, ptyOptions)
-
     const id = randomUUID()
+    const env = withVariables(this.options.env, { ...HOSTED_ENVIRONMENT, ...(await cli?.grant(id, this.options.env)) })
+    const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
+    let pty: IPty
+    try {
+      pty = batch
+        ? spawn(
+            envVar(env, 'COMSPEC') ?? 'cmd.exe',
+            `/d /s /c ""${claude}"${claudeArgs.map((arg) => ` "${arg}"`).join('')}"`,
+            ptyOptions
+          )
+        : spawn(claude, claudeArgs, ptyOptions)
+    } catch (error) {
+      cli?.revoke(id)
+      throw error
+    }
+
     let ended!: () => void
     const session: HostedProcess = {
       id,
@@ -178,6 +205,7 @@ export class SessionHost {
       this.options.onOutput(id, data)
     })
     pty.onExit(({ exitCode }) => {
+      cli?.revoke(id)
       stopFollowingHistory(session)
       session.stopFollowingRegistry()
       this.sessions.delete(id)
@@ -230,6 +258,7 @@ export class SessionHost {
   /** Ends every Hosted session at once, as when ClaudeForge's window is gone. */
   dispose(): void {
     for (const session of this.sessions.values()) {
+      this.options.cli?.revoke(session.id)
       stopFollowingHistory(session)
       session.stopFollowingRegistry()
       session.pty.kill()

@@ -44,6 +44,16 @@ function claudeHome(): string {
 if (process.platform === 'win32')
   app.setAppUserModelId(app.isPackaged ? 'io.github.gartn3r.claudeforge' : process.execPath)
 
+/**
+ * The ClaudeForge CLI Hosted sessions get (ADR 0007): the `claudeforge` command ships as real files,
+ * in the app's resources once installed (electron-builder.config.mjs), else in the repository's cli/;
+ * ClaudeForge's own executable runs its script as Node.
+ */
+function cli(): { folder: string; runtime: string } {
+  const folder = app.isPackaged ? join(process.resourcesPath, 'cli') : join(__dirname, '../../cli')
+  return { folder, runtime: process.execPath }
+}
+
 /** Writes how ClaudeForge's updates went to `updates.log` in its logs folder, since an installed app has no console. */
 function updateLog(): Logger {
   const write =
@@ -211,7 +221,8 @@ function createWindow(): void {
     dialogs: dialogs(win),
     trashItem: trashItem(),
     shell: desktopShell,
-    updater: updater()
+    updater: updater(),
+    cli: cli()
   })
   const unbind = bindBackendToIpc(backend, ipcMain, win.webContents)
   win.on('closed', () => {

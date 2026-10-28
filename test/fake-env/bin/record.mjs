@@ -2,7 +2,7 @@
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const RECORDED_ENV = /^(CLAUDE_|TERM_PROGRAM|FORCE_COLOR|GH_)/
+const RECORDED_ENV = /^(CLAUDE_|CLAUDEFORGE_CLI_|TERM_PROGRAM|FORCE_COLOR|GH_)/
 
 export function record(tool, args) {
   const dir = process.env.FAKE_ENV_LOG_DIR

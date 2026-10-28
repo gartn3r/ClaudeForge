@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
-import { launchClaudeForge, sessionRuns, type RunningClaudeForge } from './claudeforge'
+import { TOLD_ABOUT_THE_CLI, launchClaudeForge, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -73,7 +73,7 @@ test('closing while a Session works warns, naming it; reopening brings it back a
 
   await expect(window.getByRole('tabpanel')).toContainText('Fake Claude Code')
   expect((await sessionRuns(env)).slice(1)).toEqual([
-    expect.objectContaining({ args: ['--resume', sessionId], cwd: env.projects['recipe-box'] })
+    expect.objectContaining({ args: ['--resume', sessionId, ...TOLD_ABOUT_THE_CLI], cwd: env.projects['recipe-box'] })
   ])
   await expect(dormant).toHaveAccessibleDescription('Ready')
 })

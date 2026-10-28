@@ -1,0 +1,9 @@
+#!/bin/sh
+# The claudeforge command as POSIX shells run it (Git Bash, where Claude Code runs its Bash tool on
+# Windows): ClaudeForge's own executable runs claudeforge.mjs as Node. Only a Hosted session's
+# environment names that executable (ADR 0007).
+if [ -z "$CLAUDEFORGE_CLI_RUNTIME" ]; then
+  echo 'claudeforge: Only a Session running in ClaudeForge can change its interface.' >&2
+  exit 1
+fi
+ELECTRON_RUN_AS_NODE=1 exec "$CLAUDEFORGE_CLI_RUNTIME" "$(dirname "$0")/claudeforge.mjs" "$@"
