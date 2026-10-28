@@ -1,3 +1,5 @@
+import { readFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend } from '../../src/backend'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
@@ -123,6 +125,20 @@ describe('app state', () => {
       { sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11', project: harbor, title: 'Add an OpenAPI export' },
       { sessionId: '7a4f0e19-5c2b-4d8a-b3e6-91c0f2d4a5b7', project: recipes, title: null }
     ])
+  })
+
+  it("drops at startup the saved tabs whose Session's folder is gone, from the saved state too", async () => {
+    const harbor = env.projects['harbor-api']
+    const recipes = env.projects['recipe-box']
+    const kept = { sessionId: '5b0c7f0e-3f7a-4d0e-9a51-2f4c1f0d8a11', project: harbor, title: 'Add an OpenAPI export' }
+    // A Session of the recipe-box worktree week-view.
+    const gone = { sessionId: 'e5b8c1d0-2f4a-4b6c-8d9e-0a1b2c3d4e5f', project: recipes, title: 'Plan the week' }
+    await start().api.appState.write({ tabs: [kept, gone] })
+    await rm(env.worktrees['recipe-box@week-view']!, { recursive: true })
+
+    expect((await start().api.appState.read()).tabs).toEqual([kept])
+    const saved = JSON.parse(await readFile(join(env.userDataDir, 'state.json'), 'utf8'))
+    expect(saved.tabs).toEqual([kept])
   })
 
   it('replaces the saved tabs with each write of them, leaving out malformed ones', async () => {

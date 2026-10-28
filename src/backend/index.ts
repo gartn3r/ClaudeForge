@@ -181,6 +181,19 @@ export function createBackend(options: BackendOptions): Backend {
     return state
   }
 
+  /**
+   * Drops the saved tabs whose Session's folder is gone: they could only fail to resume. Done once,
+   * before the interface first reads the state, so they never come back at startup.
+   */
+  const dropTabsOfMissingFolders = async (): Promise<void> => {
+    const { tabs } = await appState.read()
+    if (!tabs.length) return
+    const missing = new Set((await sessions.current()).filter((s) => s.folderMissing).map((s) => s.id))
+    const kept = tabs.filter((tab) => !missing.has(tab.sessionId))
+    if (kept.length < tabs.length) await writeAppState({ tabs: kept })
+  }
+  let savedTabsChecked: Promise<void> | undefined
+
   /** Stores how the user tidied one Session, then pushes the catalog as it now looks. */
   const tidySession = async (id: string, preferences: NonNullable<AppStatePatch['sessions']>[string]): Promise<void> => {
     await writeAppState({ sessions: { [id]: preferences } })
@@ -234,7 +247,11 @@ export function createBackend(options: BackendOptions): Backend {
     },
     extensions,
     appState: {
-      read: () => appState.read(),
+      read: async () => {
+        // A catalog that cannot be read leaves the tabs as they are: each still says why it cannot resume.
+        await (savedTabsChecked ??= dropTabsOfMissingFolders().catch(() => undefined))
+        return appState.read()
+      },
       write: writeAppState
     },
     sessions: {

@@ -134,6 +134,7 @@ describe('the Session catalog', () => {
           lastActivity: Date.parse('2026-10-25T11:00:00.000Z'),
           state: 'external',
           hidden: false,
+          folderMissing: false,
           wayfinder: null
         }
       ]
@@ -287,6 +288,22 @@ describe('the Session catalog', () => {
 
       expect(pushed).toEqual([])
     })
+  })
+
+  it('marks a Session whose folder is gone, until a folder is back at its path', async () => {
+    const worktree = env.worktrees['recipe-box@leftovers']!
+    await rm(worktree, { recursive: true })
+    backend = startBackend(env)
+    const missingByWorktree = async (): Promise<Record<string, boolean>> => {
+      const [, recipeBox] = await backend.api.sessions.list()
+      return Object.fromEntries(recipeBox!.sessions.map((session) => [session.worktree ?? '', session.folderMissing]))
+    }
+
+    expect(await missingByWorktree()).toEqual({ '': false, 'week-view': false, leftovers: true })
+
+    await mkdir(worktree)
+
+    expect(await missingByWorktree()).toEqual({ '': false, 'week-view': false, leftovers: false })
   })
 
   it("keeps a removed worktree's Sessions under its parent Project", async () => {

@@ -1,6 +1,8 @@
+import { rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Backend } from '../../src/backend'
-import type { HostedSessionStatus } from '../../src/shared/api'
+import { missingFolderOf, type HostedSessionStatus } from '../../src/shared/api'
 import { COMPILE_TIMEOUT, createChildProcessLister, type ChildProcessLister } from '../child-processes'
 import { createFakeEnvironment, type FakeEnvironment, type FakeEnvironmentOptions, type FixtureProject } from '../fake-env'
 import { startBackend } from './backend'
@@ -160,6 +162,23 @@ describe('the Session host', () => {
 
     await waitForText(id, 'Fake Claude Code')
     expect(await sessionRuns()).toEqual([expect.objectContaining({ cwd: env!.worktrees['recipe-box@week-view'] })])
+  })
+
+  it('refuses to start claude in a folder that is gone, naming it, for a resume, a fork or a new Session', async () => {
+    const { api } = await start()
+    const worktree = env!.worktrees['recipe-box@week-view']!
+    const project = join(env!.root, 'removed-project')
+    await rm(worktree, { recursive: true })
+
+    for (const [startClaude, folder] of [
+      [() => api.sessionHost.resume(WORKTREE_SESSION, SIZE), worktree],
+      [() => api.sessionHost.fork(WORKTREE_SESSION, SIZE), worktree],
+      [() => api.sessionHost.start(project, SIZE), project]
+    ] as const) {
+      const failure = await startClaude().then(() => null, (error: unknown) => error)
+      expect(missingFolderOf(failure)).toBe(folder)
+    }
+    expect(await sessionRuns()).toEqual([])
   })
 
   it('types into the Hosted session, and claude answers in its output', async () => {
