@@ -48,7 +48,8 @@ export function TerminalArea({
 }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
-  const editorShown = editors.some((editor) => editor.key === activeKey) || webTabs.some((web) => web.key === activeKey)
+  // An editor or a Web tab on show leaves no room for the empty terminal's prompt to open a folder.
+  const otherShown = editors.some((editor) => editor.key === activeKey) || webTabs.some((web) => web.key === activeKey)
 
   const openFolder = async (): Promise<void> => {
     const project = await api.sessionHost.chooseProject()
@@ -94,7 +95,7 @@ export function TerminalArea({
         (web) =>
           !web.dormant && <WebTabView key={web.key} tabKey={web.key} address={web.address} visible={web.key === activeKey} />
       )}
-      {!active && !editorShown && (
+      {!active && !otherShown && (
         <div className="terminal-empty cf-on-slate">
           <p className="cf-muted">{t(tabs.length ? 'terminal.dormant' : 'terminal.empty')}</p>
           {openFolderButton(true)}

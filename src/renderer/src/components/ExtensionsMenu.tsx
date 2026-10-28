@@ -120,7 +120,7 @@ function placeAbove(bar: HTMLElement): CSSProperties {
 const failing = (extension: Extension): boolean => !!extension.mcp && STATUS[extension.mcp.status].failing
 
 /** The last segment of a Project's path, as the explorer names it. */
-const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
+export const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
 interface ExtensionsBarProps {
   /** The displayed Session's Project, whose Extensions it counts. */

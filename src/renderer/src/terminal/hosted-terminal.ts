@@ -24,10 +24,11 @@ export type TypedCommand = { command: string; ticket: string; map: string | null
 /**
  * Clears Claude Code's prompt before ClaudeForge types into it: Ctrl+E goes to the end of the
  * current line, then Ctrl+U deletes back to the start of the line, and, repeated, across the lines
- * of a multiline prompt. On an empty prompt both do nothing (unlike Ctrl+C, which would then exit,
- * or Esc Esc, which would open the rewind menu).
+ * of a multiline prompt, up to its first 64 lines. On an empty prompt both do nothing (unlike Ctrl+C,
+ * which would then exit, or Esc Esc, which would open the rewind menu). Lines below the cursor's,
+ * when the user left it higher up in a multiline prompt, stay.
  */
-const CLEAR_PROMPT = `\x05${'\x15'.repeat(16)}`
+const CLEAR_PROMPT = `\x05${'\x15'.repeat(64)}`
 
 /**
  * How a Hosted session's `claude` starts: a new Session in its Project, maybe with a command

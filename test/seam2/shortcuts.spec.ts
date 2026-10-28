@@ -42,7 +42,11 @@ const LOCALES = [
     settings: 'Settings',
     gpu: 'GPU rendering',
     typed: 'Typed, not sent',
+    extensionsScope: 'Scope',
+    extensionsGlobal: 'Global',
+    editSkill: (name: string) => `Edit ${name}`,
     ready: (name: string) => `Ready to run ${name}. Check the command below, then press Enter.`,
+    dismiss: 'Dismiss',
     busy: (session: string) => `Claude is working in ${session}. Nothing was typed: try again when the Session is ready.`,
     missing: (project: string) => `This skill doesn't exist in ${project}`
   },
@@ -79,7 +83,11 @@ const LOCALES = [
     settings: 'Paramètres',
     gpu: 'Rendu GPU',
     typed: 'Tapée, non envoyée',
+    extensionsScope: 'Portée',
+    extensionsGlobal: 'Globales',
+    editSkill: (name: string) => `Modifier ${name}`,
     ready: (name: string) => `Prêt à lancer ${name}. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.`,
+    dismiss: 'Fermer le message',
     busy: (session: string) => `Claude travaille dans ${session}. Rien n’a été tapé : réessayez quand la Session est prête.`,
     missing: (project: string) => `Ce skill n’existe pas dans ${project}`
   }
@@ -297,6 +305,8 @@ for (const locale of LOCALES) {
       await expect(address).toHaveValue(`${pages.origin}/`)
       await inWebTab(app, "document.getElementById('blank').click()")
       await expect.poll(() => openedInBrowser(app)).toEqual(['https://example.com/docs'])
+      // A page never has the desktop open a file, which could be a program.
+      await inWebTab(app, "window.open('file:///C:/Windows/System32/calc.exe')")
       await window.getByRole('button', { name: locale.openInBrowser }).click()
       await expect.poll(() => openedInBrowser(app)).toEqual(['https://example.com/docs', `${pages.origin}/`])
       await expect(tabs(window, locale)).toHaveCount(2)
@@ -331,7 +341,7 @@ for (const locale of LOCALES) {
       expect(await sessionRuns(env)).toHaveLength(1)
     })
 
-    test('with a Web tab or no tab on show, a Skill shortcut starts a new Session with its command typed', async () => {
+    test('with a Web tab, an editor or no tab on show, a Skill shortcut starts a new Session with its command typed', async () => {
       await seedShortcuts([devServer(pages.origin), review])
       const window = await launch(locale)
 
@@ -348,14 +358,25 @@ for (const locale of LOCALES) {
       await expect(tabs(window, locale).nth(1)).toHaveAttribute('aria-selected', 'true')
       await expect(shownTerminal(window)).toContainText('> /review --deep')
 
-      const runs = await sessionRuns(env)
-      expect(runs.map(({ args, cwd }) => ({ prefill: args.slice(0, 2), cwd }))).toEqual([
-        { prefill: ['--prefill', '/review --deep'], cwd: env.projects['recipe-box'] },
-        { prefill: ['--prefill', '/review --deep'], cwd: env.projects['recipe-box'] }
-      ])
+      // The user's release-notes skill, open in an editor.
+      await window.getByRole('region', { name: 'Extensions' }).getByRole('button').click()
+      const menu = window.getByRole('dialog', { name: 'Extensions' })
+      await menu.getByRole('group', { name: locale.extensionsScope }).getByRole('button', { name: locale.extensionsGlobal }).click()
+      await menu.getByRole('button', { name: locale.editSkill('release-notes') }).click()
+      await expect(window.getByRole('tab', { name: 'release-notes' })).toHaveAttribute('aria-selected', 'true')
+      await shortcutButton(window, locale, 'Deep review').click()
+      await expect(tabs(window, locale)).toHaveCount(5)
+      await expect(tabs(window, locale).nth(2)).toHaveAttribute('aria-selected', 'true')
+      await expect(window.getByRole('status', { name: locale.typed })).toContainText(locale.ready('Deep review'))
+
+      const prefills = async (): Promise<unknown[]> =>
+        (await sessionRuns(env)).map(({ args, cwd }) => ({ prefill: args.slice(0, 2), cwd }))
+      await expect
+        .poll(prefills)
+        .toEqual(Array(3).fill({ prefill: ['--prefill', '/review --deep'], cwd: env.projects['recipe-box'] }))
     })
 
-    test('with Claude working in the Session on show, a Skill shortcut types nothing and says why', async () => {
+    test('with Claude working or waiting in the Session on show, a Skill shortcut types nothing and says why', async () => {
       await seedShortcuts([review])
       const window = await launch(locale)
       await window.getByRole('button', { name: locale.newSession, exact: true }).click()
@@ -369,6 +390,16 @@ for (const locale of LOCALES) {
 
       await expect(window.getByRole('status').filter({ hasText: locale.busy('/work 4000') })).toBeVisible()
       await expect(shownTerminal(window)).toContainText('Done.')
+      await expect(shownTerminal(window)).not.toContainText('/review')
+
+      // Waiting on the user, who may be asked for a permission: typing would answer it.
+      await window.getByRole('button', { name: locale.dismiss }).click()
+      await shownTerminal(window).click()
+      await window.keyboard.type('/permission')
+      await window.keyboard.press('Enter')
+      await expect(shownTerminal(window)).toContainText('Allow Bash(npm test)?')
+      await shortcutButton(window, locale, 'Deep review').click()
+      await expect(window.getByRole('status').filter({ hasText: locale.busy('/work 4000') })).toBeVisible()
       await expect(shownTerminal(window)).not.toContainText('/review')
       expect(await sessionRuns(env)).toHaveLength(1)
     })

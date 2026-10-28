@@ -625,7 +625,7 @@ export interface BackendApi {
     info(): Promise<SystemInfo>
   }
   web: {
-    /** Opens a Web tab's address in the default browser; refused for anything but an http, https or file address. */
+    /** Opens a Web tab's address in the default browser; refused for anything but an http or https address or a local `.html` file. */
     openInBrowser(address: string): Promise<void>
   }
   updates: {

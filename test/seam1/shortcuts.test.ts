@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend, DesktopShell } from '../../src/backend'
 import type { Shortcut } from '../../src/shared/api'
-import { commandText, isWebAddress, shortcutProblems } from '../../src/shared/shortcuts'
+import { commandText, isPopupAddress, isWebAddress, opensInBrowser, shortcutProblems } from '../../src/shared/shortcuts'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -127,15 +127,27 @@ describe('Shortcuts', () => {
     expect((await start().api.appState.read()).webTabs).toEqual(['dev'])
   })
 
-  it('opens a Web tab in the default browser, and refuses anything but a web address', async () => {
+  it('opens a Web tab in the default browser, and refuses anything but a web page', async () => {
     const opened: string[] = []
     const { api } = start({ openUrl: async (url) => void opened.push(url), openFile: async () => undefined })
 
     await api.web.openInBrowser('http://localhost:5173/pricing')
     await api.web.openInBrowser('file:///C:/reports/index.html')
     await expect(api.web.openInBrowser('C:\\Windows\\System32\\calc.exe')).rejects.toThrow()
+    // Windows would run a program a file address names, rather than show it in a browser.
+    await expect(api.web.openInBrowser('file:///C:/Windows/System32/calc.exe')).rejects.toThrow()
     await expect(api.web.openInBrowser('ms-settings:privacy')).rejects.toThrow()
 
     expect(opened).toEqual(['http://localhost:5173/pricing', 'file:///C:/reports/index.html'])
+  })
+
+  it('hands the default browser only web pages, and a page only http or https new windows', () => {
+    expect(opensInBrowser('https://example.com/a')).toBe(true)
+    expect(opensInBrowser('file:///C:/reports/index.HTM')).toBe(true)
+    expect(opensInBrowser('file:///C:/Users/me/setup.bat')).toBe(false)
+    expect(isPopupAddress('https://accounts.example.com/sign-in')).toBe(true)
+    expect(isPopupAddress('http://localhost:3000/help')).toBe(true)
+    expect(isPopupAddress('file:///C:/reports/index.html')).toBe(false)
+    expect(isPopupAddress('file:///C:/Windows/System32/calc.exe')).toBe(false)
   })
 })

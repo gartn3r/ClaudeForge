@@ -2,16 +2,13 @@ import { Globe, MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { Extension, Shortcut, ShortcutCommand } from '../../../shared/api'
-import { commandText, shortcutProblems, type ShortcutProblem } from '../../../shared/shortcuts'
+import { SHORTCUT_NAME_MAX_LENGTH, commandText, shortcutProblems, type ShortcutProblem } from '../../../shared/shortcuts'
 import { api } from '../api'
-import { useExtensions } from './ExtensionsMenu'
+import { folderName, useExtensions } from './ExtensionsMenu'
 import { Menu } from './Menu'
 
 /** How Claude Code names a skill in its prompt: a plugin's as `<plugin>:<skill>`. */
 export const skillCommandName = (skill: Extension): string => (skill.plugin ? `${skill.plugin}:${skill.name}` : skill.name)
-
-/** The last segment of a Project's path, as the explorer names it. */
-export const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
 /**
  * The skills a Project's Sessions get, by the name Claude Code types them with; null while they are
@@ -54,7 +51,7 @@ interface ShortcutsCardProps {
   target: string
   /** The target Project's skills, by the name Claude Code types them with; null while unknown. */
   skills: ReadonlySet<string> | null
-  /** The Web shortcuts whose Web tab is on show. */
+  /** The Web shortcut whose Web tab is on show, by id; null when none is. */
   shownWebShortcut: string | null
   onOpen(shortcut: Shortcut): void
   onAdd(): void
@@ -364,7 +361,7 @@ export function ShortcutDialog({ editing, shortcuts, project, onDone }: Shortcut
             <input
               className="extdialog__input"
               value={name}
-              maxLength={80}
+              maxLength={SHORTCUT_NAME_MAX_LENGTH}
               required
               autoFocus
               aria-invalid={invalid('name-missing')}

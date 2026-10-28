@@ -1,6 +1,6 @@
 import { app, session, shell, type BrowserWindow } from 'electron'
 import { WEB_TAB_PARTITION } from '../shared/api'
-import { isWebAddress } from '../shared/shortcuts'
+import { isPopupAddress, isWebAddress } from '../shared/shortcuts'
 
 /**
  * Keeps every Web tab's page apart from the interface (ADR 0006): each `<webview>` the interface
@@ -29,9 +29,9 @@ export function isolateWebTabs(win: BrowserWindow): void {
 app.on('web-contents-created', (_event, contents) => {
   if (contents.getType() !== 'webview') return
   // Links followed inside the page stay in its Web tab; target=_blank, window.open and sign-in popups
-  // go to the default browser.
+  // go to the default browser, when they are http or https: a page never has the desktop open a file.
   contents.setWindowOpenHandler(({ url }) => {
-    if (isWebAddress(url)) void shell.openExternal(url)
+    if (isPopupAddress(url)) void shell.openExternal(url)
     return { action: 'deny' }
   })
   contents.on('will-navigate', (event, url) => {

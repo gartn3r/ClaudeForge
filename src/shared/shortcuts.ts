@@ -23,6 +23,20 @@ export function isWebAddress(address: string): boolean {
 }
 
 /**
+ * Whether the default browser may be handed this address: an http or https one, or a local web
+ * page (`.html`, `.htm`). Windows opens any other `file` address with its own program, and would
+ * run one that is a program, so none other is handed over.
+ */
+export function opensInBrowser(address: string): boolean {
+  if (!isWebAddress(address)) return false
+  const url = new URL(address.trim())
+  return url.protocol !== 'file:' || /\.html?$/i.test(url.pathname)
+}
+
+/** Whether a page may have the default browser open this new window: only an http or https one. */
+export const isPopupAddress = (address: string): boolean => isWebAddress(address) && /^https?:/i.test(address.trim())
+
+/**
  * What a typed command may not hold, as `--prefill` refuses them (a `claude` batch file goes through
  * cmd.exe, which would change them): a double quote, a percent sign, a line break.
  */
