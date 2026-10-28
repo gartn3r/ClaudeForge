@@ -42,6 +42,9 @@ export const isPopupAddress = (address: string): boolean => isWebAddress(address
  */
 const FORBIDDEN = /["%\r\n]/
 
+/** Whether a command holds what cannot be typed as it is: an action's command follows the same rule. */
+export const hasForbiddenCharacter = (text: string): boolean => FORBIDDEN.test(text)
+
 /** The command a Skill shortcut types, as it lands in Claude Code's prompt. */
 export function commandText(command: ShortcutCommand): string {
   if (command.mode === 'free') return command.text.trim()

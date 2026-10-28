@@ -1,0 +1,147 @@
+/* Content items, as any Element shows them, and the dialogs of the Elements' right-click menus. */
+
+.content-item {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-2);
+  color: var(--text);
+  font-size: 13px;
+}
+.content-item--text {
+  display: block;
+}
+
+/* A link, an action, and a file shown as a link, are rows the user clicks. */
+.content-item--link,
+.content-item--action,
+.content-item--file {
+  align-items: center;
+  width: 100%;
+  min-height: var(--size-row);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.content-item--link:hover,
+.content-item--action:hover,
+.content-item--file:hover:not(:disabled) {
+  background: var(--surface-raised);
+}
+.content-item--file:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.content-item__label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-item__detail {
+  overflow: hidden;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A file or a web page in full, under its name. */
+.content-item--file-full,
+.content-item--page {
+  flex-direction: column;
+}
+.content-item__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-row);
+}
+.content-item__browser {
+  margin-left: auto;
+}
+.content-item__notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-muted);
+}
+.content-item__file-text {
+  overflow: auto;
+  max-height: 480px;
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.content-item__page {
+  display: flex;
+  height: 480px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #fff;
+}
+
+.element-dialog {
+  width: 480px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+.element-dialog__form,
+.element-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.element-dialog__kind {
+  display: flex;
+  padding: 4px;
+}
+.element-dialog__kind button {
+  flex: 1;
+  height: 34px;
+}
+.element-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+.element-dialog__field .extdialog__input,
+.element-dialog__field .extdialog__hint {
+  font-weight: 400;
+}
+.element-dialog__field textarea {
+  resize: vertical;
+}
+.element-dialog__color {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.element-dialog__color .element-dialog__field {
+  flex: 1;
+}
+.element-dialog__swatch {
+  width: 44px;
+  height: var(--size-control);
+  padding: 0;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-sm);
+  background: none;
+}
+.element-dialog__default {
+  margin-right: auto;
+}
+.element-dialog__error {
+  margin: 0;
+  color: var(--danger);
+}

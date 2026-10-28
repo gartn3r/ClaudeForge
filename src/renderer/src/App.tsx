@@ -17,6 +17,7 @@ import { useEditorTabs } from './editor/editor-tabs'
 import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
+import { planTyping, samePath } from './terminal/typing'
 import { useWebTabs } from './web/web-tabs'
 
 interface AppProps {
@@ -24,12 +25,6 @@ interface AppProps {
   initialClaudeCode: ClaudeCodeStatus
   /** The folder ClaudeForge started in: the displayed Project until a Session is displayed. */
   project: string
-}
-
-/** Whether two paths name the same folder; Windows paths ignore case and slash direction. */
-const samePath = (a: string, b: string): boolean => {
-  const key = (path: string): string => path.replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase()
-  return key(a) === key(b)
 }
 
 export function App({ initialState, initialClaudeCode, project: startProject }: AppProps): ReactNode {
@@ -111,14 +106,19 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   /** The Session a Skill shortcut could not type into, while the notice saying so shows. */
   const [busySession, setBusySession] = useState<string | null>(null)
   const dismissBusy = useCallback(() => setBusySession(null), [])
+  /**
+   * Types a command without sending it, by the Skill shortcut rule; `owner` is the Project an action
+   * belongs to, null for a Skill shortcut. `name` says where the command came from.
+   */
+  const typeCommand = (command: string, name: string, owner: string | null): void => {
+    const plan = planTyping(shownHosted ?? null, owner, project)
+    if (plan.kind === 'start') return startHostedSession(plan.project, { kind: 'new', typed: { command, shortcut: name } })
+    if (plan.kind === 'busy' || !shownHosted!.terminal.typeCommand(command)) setBusySession(tabTitle(shownHosted!))
+  }
   const openShortcut = (shortcut: Shortcut): void => {
     if (shortcut.kind === 'web') return showWebTab(() => webbing.web.open(shortcut.id))
     if (lacksSkill(shortcut, targetSkills)) return
-    const command = commandText(shortcut.command)
-    if (!shownHosted) return startHostedSession(project, { kind: 'new', typed: { command, shortcut: shortcut.name } })
-    // Claude is working, or waiting on the user (maybe for a permission): typing now would answer it.
-    const ready = shownHosted.status === 'idle' || shownHosted.status === 'done'
-    if (!ready || !shownHosted.terminal.typeCommand(command)) setBusySession(tabTitle(shownHosted))
+    typeCommand(commandText(shortcut.command), shortcut.name, null)
   }
   const shortcutsProps = {
     shortcuts: state.shortcuts,

@@ -1,11 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import { createServer, type Server } from 'node:http'
-import type { AddressInfo } from 'node:net'
-import { join, resolve } from 'node:path'
+import type { Server } from 'node:http'
+import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 import type { Shortcut } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment, type FixtureProject } from '../fake-env'
-import { launchClaudeForge, sessionRuns, type RunningClaudeForge } from './claudeforge'
+import { inWebTab, launchClaudeForge, serveFixturePages, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 /** What the Shortcuts journeys read and click, in each language ClaudeForge speaks. */
 const LOCALES = [
@@ -94,28 +93,6 @@ const LOCALES = [
 ] as const
 
 type Locale = (typeof LOCALES)[number]
-
-const FIXTURE_PAGES = resolve(__dirname, '../fixtures/web')
-
-/** Serves test/fixtures/web on this machine, as a Project's dev server would. */
-async function serveFixturePages(): Promise<{ origin: string; server: Server }> {
-  const server = createServer((request, response) => {
-    const path = new URL(request.url ?? '/', 'http://localhost').pathname
-    readFile(join(FIXTURE_PAGES, path === '/' ? 'index.html' : path)).then(
-      (page) => response.writeHead(200, { 'content-type': 'text/html' }).end(page),
-      () => response.writeHead(404).end()
-    )
-  })
-  await new Promise<void>((listening) => server.listen(0, '127.0.0.1', listening))
-  return { origin: `http://localhost:${(server.address() as AddressInfo).port}`, server }
-}
-
-/** Runs a script in the Web tab's page, from the main process, as a user gesture; null with no Web tab. */
-const inWebTab = (app: ElectronApplication, script: string): Promise<unknown> =>
-  app.evaluate(async ({ webContents }, script) => {
-    const page = webContents.getAllWebContents().find((contents) => contents.getType() === 'webview')
-    return page ? page.executeJavaScript(script, true) : null
-  }, script)
 
 /** Keeps what ClaudeForge opens in the default browser from now on, for `openedInBrowser` to read. */
 async function recordBrowser(app: ElectronApplication): Promise<void> {

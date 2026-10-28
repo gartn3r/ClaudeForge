@@ -23,5 +23,6 @@
     "vitest.config.mts",
     "playwright.config.mts",
     "playwright.packaged.config.mts"
-  ]
+  ],
+  "exclude": ["test/views/**/*"]
 }
