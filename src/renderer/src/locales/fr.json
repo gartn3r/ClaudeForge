@@ -18,6 +18,45 @@
     "notifications": "Notifications",
     "notificationsHint": "Quand une Session en arrière-plan vous attend ou a terminé."
   },
+  "shortcuts": {
+    "heading": "Raccourcis",
+    "label": "Raccourcis",
+    "add": "Nouveau Raccourci",
+    "actions": "Actions du Raccourci",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "missingSkill": "Ce skill n’existe pas dans {{project}}",
+    "busy": "Claude travaille dans <b>{{session}}</b>. Rien n’a été tapé : réessayez quand la Session est prête.",
+    "dismiss": "Fermer le message",
+    "form": {
+      "titleNew": "Nouveau Raccourci",
+      "titleEdit": "Modifier le Raccourci",
+      "lead": "Le même pour tous vos Projets.",
+      "kind": "Type",
+      "web": "Page web",
+      "skill": "Skill",
+      "name": "Nom",
+      "address": "Adresse",
+      "addressHint": "Une adresse http, https ou file, localhost compris. Elle s’ouvre dans un onglet web.",
+      "command": "Commande",
+      "chooseSkill": "Choisir un skill",
+      "writeCommand": "Écrire une commande",
+      "skillLabel": "Skill",
+      "skillOption": "{{name}} · {{origin}}",
+      "noSkills": "Aucun skill parmi les Extensions de {{project}}.",
+      "args": "Arguments",
+      "freeCommand": "Commande",
+      "preview": "Tapée, jamais envoyée",
+      "previewHint": "Dans la Session affichée si elle est prête, sinon dans une nouvelle Session du Projet affiché.",
+      "commandHint": "Sans guillemets, sans % et sur une seule ligne.",
+      "nameMissing": "Donnez un nom au Raccourci.",
+      "addressInvalid": "Saisissez une adresse http, https ou file.",
+      "commandMissing": "Choisissez un skill ou écrivez une commande.",
+      "commandForbidden": "La commande ne peut contenir ni \", ni %, ni retour à la ligne.",
+      "add": "Ajouter",
+      "save": "Enregistrer"
+    }
+  },
   "explorer": {
     "label": "Sessions",
     "heading": "Sessions",
@@ -203,7 +242,8 @@
     "typed": {
       "label": "Tapée, non envoyée",
       "ticket": "Prêt à démarrer <b>{{ticket}}</b> de <m>{{map}}</m>. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.",
-      "map": "Prêt à lancer Wayfinder sur <b>{{ticket}}</b> comme une Carte à part entière. Vérifiez la commande ci-dessous, puis appuyez sur Entrée."
+      "map": "Prêt à lancer Wayfinder sur <b>{{ticket}}</b> comme une Carte à part entière. Vérifiez la commande ci-dessous, puis appuyez sur Entrée.",
+      "shortcut": "Prêt à lancer <b>{{shortcut}}</b>. Vérifiez la commande ci-dessous, puis appuyez sur Entrée."
     }
   },
   "tabs": {
@@ -235,6 +275,15 @@
       "body": "L’onglet se ferme et le fichier reste tel qu’il a été enregistré pour la dernière fois.",
       "action": "Abandonner"
     }
+  },
+  "web": {
+    "tab": "Page web",
+    "bar": "Commandes de la page",
+    "back": "Précédent",
+    "forward": "Suivant",
+    "reload": "Recharger",
+    "address": "Adresse",
+    "openInBrowser": "Ouvrir dans le navigateur"
   },
   "editor": {
     "label": "Texte de {{name}}",

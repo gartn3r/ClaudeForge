@@ -10,8 +10,10 @@ import {
   type PanelId,
   type PanelLayout,
   type SavedTab,
-  type SessionPreferences
+  type SessionPreferences,
+  type Shortcut
 } from '../shared/api'
+import { shortcutProblems, tidyShortcut } from '../shared/shortcuts'
 
 export const STATE_FILE = 'state.json'
 
@@ -30,7 +32,9 @@ export function defaultAppState(): AppState {
     notifications: true,
     sessions: {},
     maps: {},
-    tabs: []
+    tabs: [],
+    shortcuts: [],
+    webTabs: []
   }
 }
 
@@ -121,9 +125,42 @@ function savedTabs(tabs: unknown[]): SavedTab[] {
   })
 }
 
+const isText = (value: unknown): value is string => typeof value === 'string'
+
+/** A Shortcut read from a patch, with the fields of its kind; null when it has not got them. */
+function readShortcut(entry: unknown): Shortcut | null {
+  if (typeof entry !== 'object' || entry === null) return null
+  const { id, name, kind, address, command } = entry as Record<string, unknown>
+  if (!isText(id) || !id || !isText(name)) return null
+  if (kind === 'web') return isText(address) ? { id, name, kind, address } : null
+  if (kind !== 'skill' || typeof command !== 'object' || command === null) return null
+  const { mode, skill, args, text } = command as Record<string, unknown>
+  if (mode === 'skill' && isText(skill) && isText(args)) return { id, name, kind, command: { mode, skill, args } }
+  if (mode === 'free' && isText(text)) return { id, name, kind, command: { mode, text } }
+  return null
+}
+
+/** The Shortcuts of a patch, in order: those the Shortcut form would refuse, or whose id is taken, are left out. */
+function savedShortcuts(entries: unknown[]): Shortcut[] {
+  const ids = new Set<string>()
+  return entries.flatMap((entry) => {
+    const shortcut = readShortcut(entry)
+    if (!shortcut || ids.has(shortcut.id) || shortcutProblems(shortcut).length) return []
+    ids.add(shortcut.id)
+    return [tidyShortcut(shortcut)]
+  })
+}
+
+/** The open Web tabs, in order: each names a Web shortcut, once. */
+function openWebTabs(ids: unknown[], shortcuts: Shortcut[]): string[] {
+  const web = new Set(shortcuts.filter((shortcut) => shortcut.kind === 'web').map((shortcut) => shortcut.id))
+  return [...new Set(ids.filter((id): id is string => isText(id) && web.has(id)))]
+}
+
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering, notifications, sessions, maps, tabs } = (patch ?? {}) as AppStatePatch
+  const { layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs } =
+    (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof layout === 'object' && layout !== null) {
     next = {
@@ -142,6 +179,11 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   }
   if (typeof maps === 'object' && maps !== null) next = { ...next, maps: mergeMaps(state.maps, maps) }
   if (Array.isArray(tabs)) next = { ...next, tabs: savedTabs(tabs) }
+  // A Web tab closes with its Shortcut, or once the Shortcut is no longer a Web shortcut.
+  if (Array.isArray(shortcuts)) next = { ...next, shortcuts: savedShortcuts(shortcuts) }
+  if (Array.isArray(webTabs) || Array.isArray(shortcuts)) {
+    next = { ...next, webTabs: openWebTabs(Array.isArray(webTabs) ? webTabs : next.webTabs, next.shortcuts) }
+  }
   return next
 }
 

@@ -190,7 +190,9 @@ if (args[0] === 'mcp' || args[0] === 'plugin') refuse(`The fake claude does not 
 // mode, so Enter (\r) submits and Ctrl+J (\n) inserts a newline. It reports its terminal's size at
 // start and on every resize, echoes each submitted prompt, and exits on `/exit`. With `--prefill
 // <text>`, its prompt starts holding the text, unsent. Like Claude Code it names its terminal after
-// the first prompt (`✳ <prompt>`). These prompts stand in for a turn:
+// the first prompt (`✳ <prompt>`). Like Claude Code, Ctrl+E goes to the end of the line (its cursor is
+// always there) and Ctrl+U deletes back to the start of the line, then across lines when repeated.
+// These prompts stand in for a turn:
 // - `/work <ms>`: a spinner redrawn every 100 ms for that long, then `Done.`; any key interrupts it.
 // - `/ask [<ms>]`: works that long first, if given, then asks `Red or blue?` and waits for the user;
 //   the next prompt answers it, then `Done.`.
@@ -373,6 +375,12 @@ process.stdin.on('data', (chunk) => {
     } else if (key === '\n') {
       prompt += '\n'
       write('\r\n  ')
+    } else if (key === '\x05') {
+      // Ctrl+E: the cursor is always at the end already.
+    } else if (key === '\x15') {
+      // Ctrl+U: back to the start of the line; at its start, joins it to the line before.
+      prompt = prompt.endsWith('\n') ? prompt.slice(0, -1) : prompt.slice(0, prompt.lastIndexOf('\n') + 1)
+      write(`\r\x1b[2K${prompt.includes('\n') ? '  ' : '> '}${prompt.split('\n').at(-1)}`)
     } else if (key === '\x7f' || key === '\b') {
       if (prompt && !prompt.endsWith('\n')) {
         prompt = prompt.slice(0, -1)

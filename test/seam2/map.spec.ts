@@ -109,7 +109,7 @@ test('collapses the Map panel on its own in a Project with no Map', async () => 
   claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
   const { window } = claudeforge
 
-  await expect.poll(async () => (await boxOf(window.getByRole('complementary', { name: 'Map' }))).width).toBe(40)
+  await expect.poll(async () => (await boxOf(window.getByRole('complementary', { name: 'Map' }))).width).toBe(64)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
   await expect(window.getByRole('complementary', { name: 'Map' })).toContainText('No Map in this Project')

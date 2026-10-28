@@ -1,4 +1,4 @@
-import { FolderOpen, SquareTerminal } from 'lucide-react'
+import { FolderOpen } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../api'
@@ -7,12 +7,15 @@ import type { HostedTab } from '../terminal/hosted-sessions'
 import type { HostedTerminal, TypedCommand } from '../terminal/hosted-terminal'
 import { ExtensionEditor } from './ExtensionEditor'
 import { panelId, tabId } from './SessionTabs'
+import { WebTabView } from './WebTabView'
 
 interface TerminalAreaProps {
   tabs: HostedTab[]
   /** The skill and subagent files open in an editor. */
   editors: EditorTab[]
-  /** The tab on show, a Hosted session's or an editor's. */
+  /** The Web tabs and the address each opened on; a dormant one's page is not loaded yet. */
+  webTabs: Array<{ key: string; address: string; dormant: boolean }>
+  /** The tab on show, a Hosted session's, an editor's or a Web tab's. */
   activeKey: string | null
   /** Whether the terminal on show renders with WebGL rather than the DOM renderer. */
   gpuRendering: boolean
@@ -26,8 +29,8 @@ interface TerminalAreaProps {
 }
 
 /**
- * The centre column, where the Hosted sessions' terminals live, and the editors
- * of skills and subagents. Every one stays mounted, so a Session in the
+ * The centre column, where the Hosted sessions' terminals live, the editors
+ * of skills and subagents, and the Web tabs' pages. Every one stays mounted, so a Session in the
  * background keeps running and keeps its scrollback, and an editor its unsaved
  * text; only the active tab's is on show. A dormant tab's terminal is not
  * mounted until the tab is selected, as mounting starts `claude`.
@@ -35,6 +38,7 @@ interface TerminalAreaProps {
 export function TerminalArea({
   tabs,
   editors,
+  webTabs,
   activeKey,
   gpuRendering,
   onStart,
@@ -44,7 +48,8 @@ export function TerminalArea({
 }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
-  const editorShown = editors.some((editor) => editor.key === activeKey)
+  // An editor or a Web tab on show leaves no room for the empty terminal's prompt to open a folder.
+  const otherShown = editors.some((editor) => editor.key === activeKey) || webTabs.some((web) => web.key === activeKey)
 
   const openFolder = async (): Promise<void> => {
     const project = await api.sessionHost.chooseProject()
@@ -86,14 +91,18 @@ export function TerminalArea({
           onRename={(name) => onEditorRename(editor.key, name)}
         />
       ))}
-      {!active && !editorShown && (
-        <div className="terminal-empty">
+      {webTabs.map(
+        (web) =>
+          !web.dormant && <WebTabView key={web.key} tabKey={web.key} address={web.address} visible={web.key === activeKey} />
+      )}
+      {!active && !otherShown && (
+        <div className="terminal-empty cf-on-slate">
           <p className="cf-muted">{t(tabs.length ? 'terminal.dormant' : 'terminal.empty')}</p>
           {openFolderButton(true)}
         </div>
       )}
       {active?.end && (
-        <div className="terminal-ended" role="status">
+        <div className="terminal-ended cf-on-slate" role="status">
           <span>
             {active.end.exitCode !== null
               ? t('terminal.exited', { code: active.end.exitCode })
@@ -116,9 +125,13 @@ function TypedBanner({ typed, onCancel }: { typed: TypedCommand; onCancel(): voi
   const { t } = useTranslation()
   return (
     <div className="terminal-typed" role="status" aria-label={t('terminal.typed.label')}>
-      <SquareTerminal className="cf-icon" aria-hidden="true" />
+      <span className="terminal-typed__chip" aria-hidden="true">
+        {t('terminal.typed.label')}
+      </span>
       <span>
-        {typed.map === null ? (
+        {'shortcut' in typed ? (
+          <Trans i18nKey="terminal.typed.shortcut" values={{ shortcut: typed.shortcut }} components={{ b: <strong /> }} />
+        ) : typed.map === null ? (
           <Trans i18nKey="terminal.typed.map" values={{ ticket: typed.ticket }} components={{ b: <strong /> }} />
         ) : (
           <Trans

@@ -36,7 +36,7 @@ _Avoid_: link (a Session's link is something else), favorite, bookmark
 A Shortcut to a web address, opened in a Web tab.
 
 **Skill shortcut**:
-A Shortcut to a command that is typed, never sent, into a Hosted session: a skill chosen among the Extensions with optional arguments, or a command written freely.
+A Shortcut to a command that is typed, never sent: into the Hosted session on show when it is ready, else into a new Session of the displayed Project. The command is a skill chosen among the Extensions with optional arguments, or one written freely.
 
 **Web tab**:
 A tab beside the Hosted session tabs that shows a Web shortcut's page inside ClaudeForge.

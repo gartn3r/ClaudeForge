@@ -12,16 +12,6 @@ const RICH_TEXT = {
   guide: <a href={CLAUDE_CODE_INSTALLATION_GUIDE} target="_blank" rel="noreferrer" />
 }
 
-/** Radii of the contour lines behind the screen, as in the design. */
-const CONTOURS = [
-  [120, 80],
-  [200, 140],
-  [290, 205],
-  [390, 275],
-  [500, 350],
-  [620, 430]
-] as const
-
 type Problem = Exclude<ClaudeCodeStatus, { state: 'found' }>
 
 type TFunction = ReturnType<typeof useTranslation>['t']
@@ -77,54 +67,51 @@ export function FirstRun({ problem, onStatus }: FirstRunProps): ReactNode {
   const content = contentFor(problem, t)
   const Icon = content.icon
 
+  const checkAgain = (
+    <button type="button" className="cf-btn cf-btn--primary" disabled={busy} onClick={act(() => api.claudeCode.locate())}>
+      <RotateCw className="cf-icon cf-icon--sm" aria-hidden="true" />
+      {t('firstRun.checkAgain')}
+    </button>
+  )
+  const choose = (
+    <button type="button" className="cf-btn" disabled={busy} onClick={act(() => api.claudeCode.choose())}>
+      {t('firstRun.choose')}
+    </button>
+  )
+  // Each step a tile: install in lime, check again in slate with its button, choose on a card with its own.
+  const actions = [null, checkAgain, choose]
+
   return (
     <main className="first-run" aria-labelledby="first-run-title">
-      <svg className="first-run__contours" viewBox="0 0 1100 664" preserveAspectRatio="none" aria-hidden="true">
-        {CONTOURS.map(([rx, ry]) => (
-          <ellipse key={rx} cx="900" cy="560" rx={rx} ry={ry} />
-        ))}
-      </svg>
       <div className="first-run__content">
         <div className="first-run__intro">
-          <span className={`cf-status cf-status--${content.status} cf-pill`}>
-            <Icon className="cf-icon cf-icon--sm" aria-hidden="true" />
-            {content.label}
-          </span>
-          <h1 id="first-run-title">{content.title}</h1>
+          <div className="first-run__title">
+            <span className={`cf-status cf-status--${content.status} cf-pill`}>
+              <Icon className="cf-icon cf-icon--sm" aria-hidden="true" />
+              {content.label}
+            </span>
+            <h1 id="first-run-title">{content.title}</h1>
+          </div>
           <p className="cf-muted">{content.lead}</p>
         </div>
 
         <ol className="first-run__steps">
           {content.steps.map((key, i) => (
-            <li key={key}>
+            <li key={key} className={i === 1 ? 'cf-on-slate' : undefined}>
               <span className="first-run__step-number" aria-hidden="true">
                 {i + 1}
               </span>
               <span>
                 <Trans i18nKey={key} components={RICH_TEXT} />
               </span>
+              {actions[i]}
             </li>
           ))}
         </ol>
 
-        <div className="first-run__actions">
-          <button
-            type="button"
-            className="cf-btn cf-btn--primary"
-            disabled={busy}
-            onClick={act(() => api.claudeCode.locate())}
-          >
-            <RotateCw className="cf-icon cf-icon--sm" aria-hidden="true" />
-            {t('firstRun.checkAgain')}
-          </button>
-          <button type="button" className="cf-btn" disabled={busy} onClick={act(() => api.claudeCode.choose())}>
-            {t('firstRun.choose')}
-          </button>
-        </div>
-
         <div className="first-run__where">
           <span className="cf-eyebrow">{content.whereLabel}</span>
-          <code className="cf-mono cf-muted">{content.where}</code>
+          <code className="cf-mono">{content.where}</code>
         </div>
       </div>
     </main>

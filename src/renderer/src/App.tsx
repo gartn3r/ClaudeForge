@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppState, ClaudeCodeStatus, MapListing, PanelId } from '../../shared/api'
+import type { AppState, ClaudeCodeStatus, MapListing, PanelId, Shortcut } from '../../shared/api'
+import { commandText } from '../../shared/shortcuts'
 import { api, onEvent } from './api'
 import { CloseWarning } from './components/CloseWarning'
 import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
@@ -8,13 +9,15 @@ import { FirstRun } from './components/FirstRun'
 import { MapPanel, MapRail, shownMap } from './components/MapPanel'
 import { SettingsMenu } from './components/SettingsMenu'
 import { SessionTabs } from './components/SessionTabs'
+import { BusyNotice, ShortcutDialog, ShortcutsCard, ShortcutsRail, lacksSkill, useProjectSkills } from './components/Shortcuts'
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
 import { useEditorTabs } from './editor/editor-tabs'
-import { useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
+import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
+import { useWebTabs } from './web/web-tabs'
 
 interface AppProps {
   initialState: AppState
@@ -50,6 +53,16 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // Joined, so the backend hears again only when the set changes (editor keys hold no space).
   const unsavedKeys = editing.tabs.filter((tab) => tab.dirty).map((tab) => tab.key).join(' ')
   useEffect(() => void api.window.setUnsavedEditors(unsavedKeys ? unsavedKeys.split(' ') : []), [unsavedKeys])
+  // Web tabs share it too, and come back on the next start like the Hosted sessions' tabs.
+  const webbing = useWebTabs(state.webTabs)
+  const webShortcuts = state.shortcuts.flatMap((shortcut) => (shortcut.kind === 'web' ? [shortcut] : []))
+  const webIds = webShortcuts.map((shortcut) => shortcut.id).join(' ')
+  // A Web tab closes with its Shortcut.
+  useEffect(() => webbing.web.keepOnly(new Set(webIds.split(' '))), [webbing.web, webIds])
+  const webTabs = webbing.tabs.flatMap((tab) => {
+    const shortcut = webShortcuts.find((each) => each.id === tab.shortcutId)
+    return shortcut ? [{ ...tab, title: shortcut.name, address: shortcut.address }] : []
+  })
   const activeTab = hosted.tabs.find((tab) => tab.key === hosted.activeKey)
   const [displayedSessionId, setDisplayedSessionId] = useState<string | null>(null)
   const displayed = catalog
@@ -63,18 +76,57 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
     setDisplayedSessionId(null)
     editing.editors.deselect()
+    webbing.web.deselect()
     hosted.sessions.start(folder, state.gpuRendering, launch)
   }
   const selectHostedSession = (key: string): void => {
     setDisplayedSessionId(null)
     editing.editors.deselect()
+    webbing.web.deselect()
     hosted.sessions.select(key)
   }
-  const shownKey = editing.activeKey ?? hosted.activeKey
-  // A Session behind an editor is not on show, so it notifies like one in the background.
-  const shownHostedKey = editing.activeKey === null ? hosted.activeKey : null
+  const showEditor = (show: () => void): void => {
+    webbing.web.deselect()
+    show()
+  }
+  const showWebTab = (show: () => void): void => {
+    editing.editors.deselect()
+    show()
+  }
+  const shownKey = editing.activeKey ?? webbing.activeKey ?? hosted.activeKey
+  // A Session behind an editor or a Web tab is not on show, so it notifies like one in the background.
+  const shownHostedKey = editing.activeKey === null && webbing.activeKey === null ? hosted.activeKey : null
+  /** The Hosted session on show, while its `claude` can be typed into. */
+  const shownHosted = hosted.tabs.find((tab) => tab.key === shownHostedKey && !tab.dormant && !tab.end)
   useSessionNotifications(hosted.sessions, shownHostedKey, state.notifications, selectHostedSession)
   const projectSessions = catalog?.find((group) => samePath(group.path, project))?.sessions ?? []
+
+  // A Skill shortcut types into the Hosted session on show, else into a new Session of the displayed
+  // Project: that Project's skills say which Skill shortcuts are greyed out. They are read only while
+  // a Shortcut names a skill.
+  const skillTarget = shownHosted?.project ?? project
+  const namesSkill = state.shortcuts.some((shortcut) => shortcut.kind === 'skill' && shortcut.command.mode === 'skill')
+  const targetSkills = useProjectSkills(namesSkill ? skillTarget : null)
+  const [editingShortcut, setEditingShortcut] = useState<{ shortcut: Shortcut | null } | null>(null)
+  /** The Session a Skill shortcut could not type into, while the notice saying so shows. */
+  const [busySession, setBusySession] = useState<string | null>(null)
+  const dismissBusy = useCallback(() => setBusySession(null), [])
+  const openShortcut = (shortcut: Shortcut): void => {
+    if (shortcut.kind === 'web') return showWebTab(() => webbing.web.open(shortcut.id))
+    if (lacksSkill(shortcut, targetSkills)) return
+    const command = commandText(shortcut.command)
+    if (!shownHosted) return startHostedSession(project, { kind: 'new', typed: { command, shortcut: shortcut.name } })
+    // Claude is working, or waiting on the user (maybe for a permission): typing now would answer it.
+    const ready = shownHosted.status === 'idle' || shownHosted.status === 'done'
+    if (!ready || !shownHosted.terminal.typeCommand(command)) setBusySession(tabTitle(shownHosted))
+  }
+  const shortcutsProps = {
+    shortcuts: state.shortcuts,
+    target: skillTarget,
+    skills: targetSkills,
+    onOpen: openShortcut,
+    onAdd: () => setEditingShortcut({ shortcut: null })
+  }
 
   const collapseHandler = (panel: PanelId, collapsed: boolean) => () =>
     void api.appState.write({ layout: { [panel]: { collapsed } } })
@@ -138,11 +190,14 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           <SessionTabs
             tabs={hosted.tabs}
             editors={editing.tabs}
+            webTabs={webTabs}
             activeKey={shownKey}
             onSelect={selectHostedSession}
             onClose={(key) => hosted.sessions.close(key)}
-            onSelectEditor={(key) => editing.editors.select(key)}
+            onSelectEditor={(key) => showEditor(() => editing.editors.select(key))}
             onCloseEditor={(key) => editing.editors.close(key)}
+            onSelectWeb={(key) => showWebTab(() => webbing.web.select(key))}
+            onCloseWeb={(key) => webbing.web.close(key)}
             onNew={() => startHostedSession(project)}
           />
         }
@@ -155,9 +210,18 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           layout={state.layout.explorer}
           label={t('explorer.label')}
           resizeLabel={t('explorer.resize')}
-          rail={<ExplorerRail onExpand={collapseHandler('explorer', false)} />}
+          rail={
+            <ExplorerRail onExpand={collapseHandler('explorer', false)}>
+              <ShortcutsRail {...shortcutsProps} />
+            </ExplorerRail>
+          }
           onResizingChange={setResizing}
         >
+          <ShortcutsCard
+            {...shortcutsProps}
+            shownWebShortcut={webbing.tabs.find((tab) => tab.key === shownKey)?.shortcutId ?? null}
+            onEdit={(shortcut) => setEditingShortcut({ shortcut })}
+          />
           <Explorer
             projects={catalog}
             displayedSessionId={displayedSessionId}
@@ -166,13 +230,14 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             project={project}
             hostedTabs={hosted.tabs}
             onShowHostedSession={selectHostedSession}
-            onEditExtension={(target) => editing.editors.open(target)}
+            onEditExtension={(target) => showEditor(() => editing.editors.open(target))}
             onCollapse={collapseHandler('explorer', true)}
           />
         </SidePanel>
         <TerminalArea
           tabs={hosted.tabs}
           editors={editing.tabs}
+          webTabs={webTabs}
           activeKey={shownKey}
           gpuRendering={state.gpuRendering}
           onStart={startHostedSession}
@@ -204,6 +269,15 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
         </SidePanel>
       </div>
       <CloseWarning tabs={hosted.tabs} editors={editing.tabs} />
+      {editingShortcut && (
+        <ShortcutDialog
+          editing={editingShortcut.shortcut}
+          shortcuts={state.shortcuts}
+          project={project}
+          onDone={() => setEditingShortcut(null)}
+        />
+      )}
+      {busySession && <BusyNotice session={busySession} onDismiss={dismissBusy} />}
     </div>
   )
 }

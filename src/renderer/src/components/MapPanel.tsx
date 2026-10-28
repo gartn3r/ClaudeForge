@@ -451,11 +451,6 @@ function MapView({
       )}
       {tree || (
         <div className="cf-map map-area" ref={area}>
-          <svg className="cf-map__contours" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
-            {[70, 150, 230, 310, 390, 470, 550].map((y, i) => (
-              <path key={y} d={`M-20 ${y} C ${80 + i * 10} ${y - 40}, ${180 + i * 10} ${y + 50}, 420 ${y - 20}`} />
-            ))}
-          </svg>
           {decided.length > 0 && (
             <div className="map-decided">
               <div className="map-decided__head">

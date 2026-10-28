@@ -20,7 +20,7 @@ interface SidePanelProps {
 
 /**
  * A side column that resizes by dragging its inner edge (or with the arrow keys
- * on the focused edge) within its bounds and collapses to a 40px rail. The
+ * on the focused edge) within its bounds and collapses to a 64px rail. The
  * width is shown live while dragging and written to app state on release.
  */
 export function SidePanel(props: SidePanelProps): ReactNode {

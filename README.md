@@ -14,6 +14,13 @@ npm install
 npm run dev
 ```
 
+## Shortcuts
+
+The Shortcuts card, above the Sessions, keeps the places and commands the user goes back to, the same for every Project, in their own order (drag a Shortcut to move it; its menu edits or deletes it). With the explorer collapsed, its rail shows each Shortcut by its initials.
+
+- A **Web shortcut** opens its `http`, `https` or `file` address in a Web tab beside the Hosted sessions, with Back, Forward, Reload, the address (read-only) and Open in browser. The page runs apart from the interface ([ADR 0006](docs/adr/0006-web-tabs-show-pages-isolated-from-the-interface.md)): no access to ClaudeForge's bridge, no device permissions (camera, microphone, location, notifications), its own storage kept across restarts, and every new window it asks for opened in the default browser.
+- A **Skill shortcut** types its command, never sends it: a skill among the Extensions with its arguments, or a command written freely. Into the Hosted session on show when it is ready, its prompt cleared first (Ctrl+E, then Ctrl+U until the prompt is empty, which does nothing to an empty prompt); else into a new Session of the displayed Project. While Claude works or waits in the Session on show, nothing is typed and a notice says why. A Skill shortcut to a skill the target Project lacks is greyed out.
+
 ## Sub-tickets in a Project's Tracker
 
 A Ticket can have Sub-tickets, several levels deep. The Map panel shows a Ticket with open Sub-tickets as a Parent Ticket: a stack with a roll-up of everything beneath it, never on the Frontier, that opens on a click to show its Sub-tickets. A block on a Parent Ticket blocks every Ticket beneath it ([ADR 0004](docs/adr/0004-sub-tickets.md)).
@@ -30,8 +37,8 @@ On GitHub, a Ticket's Sub-tickets are its own sub-issues; nothing needs declarin
 - `src/backend/`: every service of the **typed backend API** in plain Node, with no Electron import. The main process owns all access to the machine through it. `session-host.ts` runs each Hosted session's `claude` in a pseudoconsole (node-pty with the `conpty.dll` and `OpenConsole.exe` it ships), every PTY in that one process. `updates.ts` looks for ClaudeForge's own updates through the updater the main process gives it (electron-updater on GitHub releases, in an installed ClaudeForge only). `maps/` is the Map service: Tracker detection, the local markdown and GitHub adapters, and the Tracker-independent Map model: a tree of Tickets and Sub-tickets with their derived states (Parent Tickets, inherited blocks), roll-ups, Decided set and transitively reduced edges per level.
 - `src/shared/api.ts`: the API's types, the pushed events and the IPC channel names, shared by every side.
 - `src/preload/`: the sandboxed bridge (`window.claudeforge`) carrying only backend API channels.
-- `src/renderer/`: the React interface. `terminal/hosted-terminal.ts` wires one Hosted session to xterm.js (WebGL renderer unless GPU rendering is off, Shift+Enter sent as a newline). The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.
-- `design/tokens.json`: the ClaudeForge design system tokens; `src/renderer/src/styles/` carries them as CSS with the design system's `cf-` components. Geist and JetBrains Mono ship as font files.
+- `src/renderer/`: the React interface. `terminal/hosted-terminal.ts` wires one Hosted session to xterm.js (WebGL renderer unless GPU rendering is off, Shift+Enter sent as a newline). The Map panel draws its graph with React Flow, laid out top to bottom by dagre (`map/layout.ts`). The Shortcuts card (`components/Shortcuts.tsx`) keeps its Shortcuts in app state, checked by the rules both sides share (`src/shared/shortcuts.ts`); a Web tab (`components/WebTabView.tsx`, `web/web-tabs.ts`) shows its page in a `<webview>` that `src/main/web-tabs.ts` isolates. `api.ts` turns the bridge into the typed client (`api.appState.read()`); strings come from `locales/en.json` and `locales/fr.json`, chosen from the Windows display language.
+- `design/tokens.json`: the ClaudeForge design system tokens; `src/renderer/src/styles/` carries them as CSS with the design system's `cf-` components, in the Bento design (cream, slate and lime tiles). Fraunces, Inter and JetBrains Mono ship as font files.
 
 ## Test
 

@@ -37,13 +37,14 @@ type Loaded = ExtensionListing | 'failed' | undefined
 
 /**
  * The Project's Extensions, read again on `refresh()`, which settles once they are; the last ones
- * read show meanwhile.
+ * read show meanwhile. With no Project, none are read.
  */
-function useExtensions(project: string): { listing: Loaded; refresh(): Promise<void> } {
-  const [loaded, setLoaded] = useState<{ project: string; listing: ExtensionListing | 'failed' } | null>(null)
+export function useExtensions(project: string | null): { listing: Loaded; refresh(): Promise<void> } {
+  const [loaded, setLoaded] = useState<{ project: string | null; listing: ExtensionListing | 'failed' } | null>(null)
   const [round, setRound] = useState(0)
   const waiting = useRef<Array<() => void>>([])
   useEffect(() => {
+    if (project === null) return
     let current = true
     const settle = (listing: ExtensionListing | 'failed'): void => {
       if (!current) return
@@ -63,7 +64,7 @@ function useExtensions(project: string): { listing: Loaded; refresh(): Promise<v
       }),
     []
   )
-  return { listing: loaded?.project === project ? loaded.listing : undefined, refresh }
+  return { listing: project !== null && loaded?.project === project ? loaded.listing : undefined, refresh }
 }
 
 /** Each kind's glyph, wherever an Extension shows: the bar, the menu, an editor and its tab. */
@@ -119,7 +120,7 @@ function placeAbove(bar: HTMLElement): CSSProperties {
 const failing = (extension: Extension): boolean => !!extension.mcp && STATUS[extension.mcp.status].failing
 
 /** The last segment of a Project's path, as the explorer names it. */
-const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
+export const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
 interface ExtensionsBarProps {
   /** The displayed Session's Project, whose Extensions it counts. */
@@ -161,7 +162,7 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit
   })
 
   return (
-    <section className="extbar" aria-label={t('extensions.heading')}>
+    <section className="extbar cf-on-slate" aria-label={t('extensions.heading')}>
       <button
         type="button"
         ref={button}
@@ -369,7 +370,7 @@ function ExtensionsPopover({
   return createPortal(
     <div
       ref={ref}
-      className="cf-popover extmenu"
+      className="cf-popover cf-on-slate extmenu"
       role="dialog"
       aria-label={t('extensions.heading')}
       aria-busy={busy}

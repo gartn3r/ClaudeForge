@@ -1,4 +1,4 @@
-import { Check, Hand, Plus, Square, Trash2, X, type LucideIcon } from 'lucide-react'
+import { Check, Globe, Hand, Plus, Square, Trash2, X, type LucideIcon } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { EditorTab } from '../editor/editor-tabs'
@@ -10,6 +10,8 @@ interface SessionTabsProps {
   tabs: HostedTab[]
   /** The skill and subagent files open in an editor, after the Hosted sessions. */
   editors: EditorTab[]
+  /** The Web tabs, after the editors, each named after its Web shortcut. */
+  webTabs: Array<{ key: string; title: string }>
   /** The tab on show, a Hosted session's or an editor's; null when there is none. */
   activeKey: string | null
   onSelect(key: string): void
@@ -18,6 +20,8 @@ interface SessionTabsProps {
   onSelectEditor(key: string): void
   /** Drops the editor's tab; with unsaved changes, only once the user agreed. */
   onCloseEditor(key: string): void
+  onSelectWeb(key: string): void
+  onCloseWeb(key: string): void
   /** Starts a Session in the current Project. */
   onNew(): void
 }
@@ -57,6 +61,8 @@ interface StripTab {
   description: string
   /** An editor's text differs from its file. */
   unsaved: boolean
+  /** What the tab shows the state of, for its look: a Hosted session's, or none. */
+  state?: TabState
   select(): void
   /** Closes it, or asks first. */
   close(): void
@@ -67,16 +73,19 @@ type Confirming = { kind: 'stop'; key: string } | { kind: 'discard'; key: string
 
 /**
  * The tabs in the title bar, per the design system's TerminalTabs: the Hosted sessions, then the
- * editors, and the "+" after them.
+ * editors, then the Web tabs, and the "+" after them.
  */
 export function SessionTabs({
   tabs,
   editors,
+  webTabs,
   activeKey,
   onSelect,
   onClose,
   onSelectEditor,
   onCloseEditor,
+  onSelectWeb,
+  onCloseWeb,
   onNew
 }: SessionTabsProps): ReactNode {
   const { t } = useTranslation()
@@ -91,6 +100,7 @@ export function SessionTabs({
         glyph: <StatusGlyph state={state} />,
         description: t(`tabs.status.${state}`),
         unsaved: false,
+        state,
         select: () => onSelect(tab.key),
         close: () => {
           if (!tab.end && tab.status === 'working') setConfirming({ kind: 'stop', key: tab.key })
@@ -113,7 +123,18 @@ export function SessionTabs({
           else onCloseEditor(editor.key)
         }
       }
-    })
+    }),
+    ...webTabs.map(
+      (web): StripTab => ({
+        key: web.key,
+        title: web.title,
+        glyph: <Globe className="cf-icon cf-icon--sm" aria-hidden="true" />,
+        description: t('web.tab'),
+        unsaved: false,
+        select: () => onSelectWeb(web.key),
+        close: () => onCloseWeb(web.key)
+      })
+    )
   ]
 
   // Arrows move the focus along the tabs; Enter or Space shows the focused one, Delete closes it.
@@ -147,6 +168,7 @@ export function SessionTabs({
             id={tabId(tab.key)}
             className={`cf-tab${tab.unsaved ? ' cf-tab--unsaved' : ''}`}
             role="tab"
+            data-state={tab.state}
             aria-selected={tab.key === activeKey}
             aria-controls={panelId(tab.key)}
             aria-labelledby={`${tabId(tab.key)}-title`}
@@ -182,7 +204,7 @@ export function SessionTabs({
       </div>
       <button
         type="button"
-        className="cf-btn cf-btn--ghost cf-btn--icon session-tabs__new"
+        className="cf-btn cf-btn--add cf-btn--icon session-tabs__new"
         aria-label={t('tabs.newSession')}
         title={t('tabs.newSession')}
         onClick={onNew}

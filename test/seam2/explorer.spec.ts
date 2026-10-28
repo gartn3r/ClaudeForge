@@ -23,7 +23,7 @@ test('lists every Session by Project, newest first, with worktrees folded and Ex
   const explorer = claudeforge.window.getByRole('complementary', { name: 'Sessions' })
   const sessionsOf = (project: string): Locator => explorer.getByRole('group', { name: project }).getByRole('treeitem')
 
-  await expect(explorer.getByRole('heading')).toHaveText(['harbor-api', 'recipe-box'])
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveText(['harbor-api', 'recipe-box'])
   await expect(sessionsOf('harbor-api')).toHaveText([
     /^Rate limiter rewrite\s*Open elsewhere/,
     /^Paginate the audit log endpoint with cursors/,
@@ -52,13 +52,13 @@ test('updates the explorer by itself when a Session starts and when an External 
   await env.listSessions('3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9')
   claudeforge = await launchClaudeForge(env)
   const explorer = claudeforge.window.getByRole('complementary', { name: 'Sessions' })
-  await expect(explorer.getByRole('heading')).toHaveText(['harbor-api', 'recipe-box'])
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveText(['harbor-api', 'recipe-box'])
 
   await env.writeHistory(env.projects.dotfiles, '3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9', [
     { type: 'user', cwd: env.projects.dotfiles, timestamp: new Date().toISOString(), message: { role: 'user', content: 'Sync my dotfiles' } }
   ])
 
-  await expect(explorer.getByRole('heading')).toHaveText(['dotfiles', 'harbor-api', 'recipe-box'])
+  await expect(explorer.getByRole('heading', { level: 3 })).toHaveText(['dotfiles', 'harbor-api', 'recipe-box'])
   await expect(explorer.getByRole('group', { name: 'dotfiles' })).toHaveText(/Sync my dotfiles/)
 
   // The External session's claude exits, removing its registry entry.
