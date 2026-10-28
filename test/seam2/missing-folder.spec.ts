@@ -48,8 +48,8 @@ for (const text of LANGUAGES) {
     const row = (window: Page, project: FixtureProject, title: RegExp): Locator =>
       window
         .getByRole('complementary', { name: text.sessions })
-        .getByRole('list', { name: project })
-        .getByRole('listitem')
+        .getByRole('group', { name: project })
+        .getByRole('treeitem')
         .filter({ hasText: title })
 
     test('greys out a Session whose worktree is gone, which can be tidied but not resumed, until the worktree is back', async () => {

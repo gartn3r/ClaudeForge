@@ -40,8 +40,8 @@ test('closing while a Session works warns, naming it; reopening brings it back a
   await expect(
     window
       .getByRole('complementary', { name: 'Sessions' })
-      .getByRole('list', { name: 'recipe-box' })
-      .getByRole('listitem')
+      .getByRole('group', { name: 'recipe-box' })
+      .getByRole('treeitem')
       .filter({ hasText: '/work 60000' })
   ).toBeVisible()
   const { args } = (await sessionRuns(env))[0]!

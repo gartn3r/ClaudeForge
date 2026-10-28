@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 
 /** Moves a file or folder to the Windows Recycle Bin, as Electron's `shell.trashItem` does. */
@@ -15,7 +15,13 @@ export function standInRecycleBin(folder: string): TrashItem {
     await mkdir(folder, { recursive: true })
     const slot = join(folder, `${(await readdir(folder)).length}-${basename(path)}`)
     await mkdir(slot)
-    await rename(path, join(slot, basename(path)))
+    try {
+      await rename(path, join(slot, basename(path)))
+    } catch (error) {
+      // Refused (a file held open): like the real one, the Recycle Bin is left as it was.
+      await rm(slot, { recursive: true })
+      throw error
+    }
     await writeFile(join(slot, ORIGIN), path)
   }
 }
