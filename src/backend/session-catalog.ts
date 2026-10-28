@@ -46,7 +46,8 @@ interface CachedHistory {
 /**
  * The Session catalog: every Session in Claude Code's history
  * (`<claude home>/projects/<folder>/<session-id>.jsonl`) and live-session registry
- * (`<claude home>/sessions/<pid>.json`), grouped by Project.
+ * (`<claude home>/sessions/<pid>.json`), grouped by Project. Only the conversations on ClaudeForge's
+ * list of Session ids are Sessions (ADR 0005): every other one is left out.
  */
 export class SessionCatalog {
   private readonly histories = new Map<string, CachedHistory>()
@@ -65,12 +66,14 @@ export class SessionCatalog {
 
   /**
    * Calls back with the whole catalog whenever Claude Code's files change it, once watching.
-   * `preferences` reads how the user tidied each Session in ClaudeForge, by Session id.
+   * `preferences` reads how the user tidied each Session in ClaudeForge, by Session id; `sessionIds`
+   * reads the list of Session ids.
    */
   constructor(
     private readonly claudeHome: string,
     private readonly onChange: (projects: ProjectSessions[]) => void,
     private readonly preferences: () => Promise<Record<string, SessionPreferences>>,
+    private readonly sessionIds: () => Promise<ReadonlySet<string>>,
     private readonly resolveLink: LinkResolver
   ) {}
 
@@ -162,15 +165,16 @@ export class SessionCatalog {
   }
 
   private async readNow(): Promise<ProjectSessions[]> {
-    const [histories, live, preferences] = await Promise.all([
+    const [histories, live, preferences, listed] = await Promise.all([
       this.readHistories(),
       readLiveSessions(this.claudeHome),
-      this.preferences()
+      this.preferences(),
+      this.sessionIds()
     ])
     const liveById = new Map(live.map((session) => [session.sessionId, session]))
-    const ids = new Set([...histories.keys(), ...liveById.keys()])
+    const ids = [...new Set([...histories.keys(), ...liveById.keys()])].filter((id) => listed.has(id))
     const placed = await Promise.all(
-      [...ids].map((id) => this.place(id, histories.get(id), liveById.get(id), preferences[id] ?? {}))
+      ids.map((id) => this.place(id, histories.get(id), liveById.get(id), preferences[id] ?? {}))
     )
     return group(placed.filter((entry) => entry !== null))
   }

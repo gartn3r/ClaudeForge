@@ -1,4 +1,5 @@
 import {
+  CircleAlert,
   Eye,
   EyeOff,
   ExternalLink,
@@ -13,11 +14,12 @@ import {
   Plus,
   Puzzle,
   Trash2,
+  X,
   type LucideIcon
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ProjectSessions, SessionSummary } from '../../../shared/api'
+import type { ProjectSessions, SessionListProblem, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import type { EditorTarget } from '../editor/editor-tabs'
 import type { HostedTab } from '../terminal/hosted-sessions'
@@ -166,6 +168,7 @@ export function Explorer({
         <IconButton icon={PanelLeftClose} label={t('explorer.collapse')} onClick={onCollapse} />
       </div>
       <div className="explorer__tree">
+        <ListProblem />
         {projects?.length === 0 && <p className="empty">{t('explorer.empty')}</p>}
         {projects && projects.length > 0 && (
           <ul className="explorer__projects">
@@ -186,6 +189,30 @@ export function Explorer({
       )}
       {tidying?.kind === 'delete' && <DeleteDialog session={tidying.session} onDone={() => setTidying(null)} />}
     </>
+  )
+}
+
+/**
+ * Tells the user, until they dismiss it, that ClaudeForge found its list of Session ids unreadable
+ * as it started, and where that list now is: the Sessions it named are no longer listed.
+ */
+function ListProblem(): ReactNode {
+  const { t } = useTranslation()
+  const [problem, setProblem] = useState<SessionListProblem | null>(null)
+  useEffect(() => {
+    let active = true
+    void api.sessions.listProblem().then((found) => active && setProblem(found))
+    return () => {
+      active = false
+    }
+  }, [])
+  if (!problem) return null
+  return (
+    <div className="explorer__problem" role="alert">
+      <CircleAlert className="cf-icon cf-icon--sm" aria-hidden="true" />
+      <p>{t(problem.setAside ? 'explorer.listProblem.setAside' : 'explorer.listProblem.inPlace', { file: problem.file })}</p>
+      <IconButton icon={X} label={t('explorer.listProblem.dismiss')} onClick={() => setProblem(null)} />
+    </div>
   )
 }
 

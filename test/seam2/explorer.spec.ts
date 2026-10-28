@@ -47,6 +47,8 @@ test('lists every Session by Project, newest first, with worktrees folded and Ex
 })
 
 test('updates the explorer by itself when a Session starts and when an External session ends', async () => {
+  // On the list as its `claude` starts in ClaudeForge, before it writes any history.
+  await env.listSessions('3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9')
   claudeforge = await launchClaudeForge(env)
   const explorer = claudeforge.window.getByRole('complementary', { name: 'Sessions' })
   await expect(explorer.getByRole('heading')).toHaveText(['harbor-api', 'recipe-box'])

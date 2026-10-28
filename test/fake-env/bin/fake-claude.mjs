@@ -2,7 +2,8 @@
 // It answers the `mcp` and `plugin` subcommands ClaudeForge runs from the fake environment's copy of
 // test/fixtures/claude, which its changes change, and runs a scriptable stand-in for Claude Code's
 // prompt that sends the status signals Claude Code sends its terminal.
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, relative } from 'node:path'
 import { record } from './record.mjs'
 
@@ -197,6 +198,10 @@ if (args[0] === 'mcp' || args[0] === 'plugin') refuse(`The fake claude does not 
 // - `/permission`: asks `Allow Bash(npm test)?` as a permission prompt, answered like `/ask`.
 // - `/fail`: works briefly, then fails with `API Error`.
 // - `/wayfinder <args>`: recorded as Claude Code records the slash command, then works briefly.
+// - `/clear`: goes on in a new Session, with a new id; `/resume <id>`: goes on in that Session.
+//
+// Like Claude Code, while it runs it keeps an entry in the live-session registry,
+// `sessions/<pid>.json`, naming the Session it is in, and removes it when it exits on its own.
 //
 // Status signals: like Claude Code 2.1.295 and later, it asks its terminal whether it reads OSC 7501
 // Program Status reports, and once the terminal says so, reports working, blocked (kind question or
@@ -228,7 +233,24 @@ function report(state, extra = '') {
 
 /** The Session id it was given, else the resumed Session's, which it goes on in unless it forks. */
 const optionValue = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined)
-const sessionId = optionValue('--session-id') ?? (args.includes('--fork-session') ? undefined : optionValue('--resume'))
+let sessionId = optionValue('--session-id') ?? (args.includes('--fork-session') ? undefined : optionValue('--resume'))
+
+const registryEntry = join(process.env.CLAUDE_CONFIG_DIR, 'sessions', `${process.pid}.json`)
+const startedAt = Date.now()
+
+/** Names the Session it is in, in its live-session registry entry, as Claude Code does. */
+function register() {
+  if (!sessionId) return
+  mkdirSync(join(process.env.CLAUDE_CONFIG_DIR, 'sessions'), { recursive: true })
+  const entry = { pid: process.pid, sessionId, cwd: process.cwd(), startedAt, kind: 'interactive', entrypoint: 'cli', status: 'idle', updatedAt: Date.now() }
+  writeFileSync(registryEntry, JSON.stringify(entry))
+}
+
+/** Exits as Claude Code does when asked to, removing its registry entry. */
+function exit() {
+  rmSync(registryEntry, { force: true })
+  process.exit(0)
+}
 
 /** Appends one entry to the Session history, where Claude Code keeps it. */
 function remember(entry) {
@@ -293,7 +315,7 @@ function work(ms, then = finishTurn) {
 function submit() {
   if (prompt === '/exit') {
     report('clear')
-    process.exit(0)
+    exit()
   }
   if (!named && prompt) {
     named = true
@@ -304,6 +326,7 @@ function submit() {
   const [, command, ms] = /^\/(work|ask|permission|fail)(?: (\d+))?$/.exec(prompt) ?? []
   const text = prompt
   prompt = ''
+  const resumed = /^\/resume (\S+)$/.exec(text)?.[1]
   if (answer) {
     asking = false
     rememberPrompt(text)
@@ -321,6 +344,11 @@ function submit() {
   } else if (command === 'fail') {
     rememberPrompt(text)
     work(300, fail)
+  } else if (text === '/clear' || resumed) {
+    // Into another Session: a new one, or the one named. Its history starts with the next prompt.
+    sessionId = resumed ?? randomUUID()
+    register()
+    write(`${resumed ? 'Resumed' : 'Cleared'}: ${sessionId}\r\n> `)
   } else if (text.startsWith('/wayfinder ')) {
     // Recorded as Claude Code records a slash command, then worked on like any skill.
     const args = text.slice('/wayfinder '.length)
@@ -357,11 +385,12 @@ process.stdin.on('data', (chunk) => {
     }
   }
 })
-process.stdin.on('end', () => process.exit(0))
+process.stdin.on('end', exit)
 
 // Only now that it reads its terminal in raw mode, so nothing typed after the banner is lost. Like
 // Claude Code, it asks about status reports as it starts: before its banner, so the terminal's answer
 // comes before anything the user types once the banner shows.
+register()
 if (reportsStatus) write('\x1b]7501;?\x1b\\')
 write(`Fake Claude Code\r\nTerminal ${size()}\r\n> `)
 // Like Claude Code's `--prefill`, its prompt starts holding that text, unsent.
