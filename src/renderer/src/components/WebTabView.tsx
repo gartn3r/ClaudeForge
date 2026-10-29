@@ -16,7 +16,8 @@ interface WebviewElement extends HTMLElement {
 }
 
 /**
- * Lets the page's popups reach the main process, which opens each in the default browser instead.
+ * Lets the page's new windows reach the main process, which opens a sign-in popup in a ClaudeForge
+ * window and every other one in the default browser.
  * The attribute must be there as the `<webview>` attaches; React leaves out a `true` it does not know.
  */
 const LET_POPUPS_THROUGH = { allowpopups: 'true' } as Record<string, string>

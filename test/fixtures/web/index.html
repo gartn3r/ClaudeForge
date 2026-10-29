@@ -11,6 +11,8 @@
     <script>
       // A sign-in a Web tab keeps across restarts: a cookie that lasts an hour.
       if (!document.cookie.includes('visited=')) document.cookie = 'visited=first; max-age=3600; path=/'
+      // What a sign-in popup posts back once the user is signed in.
+      window.addEventListener('message', (event) => (document.body.dataset.signedIn = event.data.token))
     </script>
   </body>
 </html>

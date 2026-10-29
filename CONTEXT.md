@@ -48,6 +48,10 @@ A Shortcut to a command that is typed, never sent: into the Hosted session on sh
 A tab beside the Hosted session tabs that shows a Web shortcut's page inside ClaudeForge.
 _Avoid_: webview, browser tab
 
+**Sign-in popup**:
+A window a Web tab's page opens with `window.open` and window features, as a site's "Continue with Google" does; it opens in a ClaudeForge window, isolated like the Web tab, and stays the page's own so the sign-in completes there. Every other new window a page asks for opens in the default browser.
+_Avoid_: popup window, auth window
+
 ### Piloting
 
 **ClaudeForge CLI**:

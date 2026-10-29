@@ -1,11 +1,22 @@
-import { app, session, shell, type BrowserWindow } from 'electron'
+import { app, BrowserWindow, session, shell, type WebPreferences } from 'electron'
 import { WEB_TAB_PARTITION } from '../shared/api'
-import { isPopupAddress, isWebAddress } from '../shared/shortcuts'
+import { isWebAddress, webTabUserAgent, whereNewWindowOpens } from '../shared/shortcuts'
+
+/** What a Web tab's page, or a sign-in popup it opened, is given: none of the interface's powers. */
+const ISOLATED_PAGE_PREFERENCES: WebPreferences = {
+  partition: WEB_TAB_PARTITION,
+  preload: undefined,
+  nodeIntegration: false,
+  nodeIntegrationInSubFrames: false,
+  contextIsolation: true,
+  sandbox: true,
+  webviewTag: false
+}
 
 /**
  * Keeps every Web tab's page apart from the interface (ADR 0006): each `<webview>` the interface
  * attaches loads only a web address, without the preload script and its bridge, sandboxed, in its
- * own persistent storage; every new window a page asks for opens in the default browser instead.
+ * own persistent storage, under a browser's user agent; a sign-in popup it opens gets the same.
  * Pages get none of the device permissions Electron would otherwise grant them (camera, microphone,
  * location, notifications…): only copying to the clipboard and going full screen.
  */
@@ -15,25 +26,35 @@ export function isolateWebTabs(win: BrowserWindow): void {
   pages.setPermissionRequestHandler((_contents, permission, answer) => answer(harmless.has(permission)))
   pages.setPermissionCheckHandler((_contents, permission) => harmless.has(permission))
   win.webContents.on('will-attach-webview', (event, webPreferences, params) => {
-    delete webPreferences.preload
-    webPreferences.nodeIntegration = false
-    webPreferences.nodeIntegrationInSubFrames = false
-    webPreferences.contextIsolation = true
-    webPreferences.sandbox = true
-    webPreferences.webviewTag = false
-    webPreferences.partition = WEB_TAB_PARTITION
+    Object.assign(webPreferences, ISOLATED_PAGE_PREFERENCES)
     if (!isWebAddress(params.src ?? '')) event.preventDefault()
   })
 }
 
+// Web tabs send a browser's user agent. A sign-in popup sends Electron's fallback one whatever its
+// storage's says, so it is the fallback, the whole app's, that loses the tokens, before any page loads.
+app.userAgentFallback = webTabUserAgent(app.userAgentFallback, app.getName())
+
 app.on('web-contents-created', (_event, contents) => {
-  if (contents.getType() !== 'webview') return
-  // Links followed inside the page stay in its Web tab; target=_blank, window.open and sign-in popups
-  // go to the default browser, when they are http or https: a page never has the desktop open a file.
-  contents.setWindowOpenHandler(({ url }) => {
-    if (isPopupAddress(url)) void shell.openExternal(url)
-    return { action: 'deny' }
+  // A Web tab's page, or a sign-in popup one opened: the interface's own window is in another storage.
+  const isWebTabPage =
+    contents.getType() === 'webview' ||
+    (contents.getType() === 'window' && contents.session === session.fromPartition(WEB_TAB_PARTITION))
+  if (!isWebTabPage) return
+  // Links followed inside the page stay where it is. A sign-in popup opens in a ClaudeForge window,
+  // still the page's own so it can post back; target=_blank and other new windows go to the default
+  // browser. Only http and https ones: a page never has the desktop open a file.
+  contents.setWindowOpenHandler(({ url, disposition }) => {
+    const place = whereNewWindowOpens(url, disposition)
+    if (place === 'browser') void shell.openExternal(url)
+    if (place !== 'popup') return { action: 'deny' }
+    const parent = BrowserWindow.fromWebContents(contents.hostWebContents ?? contents) ?? undefined
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: { parent, webPreferences: ISOLATED_PAGE_PREFERENCES }
+    }
   })
+  contents.on('did-create-window', (popup) => popup.removeMenu())
   contents.on('will-navigate', (event, url) => {
     if (!isWebAddress(url)) event.preventDefault()
   })
