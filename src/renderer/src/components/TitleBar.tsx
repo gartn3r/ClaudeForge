@@ -1,7 +1,7 @@
 import { Copy, Download, Minus, Square, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { APP_TITLE_MAX_LENGTH, type UpdateStatus } from '../../../shared/api'
+import { APP_TITLE_MAX_LENGTH, tidyAppTitle, type UpdateStatus } from '../../../shared/api'
 import { api, onEvent } from '../api'
 import type { ElementFrame } from '../elements/interface-elements'
 import { wordmarkParts } from './wordmark'
@@ -81,9 +81,6 @@ export function TitleBar({ appTitle = null, tabs, menus, settings, frame }: Titl
   )
 }
 
-/** The App title as the user writes it: blank gives back ClaudeForge's own name, as the backend keeps it. */
-const tidyAppTitle = (draft: string): string | null => draft.trim().slice(0, APP_TITLE_MAX_LENGTH).trim() || null
-
 interface WordmarkProps {
   appTitle: string | null
   onContextMenu?: ElementFrame['onContextMenu']
@@ -97,34 +94,36 @@ interface WordmarkProps {
 function Wordmark({ appTitle, onContextMenu }: WordmarkProps): ReactNode {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<string | null>(null)
-  // The title just kept, shown until the backend has saved it.
-  const [saving, setSaving] = useState<{ title: string | null } | null>(null)
-  // Set once Enter or Escape has ended the edit, so the field's blur as it goes keeps nothing more.
-  const ended = useRef(false)
-  const title = (saving ? saving.title : appTitle) ?? t('app.name')
+  // The App title just kept, shown until the backend has saved it; undefined when none is saving.
+  const [pendingTitle, setPendingTitle] = useState<string | null | undefined>(undefined)
+  // Set once Enter or Escape has closed the field, so its blur as it goes keeps nothing more.
+  const closed = useRef(false)
+  const current = pendingTitle === undefined ? appTitle : pendingTitle
+  const title = current ?? t('app.name')
 
   const edit = (): void => {
-    ended.current = false
+    closed.current = false
     setDraft(title)
   }
   const keep = (): void => {
     if (draft === null) return
-    const next = tidyAppTitle(draft)
     setDraft(null)
-    if (next === appTitle) return
-    setSaving({ title: next })
-    void api.appState.write({ appTitle: next }).finally(() => setSaving(null))
+    const tidied = tidyAppTitle(draft)
+    // ClaudeForge's own name, typed or left as it was, is no App title of the user's.
+    const next = tidied === t('app.name') ? null : tidied
+    if (next === current) return
+    setPendingTitle(next)
+    // A title kept since stays shown until its own save is done.
+    void api.appState.write({ appTitle: next }).finally(() => setPendingTitle((shown) => (shown === next ? undefined : shown)))
   }
-  const end = (keeping: boolean): void => {
-    ended.current = true
-    if (keeping) keep()
-    else setDraft(null)
-  }
+  const cancel = (): void => setDraft(null)
   const onFieldKey = (event: KeyboardEvent): void => {
     if (event.key !== 'Enter' && event.key !== 'Escape') return
     event.preventDefault()
     event.stopPropagation()
-    end(event.key === 'Enter')
+    closed.current = true
+    if (event.key === 'Enter') keep()
+    else cancel()
   }
 
   if (draft !== null) {
@@ -140,7 +139,9 @@ function Wordmark({ appTitle, onContextMenu }: WordmarkProps): ReactNode {
           onFocus={(event) => event.currentTarget.select()}
           onChange={(event) => setDraft(event.currentTarget.value)}
           onKeyDown={onFieldKey}
-          onBlur={() => !ended.current && keep()}
+          onBlur={() => !closed.current && keep()}
+          // Right-clicking the text being written does not open the title bar's menu.
+          onContextMenu={(event) => event.stopPropagation()}
         />
       </div>
     )

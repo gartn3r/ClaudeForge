@@ -1,9 +1,9 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
-  APP_TITLE_MAX_LENGTH,
   PANEL_BOUNDS,
   clampPanelWidth,
+  tidyAppTitle,
   type AppState,
   type AppStatePatch,
   type MapPreferences,
@@ -164,9 +164,8 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   const { appTitle, layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs } =
     (patch ?? {}) as AppStatePatch
   let next = state
-  if (typeof appTitle === 'string' || appTitle === null) {
-    next = { ...next, appTitle: appTitle?.trim().slice(0, APP_TITLE_MAX_LENGTH).trim() || null }
-  }
+  if (typeof appTitle === 'string') next = { ...next, appTitle: tidyAppTitle(appTitle) }
+  else if (appTitle === null) next = { ...next, appTitle }
   if (typeof layout === 'object' && layout !== null) {
     next = {
       ...next,

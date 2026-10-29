@@ -84,6 +84,9 @@ export const WEB_TAB_PARTITION = 'persist:web-tabs'
 /** The longest App title the user can give, which the title bar holds beside the tabs. */
 export const APP_TITLE_MAX_LENGTH = 60
 
+/** An App title as ClaudeForge keeps it: trimmed and cut short; null, for ClaudeForge's own name, once blank. */
+export const tidyAppTitle = (title: string): string | null => title.trim().slice(0, APP_TITLE_MAX_LENGTH).trim() || null
+
 export interface AppState {
   version: 1
   /** The App title the user gave, trimmed; null to show ClaudeForge's own name. */
