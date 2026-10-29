@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { NewPanelTabDialog, suggestedName } from '../../src/renderer/src/elements/NewPanelTabDialog'
+import { CreateElementDialog } from '../../src/renderer/src/elements/ElementMenus'
+import { nameFromTitle } from '../../src/renderer/src/elements/element-menus'
 import { RightPanel } from '../../src/renderer/src/elements/RightPanel'
 import { DEFAULT_MAP_TAB, rightPanelState } from '../../src/renderer/src/elements/right-panel'
 import { CONTENT_KINDS, PROPERTIES_TAKEN, type ContentItem, type ElementView } from '../../src/shared/elements'
@@ -106,7 +107,7 @@ describe('the Right panel', () => {
 
 describe('the dialog that creates a Panel tab', () => {
   it('asks for a title and an identifier under the Panel tab prefix', async () => {
-    const html = await render(<NewPanelTabDialog project={project} onDone={() => undefined} />)
+    const html = await render(<CreateElementDialog kind="panel-tab" project={project} onDone={() => undefined} />)
     expect(html).toContain('New Panel tab')
     expect(html).toContain('In recipe-box.')
     expect(html).toContain('Title')
@@ -116,16 +117,16 @@ describe('the dialog that creates a Panel tab', () => {
   })
 
   it('speaks French', async () => {
-    const html = await render(<NewPanelTabDialog project={project} onDone={() => undefined} />, 'fr')
+    const html = await render(<CreateElementDialog kind="panel-tab" project={project} onDone={() => undefined} />, 'fr')
     expect(html).toContain('Nouvel onglet de panneau')
     expect(html).toContain('Identifiant')
     expect(html).toContain('Créer')
   })
 
   it('suggests an identifier from the title', () => {
-    expect(suggestedName('Rapport de tests')).toBe('rapport-de-tests')
-    expect(suggestedName('  Coverage (v2) — main ')).toBe('coverage-v2-main')
-    expect(suggestedName('Été à Noël')).toBe('ete-a-noel')
-    expect(suggestedName('x'.repeat(60))).toHaveLength(40)
+    expect(nameFromTitle('Rapport de tests')).toBe('rapport-de-tests')
+    expect(nameFromTitle('  Coverage (v2) — main ')).toBe('coverage-v2-main')
+    expect(nameFromTitle('Été à Noël')).toBe('ete-a-noel')
+    expect(nameFromTitle('x'.repeat(60))).toHaveLength(40)
   })
 })

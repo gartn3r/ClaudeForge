@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { api } from '../api'
 import type { EditorTab } from '../editor/editor-tabs'
+import type { ElementFrame } from '../elements/interface-elements'
 import type { HostedTab } from '../terminal/hosted-sessions'
 import type { HostedTerminal, TypedCommand } from '../terminal/hosted-terminal'
 import { ExtensionEditor } from './ExtensionEditor'
@@ -26,7 +27,12 @@ interface TerminalAreaProps {
   onEditorDirtyChange(key: string, dirty: boolean): void
   /** An editor saved its file under the name its frontmatter now gives. */
   onEditorRename(key: string, name: string): void
+  /** What it takes from its Element: its colours and right-click menu, off the terminals, editors and pages. */
+  frame?: ElementFrame
 }
+
+/** Where a right-click opens the terminal area's menu: around what it shows, never on a terminal, an editor or a page. */
+const AROUND = '.terminal-empty, .terminal-ended, .terminal-typed'
 
 /**
  * The centre column, where the Hosted sessions' terminals live, the editors
@@ -44,7 +50,8 @@ export function TerminalArea({
   onStart,
   onClose,
   onEditorDirtyChange,
-  onEditorRename
+  onEditorRename,
+  frame
 }: TerminalAreaProps): ReactNode {
   const { t } = useTranslation()
   const active = tabs.find((tab) => tab.key === activeKey)
@@ -68,7 +75,14 @@ export function TerminalArea({
   )
 
   return (
-    <main className="terminal-area" aria-label={t('terminal.label')}>
+    <main
+      className="terminal-area"
+      aria-label={t('terminal.label')}
+      style={frame?.style}
+      onContextMenu={(event) => {
+        if (event.target === event.currentTarget || (event.target as Element).closest(AROUND)) frame?.onContextMenu(event)
+      }}
+    >
       {active?.typed && <TypedBanner typed={active.typed} onCancel={() => onClose(active.key)} />}
       {tabs.map(
         (tab) =>

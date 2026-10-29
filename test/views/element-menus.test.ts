@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   closeRequest,
+  collapseRequest,
   colorRequest,
+  createRequest,
   elementMenuKeys,
   hideRequest,
   itemMenuKeys,
   itemRequest,
+  moveRequests,
+  nameFromTitle,
   removeRequest,
   renameRequest,
   shortcutOf
@@ -39,13 +43,35 @@ const own = (id: string, takes: ElementView['takes']): ElementView => ({
   attention: null
 })
 
+/** The explorer's own cards in the Default layout, and the card created after them. */
+const explorerCards: ElementView[] = [
+  { ...own('shortcuts', ['visible', 'collapsed', 'order']), container: 'explorer', properties: { visible: true, order: 1 } },
+  { ...own('sessions', ['visible', 'collapsed', 'order']), container: 'explorer', properties: { visible: true, order: 2 } },
+  { ...own('extensions', ['visible', 'collapsed', 'order']), container: 'explorer', properties: { visible: true, order: 3 } },
+  card
+]
+
 const link: ContentItem = { id: 'ci', kind: 'link', title: 'CI', address: 'https://ci.example.com', writtenBy: { kind: 'user' } }
 const action: ContentItem = { id: 'rerun', kind: 'action', command: '/run-tests --watch', writtenBy: { kind: 'user' } }
 const text: ContentItem = { id: 'notes', kind: 'text', text: 'v2', writtenBy: { kind: 'user' } }
 
 describe("an Element's right-click menu", () => {
-  it('offers rename, colours, adding a Content item, hide, copying its identifier and closing a Created Element', () => {
-    expect(elementMenuKeys(card)).toEqual(['rename', 'text-color', 'background-color', 'add-item', 'hide', 'copy-id', 'close'])
+  it('offers rename, colours, adding a Content item, collapse, hide, copying its identifier and closing a Created Element', () => {
+    expect(elementMenuKeys(card)).toEqual(['rename', 'text-color', 'background-color', 'add-item', 'collapse', 'hide', 'copy-id', 'close'])
+    expect(elementMenuKeys({ ...card, properties: { ...card.properties, collapsed: true } })).toContain('expand')
+  })
+
+  it('offers moving an Element up or down among the visible others of its container, when they are given', () => {
+    const [shortcuts, sessions, extensions] = explorerCards
+    expect(elementMenuKeys(card, explorerCards)).toEqual(expect.arrayContaining(['move-up']))
+    expect(elementMenuKeys(card, explorerCards)).not.toContain('move-down')
+    expect(elementMenuKeys(shortcuts!, explorerCards)).toEqual(expect.arrayContaining(['move-down']))
+    expect(elementMenuKeys(shortcuts!, explorerCards)).not.toContain('move-up')
+    expect(elementMenuKeys(sessions!, explorerCards)).toEqual(expect.arrayContaining(['move-up', 'move-down']))
+    // Hidden Elements are passed over: nothing visible is above the Sessions once the Shortcuts are hidden.
+    const hidden = explorerCards.map((each) => (each === shortcuts ? { ...each, properties: { ...each.properties, visible: false } } : each))
+    expect(elementMenuKeys(sessions!, hidden)).not.toContain('move-up')
+    expect(elementMenuKeys(extensions!)).not.toContain('move-up')
   })
 
   it("offers only what ClaudeForge's own Elements take: they can be hidden, never closed", () => {
@@ -53,6 +79,7 @@ describe("an Element's right-click menu", () => {
       'rename',
       'text-color',
       'background-color',
+      'collapse',
       'hide',
       'copy-id'
     ])
@@ -75,6 +102,48 @@ describe("an Element's right-click menu", () => {
     })
     // ClaudeForge's own Elements need no Project.
     expect(hideRequest(own('explorer', ['visible']))).toEqual({ op: 'set', element: 'explorer', properties: { visible: false } })
+    expect(collapseRequest(card, true)).toEqual({ op: 'set', project, element: 'card:release', properties: { collapsed: true } })
+  })
+
+  it('moves an Element past its visible neighbour by numbering its container again, asking only for the orders that change', () => {
+    const [shortcuts, , extensions] = explorerCards
+    expect(moveRequests(explorerCards, card, -1)).toEqual([
+      { op: 'set', project, element: 'card:release', properties: { order: 3 } },
+      { op: 'set', element: 'extensions', properties: { order: 4 } }
+    ])
+    expect(moveRequests(explorerCards, shortcuts!, 1)).toEqual([
+      { op: 'set', element: 'sessions', properties: { order: 1 } },
+      { op: 'set', element: 'shortcuts', properties: { order: 2 } }
+    ])
+    // Past a hidden Element too, so the move shows: it lands just before its visible neighbour.
+    const hidden = explorerCards.map((each) => (each === extensions ? { ...each, properties: { ...each.properties, visible: false } } : each))
+    expect(moveRequests(hidden, card, -1)).toEqual([
+      { op: 'set', project, element: 'card:release', properties: { order: 2 } },
+      { op: 'set', element: 'sessions', properties: { order: 3 } },
+      { op: 'set', element: 'extensions', properties: { order: 4 } }
+    ])
+    expect(moveRequests(explorerCards, card, 1)).toEqual([])
+  })
+})
+
+describe('creating a card or a menu by hand', () => {
+  it('suggests an identifier from the title, as the contract takes it', () => {
+    expect(nameFromTitle('Rapport de tests')).toBe('rapport-de-tests')
+    expect(nameFromTitle('  Été 2026 : sortie!  ')).toBe('ete-2026-sortie')
+    expect(nameFromTitle('***')).toBe('')
+    expect(nameFromTitle('a'.repeat(60))).toHaveLength(40)
+  })
+
+  it('creates it in the displayed Project, with the title given', () => {
+    expect(createRequest('card', project, ' release ', ' Release ')).toEqual({
+      op: 'create',
+      project,
+      kind: 'card',
+      name: 'release',
+      title: 'Release'
+    })
+    // No title: the name is its title.
+    expect(createRequest('menu', project, 'tests', ' ')).toEqual({ op: 'create', project, kind: 'menu', name: 'tests' })
   })
 })
 

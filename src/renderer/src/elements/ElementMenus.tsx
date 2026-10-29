@@ -1,28 +1,53 @@
-import { Bookmark, Copy, EyeOff, Paintbrush, Pencil, Plus, Trash2, Type, X, type LucideIcon } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Bookmark,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Copy,
+  EyeOff,
+  Paintbrush,
+  Pencil,
+  Plus,
+  Trash2,
+  Type,
+  X,
+  type LucideIcon
+} from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  ELEMENT_NAME_MAX_LENGTH,
   ELEMENT_TITLE_MAX_LENGTH,
   isColor,
+  isElementName,
+  isOwnElement,
   itemProblem,
   type ContentItem,
   type ContentItemInput,
   type ContentKind,
+  type CreatedElementKind,
   type ElementRefusal,
   type ElementRequest,
   type ElementView,
-  type ItemField
+  type ItemField,
+  type OwnElementId
 } from '../../../shared/elements'
 import { api } from '../api'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { folderName } from '../components/ExtensionsMenu'
 import { Menu, type MenuItem } from '../components/Menu'
 import {
   closeRequest,
+  collapseRequest,
   colorRequest,
+  createRequest,
   elementMenuKeys,
   hideRequest,
   itemMenuKeys,
   itemRequest,
+  moveRequests,
+  nameFromTitle,
   removeRequest,
   renameRequest,
   shortcutOf,
@@ -30,8 +55,23 @@ import {
   type ItemMenuKey
 } from './element-menus'
 
-/** What an Element is called in the interface's words: its title, else its identifier. */
-const nameOf = (element: ElementView): string => element.properties.title ?? element.id
+type Translate = ReturnType<typeof useTranslation>['t']
+
+/** ClaudeForge's own word for each of its own Elements. */
+const OWN_NAMES = {
+  'title-bar': 'elements.own.titleBar',
+  explorer: 'elements.own.explorer',
+  shortcuts: 'elements.own.shortcuts',
+  sessions: 'elements.own.sessions',
+  extensions: 'elements.own.extensions',
+  'terminal-area': 'elements.own.terminalArea',
+  'right-panel': 'elements.own.rightPanel',
+  'panel-tab:map': 'elements.own.mapTab'
+} as const satisfies Record<OwnElementId, string>
+
+/** What an Element is called in the interface's words: its title, else ClaudeForge's own word for it. */
+export const nameOf = (element: ElementView, t: Translate): string =>
+  element.properties.title ?? (isOwnElement(element.id) ? t(OWN_NAMES[element.id]) : element.id)
 
 /** Asks the contract; a refusal comes back to say in the dialog, a failure as a refusal of the request. */
 async function ask(request: ElementRequest): Promise<ElementRefusal | null> {
@@ -41,6 +81,15 @@ async function ask(request: ElementRequest): Promise<ElementRefusal | null> {
   } catch {
     return { code: 'bad-request' }
   }
+}
+
+/** Asks the contract each request in turn, stopping at the first refused. */
+async function askAll(requests: ElementRequest[]): Promise<ElementRefusal | null> {
+  for (const request of requests) {
+    const refused = await ask(request)
+    if (refused) return refused
+  }
+  return null
 }
 
 /** A refusal in the interface's language. */
@@ -77,6 +126,8 @@ interface ElementMenuProps {
   element: ElementView
   /** Where it opens: the pointer, in viewport pixels. */
   at: { x: number; y: number }
+  /** The Elements of its container, in their order, to move it among; without them it does not move. */
+  siblings?: readonly ElementView[]
   /** Once the menu and any dialog it opened are gone. */
   onClose(): void
 }
@@ -86,6 +137,10 @@ const ELEMENT_ICONS: Record<ElementMenuKey, LucideIcon> = {
   'text-color': Type,
   'background-color': Paintbrush,
   'add-item': Plus,
+  collapse: ChevronsDownUp,
+  expand: ChevronsUpDown,
+  'move-up': ArrowUp,
+  'move-down': ArrowDown,
   hide: EyeOff,
   'copy-id': Copy,
   close: X
@@ -96,6 +151,10 @@ const ELEMENT_LABELS = {
   'text-color': 'elements.menu.textColor',
   'background-color': 'elements.menu.backgroundColor',
   'add-item': 'elements.menu.addItem',
+  collapse: 'elements.menu.collapse',
+  expand: 'elements.menu.expand',
+  'move-up': 'elements.menu.moveUp',
+  'move-down': 'elements.menu.moveDown',
   hide: 'elements.menu.hide',
   'copy-id': 'elements.menu.copyId',
   close: 'elements.menu.close'
@@ -103,10 +162,10 @@ const ELEMENT_LABELS = {
 
 /**
  * The right-click menu of an Element: rename, text colour, background colour, add a Content item,
- * hide, copy its identifier, and close a Created Element; each as far as the Element takes it, each
- * through the Elements contract.
+ * collapse or expand, move, hide, copy its identifier, and close a Created Element; each as far as the
+ * Element takes it, each through the Elements contract.
  */
-export function ElementMenu({ element, at, onClose }: ElementMenuProps): ReactNode {
+export function ElementMenu({ element, at, siblings, onClose }: ElementMenuProps): ReactNode {
   const { t } = useTranslation()
   const [step, setStep, closeMenu] = useSteps<'rename' | 'text-color' | 'background-color' | 'add-item' | 'close'>(onClose)
   const done = (): void => setStep('done')
@@ -116,6 +175,10 @@ export function ElementMenu({ element, at, onClose }: ElementMenuProps): ReactNo
     'text-color': () => setStep('text-color'),
     'background-color': () => setStep('background-color'),
     'add-item': () => setStep('add-item'),
+    collapse: () => void ask(collapseRequest(element, true)).finally(done),
+    expand: () => void ask(collapseRequest(element, false)).finally(done),
+    'move-up': () => void askAll(moveRequests(siblings ?? [], element, -1)).finally(done),
+    'move-down': () => void askAll(moveRequests(siblings ?? [], element, 1)).finally(done),
     hide: () => void ask(hideRequest(element)).finally(done),
     'copy-id': () => {
       copy(element.id)
@@ -123,7 +186,7 @@ export function ElementMenu({ element, at, onClose }: ElementMenuProps): ReactNo
     },
     close: () => setStep('close')
   }
-  const items: MenuItem[] = elementMenuKeys(element).map((key) => ({
+  const items: MenuItem[] = elementMenuKeys(element, siblings).map((key) => ({
     label: t(ELEMENT_LABELS[key]),
     icon: ELEMENT_ICONS[key],
     danger: key === 'close',
@@ -133,7 +196,7 @@ export function ElementMenu({ element, at, onClose }: ElementMenuProps): ReactNo
 
   switch (step) {
     case 'menu':
-      return <Menu label={t('elements.menu.label', { name: nameOf(element) })} at={at} items={items} onClose={closeMenu} />
+      return <Menu label={t('elements.menu.label', { name: nameOf(element, t) })} at={at} items={items} onClose={closeMenu} />
     case 'rename':
       return <RenameDialog element={element} onDone={done} />
     case 'text-color':
@@ -247,6 +310,8 @@ export function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel
         event.preventDefault()
         if (!busy) onCancel()
       }}
+      // A right-click in the form is the form's, never the Element's around it.
+      onContextMenu={(event) => event.stopPropagation()}
     >
       <form className="element-dialog__form" noValidate onSubmit={submit}>
         <h2 className="cf-dialog__title" id={`${id}-title`}>
@@ -299,7 +364,7 @@ function RenameDialog({ element, onDone }: { element: ElementView; onDone(): voi
   const { busy, refusal, send } = useSubmit(onDone)
   return (
     <FormDialog
-      title={t('elements.rename.title', { name: nameOf(element) })}
+      title={t('elements.rename.title', { name: nameOf(element, t) })}
       submitLabel={t('elements.rename.save')}
       error={refusal}
       busy={busy}
@@ -341,7 +406,7 @@ function ColorDialog({
   }
   return (
     <FormDialog
-      title={t(`elements.color.${which}Title`, { name: nameOf(element) })}
+      title={t(`elements.color.${which}Title`, { name: nameOf(element, t) })}
       submitLabel={t('elements.color.save')}
       error={refusal}
       busy={busy}
@@ -388,7 +453,7 @@ function CloseDialog({ element, onDone }: { element: ElementView; onDone(): void
   const { busy, refusal, send } = useSubmit(onDone)
   return (
     <ConfirmDialog
-      title={t('elements.close.title', { name: nameOf(element) })}
+      title={t('elements.close.title', { name: nameOf(element, t) })}
       actionLabel={t('elements.close.action')}
       actionIcon={X}
       error={refusal}
@@ -463,7 +528,7 @@ function ItemDialog({ element, editing, onDone }: { element: ElementView; editin
 
   return (
     <FormDialog
-      title={t(editing ? 'elements.itemForm.titleEdit' : 'elements.itemForm.titleNew', { name: nameOf(element) })}
+      title={t(editing ? 'elements.itemForm.titleEdit' : 'elements.itemForm.titleNew', { name: nameOf(element, t) })}
       submitLabel={t(editing ? 'elements.itemForm.save' : 'elements.itemForm.add')}
       error={refusal}
       busy={busy}
@@ -496,6 +561,72 @@ function ItemDialog({ element, editing, onDone }: { element: ElementView; editin
           </div>
         )
       })}
+    </FormDialog>
+  )
+}
+
+/**
+ * Creates a Panel tab, a card in the explorer or a menu in the title bar for the displayed Project, by
+ * hand: a title, and an identifier unique in the Project, suggested from the title until it is typed.
+ * The new Element asks to come to the front itself.
+ */
+export function CreateElementDialog({
+  kind,
+  project,
+  onDone
+}: {
+  kind: CreatedElementKind
+  project: string
+  onDone(): void
+}): ReactNode {
+  const { t } = useTranslation()
+  const id = useId()
+  const [title, setTitle] = useState('')
+  const [name, setName] = useState<string | null>(null)
+  const { busy, refusal, send, setRefusal } = useSubmit(onDone)
+  const shownName = name ?? nameFromTitle(title)
+  const submit = (): void => {
+    if (!isElementName(kind, shownName.trim())) return setRefusal(t('elements.refusal.bad-name'))
+    send(createRequest(kind, project, shownName, title))
+  }
+  return (
+    <FormDialog
+      title={t(`elements.create.${kind}`)}
+      submitLabel={t('elements.create.action')}
+      error={refusal}
+      busy={busy}
+      onSubmit={submit}
+      onCancel={onDone}
+    >
+      <p className="cf-muted element-dialog__lead">{t('elements.create.inProject', { project: folderName(project) })}</p>
+      <label className="element-dialog__field">
+        <span>{t('elements.create.title')}</span>
+        <input
+          className="extdialog__input"
+          value={title}
+          maxLength={ELEMENT_TITLE_MAX_LENGTH}
+          autoFocus
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </label>
+      <div className="element-dialog__field">
+        <label htmlFor={`${id}-name`}>{t('elements.create.name')}</label>
+        <span className="element-dialog__prefixed">
+          <span className="cf-mono element-dialog__prefix" aria-hidden="true">{`${kind}:`}</span>
+          <input
+            id={`${id}-name`}
+            className="cf-mono"
+            value={shownName}
+            maxLength={ELEMENT_NAME_MAX_LENGTH}
+            spellCheck={false}
+            aria-describedby={`${id}-hint`}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </span>
+        <span className="extdialog__hint" id={`${id}-hint`}>
+          {t('elements.create.nameHint')}
+        </span>
+      </div>
     </FormDialog>
   )
 }

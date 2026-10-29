@@ -18,15 +18,13 @@ import {
   X,
   type LucideIcon
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProjectSessions, SessionDeletion, SessionListProblem, SessionSummary } from '../../../shared/api'
 import { api, onEvent } from '../api'
-import type { EditorTarget } from '../editor/editor-tabs'
-import type { HostedTab } from '../terminal/hosted-sessions'
+import type { ElementFrame } from '../elements/interface-elements'
 import type { SessionLaunch } from '../terminal/hosted-terminal'
 import { ConfirmDialog } from './ConfirmDialog'
-import { ExtensionsBar } from './ExtensionsMenu'
 import { IconButton } from './IconButton'
 import { Menu, type MenuItem } from './Menu'
 
@@ -38,14 +36,9 @@ interface ExplorerProps {
   onDisplaySession(id: string): void
   /** Starts a Hosted session in a Project: a new Session, or one resumed or forked from a past Session. */
   onStartSession(project: string, launch: SessionLaunch): void
-  /** The displayed Project, whose Extensions the Extensions bar counts. */
-  project: string
-  /** The Hosted sessions' tabs, which the Extensions menu names after a change. */
-  hostedTabs: HostedTab[]
-  onShowHostedSession(key: string): void
-  /** Opens a skill's or subagent's file in an editor tab. */
-  onEditExtension(target: EditorTarget): void
   onCollapse(): void
+  /** What the Sessions tile takes from its Element: its title, collapsed state, colours and right-click menu. */
+  frame?: ElementFrame
 }
 
 /** The Session catalog as the backend last pushed it; null until it first answers. */
@@ -118,24 +111,15 @@ interface RowActions {
   startNew(project: string): void
 }
 
-/** The explorer column: Sessions grouped by Project, with the Extensions bar docked under it. */
-export function Explorer({
-  projects,
-  displayedSessionId,
-  onDisplaySession,
-  onStartSession,
-  project,
-  hostedTabs,
-  onShowHostedSession,
-  onEditExtension,
-  onCollapse
-}: ExplorerProps): ReactNode {
+/** The Sessions tile of the explorer: Sessions grouped by Project. */
+export function Explorer({ projects, displayedSessionId, onDisplaySession, onStartSession, onCollapse, frame }: ExplorerProps): ReactNode {
   const { t } = useTranslation()
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
   const closeMenu = useCallback(() => setTidying((current) => (current?.kind === 'menu' ? null : current)), [])
   const [selection, setSelection] = useState(NO_SELECTION)
   const tree = useRef<HTMLUListElement>(null)
+  const headingId = useId()
   const byId = new Map(projects?.flatMap((project) => project.sessions.map((session) => [session.id, session])))
   const selected = new Set(selection.ids)
 
@@ -244,12 +228,21 @@ export function Explorer({
 
   return (
     <>
-      <div className="explorer__tile">
+      <section
+        className="explorer__tile"
+        aria-labelledby={headingId}
+        data-element={frame?.id}
+        data-collapsed={frame?.collapsed}
+        style={frame?.style}
+        onContextMenu={frame?.onContextMenu}
+      >
         <div className="cf-panel-head">
-          <span className="cf-eyebrow">{t('explorer.heading')}</span>
+          <h2 className="cf-eyebrow" id={headingId}>
+            {frame?.title ?? t('explorer.heading')}
+          </h2>
           <IconButton icon={PanelLeftClose} label={t('explorer.collapse')} onClick={onCollapse} />
         </div>
-        <div className="explorer__tree">
+        <div className="explorer__tree" hidden={frame?.collapsed}>
           <ListProblem />
           {projects?.length === 0 && <p className="empty">{t('explorer.empty')}</p>}
           {projects && projects.length > 0 && (
@@ -267,13 +260,7 @@ export function Explorer({
             </ul>
           )}
         </div>
-      </div>
-      <ExtensionsBar
-        project={project}
-        hostedTabs={hostedTabs}
-        onShowHostedSession={onShowHostedSession}
-        onEdit={onEditExtension}
-      />
+      </section>
       {tidying?.kind === 'menu' && (
         <Menu label={t('explorer.sessionActions')} at={tidying.at} items={menuItems(tidying.session, tidying.project, tidying.targets)} onClose={closeMenu} />
       )}

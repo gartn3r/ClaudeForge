@@ -465,19 +465,10 @@
     "label": "Panneau de droite",
     "tabs": "Onglets du panneau",
     "new": "Nouvel onglet de panneau",
-    "changed": "Mis à jour",
     "empty": "Rien ici pour l’instant. Faites un clic droit sur cet onglet pour y ajouter un contenu, ou demandez à Claude de le remplir.",
     "collapse": "Replier le panneau de droite",
     "expand": "Déplier le panneau de droite",
-    "resize": "Redimensionner le panneau de droite",
-    "create": {
-      "title": "Nouvel onglet de panneau",
-      "in": "Dans {{project}}.",
-      "titleLabel": "Titre",
-      "nameLabel": "Identifiant",
-      "nameHint": "Unique dans le Projet : c’est le nom que Claude utilise pour y écrire.",
-      "create": "Créer"
-    }
+    "resize": "Redimensionner le panneau de droite"
   },
   "elements": {
     "item": {
@@ -493,6 +484,35 @@
       "web-page": "Page web",
       "action": "Action"
     },
+    "own": {
+      "titleBar": "Barre de titre",
+      "explorer": "Explorateur",
+      "shortcuts": "Raccourcis",
+      "sessions": "Sessions",
+      "extensions": "Extensions",
+      "terminalArea": "Zone des terminaux",
+      "rightPanel": "Panneau de droite",
+      "mapTab": "Carte"
+    },
+    "mark": "Mis à jour",
+    "card": {
+      "new": "Nouvelle fiche",
+      "empty": "Rien ici pour l’instant. Clic droit pour ajouter un contenu."
+    },
+    "menuNew": "Nouveau menu",
+    "menuEmpty": "Rien ici pour l’instant. Clic droit sur le menu pour ajouter un lien ou une action.",
+    "create": {
+      "panel-tab": "Nouvel onglet de panneau",
+      "card": "Nouvelle fiche",
+      "menu": "Nouveau menu",
+      "inProject": "Dans {{project}}.",
+      "title": "Titre",
+      "name": "Identifiant",
+      "nameHint": "Unique dans le Projet : c’est le nom que Claude utilise pour y écrire.",
+      "action": "Créer"
+    },
+    "restoreDefault": "Disposition par défaut",
+    "restoreDefaultHint": "Rend aux Elements de ClaudeForge leur place, leur taille, leur titre et leurs couleurs d’origine, et affiche et déplie de nouveau chaque fiche, menu et onglet de panneau, en gardant leur titre et leurs couleurs. Rien n’est supprimé.",
     "menu": {
       "label": "Actions de {{name}}",
       "rename": "Renommer",
@@ -501,7 +521,11 @@
       "addItem": "Ajouter un contenu",
       "hide": "Masquer",
       "copyId": "Copier l’identifiant",
-      "close": "Fermer"
+      "close": "Fermer",
+      "collapse": "Replier",
+      "expand": "Déplier",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
     },
     "itemMenu": {
       "label": "Actions du contenu",

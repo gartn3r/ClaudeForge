@@ -3,12 +3,19 @@ import type { ElementView } from '../../../shared/elements'
 import { api, onEvent } from '../api'
 import { samePath } from '../terminal/typing'
 
+/** The Elements as the contract last listed them, and the Project they were listed for. */
+export interface ElementListing {
+  project: string
+  elements: ElementView[]
+}
+
 /**
  * ClaudeForge's own Elements and the Project's Created Elements, as the contract lists them, listed
- * again whenever the backend says they changed; null until the Project's are read.
+ * again whenever the backend says ClaudeForge's own or that Project's changed. Null until first
+ * listed; while another Project's are listed, the last listing stays, for the Project it was.
  */
-export function useElements(project: string): ElementView[] | null {
-  const [listed, setListed] = useState<{ project: string; elements: ElementView[] } | null>(null)
+export function useElements(project: string): ElementListing | null {
+  const [listed, setListed] = useState<ElementListing | null>(null)
   const [revision, setRevision] = useState(0)
   useEffect(
     () =>
@@ -27,5 +34,5 @@ export function useElements(project: string): ElementView[] | null {
       current = false
     }
   }, [project, revision])
-  return listed?.project === project ? listed.elements : null
+  return listed
 }

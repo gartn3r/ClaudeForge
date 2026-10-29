@@ -6,8 +6,7 @@ import type { ContentItem, ElementView } from '../../../shared/elements'
 import { api } from '../api'
 import { IconButton } from '../components/IconButton'
 import { ContentItemView, type ItemHandlers } from './ContentItemView'
-import { ContentItemMenu, ElementMenu } from './ElementMenus'
-import { NewPanelTabDialog } from './NewPanelTabDialog'
+import { ContentItemMenu, CreateElementDialog, ElementMenu } from './ElementMenus'
 import { MAP_TAB, rightPanelState, tabToBringForward, tabsToMarkSeen, type RightPanelState } from './right-panel'
 
 /** A Panel tab's name: its title, the Map Panel tab's own words by default. */
@@ -155,7 +154,7 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
               {tab.id === MAP_TAB && <MapIcon className="cf-icon cf-icon--sm" aria-hidden="true" />}
               <span className="cf-tab__title">{tabName(tab)}</span>
               {tab.attention === 'mark' && tab.id !== shown?.id && (
-                <span className="cf-dot right-panel__mark" role="img" aria-label={t('rightPanel.changed')} />
+                <span className="cf-dot right-panel__mark" role="img" aria-label={t('elements.mark')} />
               )}
             </button>
           ))}
@@ -191,7 +190,7 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
           ),
           document.body
         )}
-      {creating && createPortal(<NewPanelTabDialog project={project} onDone={() => setCreating(false)} />, document.body)}
+      {creating && createPortal(<CreateElementDialog kind="panel-tab" project={project} onDone={() => setCreating(false)} />, document.body)}
     </>
   )
 }
@@ -240,7 +239,7 @@ export function RightPanelRail({ label, marked, onExpand }: RightPanelRailProps)
   return (
     <div className="right-panel__rail">
       <IconButton icon={PanelRightOpen} label={label} onClick={onExpand} />
-      {marked && <span className="cf-dot right-panel__mark" role="img" aria-label={t('rightPanel.changed')} />}
+      {marked && <span className="cf-dot right-panel__mark" role="img" aria-label={t('elements.mark')} />}
     </div>
   )
 }

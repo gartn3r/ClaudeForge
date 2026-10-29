@@ -5,6 +5,7 @@ import { commandText } from '../../shared/shortcuts'
 import { api, onEvent } from './api'
 import { CloseWarning } from './components/CloseWarning'
 import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
+import { ExtensionsBar } from './components/ExtensionsMenu'
 import { FirstRun } from './components/FirstRun'
 import { MapPanel, shownMap } from './components/MapPanel'
 import { SettingsMenu } from './components/SettingsMenu'
@@ -14,9 +15,11 @@ import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
 import { useEditorTabs } from './editor/editor-tabs'
+import { ExplorerColumn } from './elements/ExplorerColumn'
+import { columnProps, isShown, useInterfaceElements } from './elements/interface-elements'
 import { RightPanel, RightPanelRail, useRightPanel, useRightPanelLabels } from './elements/RightPanel'
-import { useElements } from './elements/use-elements'
 import { MAP_TAB } from './elements/right-panel'
+import { RestoreDefaultButton, TitleBarMenus } from './elements/TitleBarMenus'
 import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
@@ -69,6 +72,9 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   const displayedProject = displayed?.group.path ?? activeTab?.project ?? startProject
   // The start folder keeps its own spelling while the displayed Session runs in it.
   const project = samePath(displayedProject, startProject) ? startProject : displayedProject
+  // ClaudeForge's own Elements and the displayed Project's Created ones, as the user or Claude set them.
+  const elements = useInterfaceElements(project, state.layout)
+  const rightPanelElement = elements.own('right-panel')
 
   // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
   const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
@@ -170,7 +176,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   const expandRightPanel = useCallback(() => void api.appState.write({ layout: { map: { collapsed: false } } }), [])
   const rightPanel = useRightPanel({
     project,
-    elements: useElements(project),
+    elements: elements.listed,
     hasMap: !noMap,
     layoutCollapsed: state.layout.map.collapsed,
     expand: expandRightPanel
@@ -212,9 +218,17 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             onNew={() => startHostedSession(project)}
           />
         }
+        menus={
+          <>
+            <TitleBarMenus elements={elements} project={project} onType={typeCommand} />
+            <RestoreDefaultButton />
+          </>
+        }
         settings={<SettingsMenu state={state} />}
+        frame={elements.frame(elements.own('title-bar'))}
       />
       <div className="columns">
+        {isShown(elements.own('explorer')) && (
         <SidePanel
           id="explorer"
           side="left"
@@ -223,28 +237,46 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           resizeLabel={t('explorer.resize')}
           rail={
             <ExplorerRail onExpand={collapseHandler('explorer', false)}>
-              <ShortcutsRail {...shortcutsProps} />
+              {isShown(elements.own('shortcuts')) && <ShortcutsRail {...shortcutsProps} />}
             </ExplorerRail>
           }
           onResizingChange={setResizing}
+          {...columnProps(elements.frame(elements.own('explorer')))}
         >
-          <ShortcutsCard
-            {...shortcutsProps}
-            shownWebShortcut={webbing.tabs.find((tab) => tab.key === shownKey)?.shortcutId ?? null}
-            onEdit={(shortcut) => setEditingShortcut({ shortcut })}
-          />
-          <Explorer
-            projects={catalog}
-            displayedSessionId={displayedSessionId}
-            onDisplaySession={setDisplayedSessionId}
-            onStartSession={startHostedSession}
+          <ExplorerColumn
+            elements={elements}
             project={project}
-            hostedTabs={hosted.tabs}
-            onShowHostedSession={selectHostedSession}
-            onEditExtension={(target) => showEditor(() => editing.editors.open(target))}
-            onCollapse={collapseHandler('explorer', true)}
+            onType={typeCommand}
+            shortcuts={(frame) => (
+              <ShortcutsCard
+                {...shortcutsProps}
+                shownWebShortcut={webbing.tabs.find((tab) => tab.key === shownKey)?.shortcutId ?? null}
+                onEdit={(shortcut) => setEditingShortcut({ shortcut })}
+                frame={frame}
+              />
+            )}
+            sessions={(frame) => (
+              <Explorer
+                projects={catalog}
+                displayedSessionId={displayedSessionId}
+                onDisplaySession={setDisplayedSessionId}
+                onStartSession={startHostedSession}
+                onCollapse={collapseHandler('explorer', true)}
+                frame={frame}
+              />
+            )}
+            extensions={(frame) => (
+              <ExtensionsBar
+                project={project}
+                hostedTabs={hosted.tabs}
+                onShowHostedSession={selectHostedSession}
+                onEdit={(target) => showEditor(() => editing.editors.open(target))}
+                frame={frame}
+              />
+            )}
           />
         </SidePanel>
+        )}
         <TerminalArea
           tabs={hosted.tabs}
           editors={editing.tabs}
@@ -255,7 +287,9 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           onClose={(key) => hosted.sessions.close(key)}
           onEditorDirtyChange={(key, dirty) => editing.editors.setDirty(key, dirty)}
           onEditorRename={(key, name) => editing.editors.rename(key, name)}
+          frame={elements.frame(elements.own('terminal-area'))}
         />
+        {isShown(rightPanelElement) && (
         <SidePanel
           id="map"
           side="right"
@@ -270,6 +304,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             />
           }
           onResizingChange={setResizing}
+          {...columnProps(elements.frame(rightPanelElement), { railOnly: true })}
         >
           <RightPanel
             state={rightPanel.state}
@@ -293,6 +328,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
             onType={typeCommand}
           />
         </SidePanel>
+        )}
       </div>
       <CloseWarning tabs={hosted.tabs} editors={editing.tabs} />
       {editingShortcut && (
@@ -304,6 +340,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
         />
       )}
       {busySession && <BusyNotice session={busySession} onDismiss={dismissBusy} />}
+      {elements.menus}
     </div>
   )
 }

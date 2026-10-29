@@ -60,9 +60,10 @@ test("a Hosted session's Claude creates and fills Elements of its Project throug
   await run(window, 'claudeforge add menu:tests --text "Hello"', 'menu:tests takes link, action only, not text.')
 
   await expect.poll(() => createdElements(window)).toEqual([
+    // It came to the front: the Right panel shows it, so it no longer asks for attention.
     expect.objectContaining({
       id: 'panel-tab:tests',
-      attention: 'front',
+      attention: null,
       properties: expect.objectContaining({ title: 'Tests' }),
       items: [
         expect.objectContaining({ id: 'summary', kind: 'text', text: '12 passed', writtenBy: expect.objectContaining({ kind: 'session' }) }),
@@ -78,4 +79,28 @@ test('claudeforge --help documents the commands to a Hosted session', async () =
 
   // The help is longer than the terminal is tall: its last lines show.
   await run(window, 'claudeforge --help', '--help              This help.Exit code 0')
+})
+
+test("Claude fills a Panel tab, a card and a menu through the CLI, and the window shows each where it belongs", async () => {
+  const window = await openFolder()
+
+  await run(window, 'claudeforge create panel-tab:tests --title Tests', 'Created panel-tab:tests.')
+  await run(window, 'claudeforge add panel-tab:tests --id summary --text "12 passed"', 'Added summary to panel-tab:tests.')
+  await run(window, 'claudeforge add panel-tab:tests --id ci --link https://ci.example/run/1 --show', 'Added ci to panel-tab:tests.')
+
+  // The Panel tab comes to the front in the Right panel, with what Claude put in it.
+  const rightPanel = window.getByRole('complementary', { name: 'Tests' })
+  await expect(rightPanel.getByRole('tab', { name: 'Tests', selected: true })).toBeVisible()
+  const items = rightPanel.getByRole('list', { name: 'Tests' })
+  await expect(items).toContainText('12 passed')
+  await expect(items.getByRole('button', { name: /ci\.example/ })).toBeVisible()
+
+  await run(window, 'claudeforge create card:release --title Release', 'Created card:release.')
+  await run(window, 'claudeforge add card:release --id notes --text "Ship on Friday"', 'Added notes to card:release.')
+  await expect(window.getByRole('region', { name: 'Release' })).toContainText('Ship on Friday')
+
+  await run(window, 'claudeforge create menu:deploy --title Deploy', 'Created menu:deploy.')
+  await run(window, 'claudeforge add menu:deploy --id staging --action "/deploy staging" --title Staging', 'Added staging to menu:deploy.')
+  await window.getByRole('button', { name: 'Deploy' }).click()
+  await expect(window.getByRole('dialog', { name: 'Deploy' })).toContainText('Staging')
 })

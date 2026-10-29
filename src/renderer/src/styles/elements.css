@@ -145,3 +145,152 @@
   margin: 0;
   color: var(--danger);
 }
+
+/* The mark an Element shows when its content changed while out of view: a small slate dot. */
+.element-mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--text);
+}
+
+/* A card created in the explorer: a card tile like the Shortcuts', its title over its Content items. */
+.element-card {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  max-height: 40%;
+  padding: 12px 10px 10px;
+  color: var(--text);
+}
+.element-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 6px 4px 10px;
+}
+.element-card__head .cf-heading {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.element-card__id {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.element-card__items,
+.element-menu__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.element-card__items .content-item--text {
+  padding: 0 var(--space-2) var(--space-1);
+}
+.element-card__empty,
+.element-menu__empty {
+  margin: 0;
+  padding: 0 10px 4px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.explorer__new-card {
+  flex: none;
+  align-self: flex-start;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--text-muted);
+}
+
+/* ClaudeForge's own explorer cards, as their Element sets them. */
+.explorer__tile .cf-panel-head > h2 {
+  margin: 0;
+}
+.explorer__tile[data-collapsed='true'] {
+  flex: none;
+}
+.side-panel[data-colored='true'] {
+  border-radius: var(--radius-tile);
+}
+
+/* The title bar's Created menus, their + and Restore default layout. */
+.titlebar__menus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.titlebar__menu {
+  height: var(--size-tab);
+  padding: 0 12px 0 16px;
+  -webkit-app-region: no-drag;
+}
+.titlebar__new-menu {
+  width: 30px;
+  height: 30px;
+}
+.titlebar__restore {
+  flex: none;
+  height: var(--size-tab);
+}
+/* The wordmark answers a right-click with the title bar's menu, so it is not a drag handle. */
+.brand {
+  -webkit-app-region: no-drag;
+}
+.element-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: 360px;
+  max-height: 60vh;
+  padding: var(--space-2);
+  color: var(--text);
+}
+.element-menu.cf-popover {
+  background: var(--surface);
+}
+
+/* The dialog that creates an Element: its identifier after the kind's prefix. */
+.element-dialog__lead {
+  margin: calc(-1 * var(--space-2)) 0 0;
+}
+.element-dialog__prefixed {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+.element-dialog__prefixed:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.element-dialog__prefix {
+  padding: 0 2px 0 14px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.element-dialog__prefixed input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 var(--space-3) 0 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+}

@@ -92,37 +92,3 @@
 .panel-tab__empty {
   margin: 0;
 }
-
-/* The dialog that creates an Element: its identifier after the kind's prefix. */
-.element-dialog__lead {
-  margin: calc(-1 * var(--space-2)) 0 0;
-}
-.element-dialog__prefixed {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  overflow: hidden;
-  border: 1px solid var(--line-control);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-}
-.element-dialog__prefixed:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-.element-dialog__prefix {
-  padding: 0 2px 0 14px;
-  color: var(--text-muted);
-  font-weight: 400;
-}
-.element-dialog__prefixed input {
-  flex: 1;
-  min-width: 0;
-  height: 42px;
-  padding: 0 var(--space-3) 0 0;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font-weight: 400;
-}
