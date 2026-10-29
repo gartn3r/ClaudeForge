@@ -112,7 +112,7 @@ test("sets the terminal in the design system's mono-terminal type, on the slate 
   const text = terminalOf(window).getByText('Fake Claude Code')
 
   await expect(text).toHaveCSS('font-family', /^"JetBrains Mono"/)
-  await expect(text).toHaveCSS('font-size', '15px')
+  await expect(text).toHaveCSS('font-size', '17px')
   // The terminal-text token on the terminal token: the slate tile.
   await expect(text).toHaveCSS('color', 'rgb(230, 227, 214)')
   const background = await text.evaluate((element) => {
