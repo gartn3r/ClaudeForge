@@ -4,8 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Map as MapIcon,
-  PanelRightClose,
-  PanelRightOpen,
   RotateCw,
   SquareTerminal
 } from 'lucide-react'
@@ -64,7 +62,6 @@ interface MapPanelProps {
   onDisplaySession(id: string): void
   /** Starts a new Hosted session in the Project, with a `/wayfinder` command typed in its prompt. */
   onStartSession(typed: TypedCommand): void
-  onCollapse(): void
 }
 
 /**
@@ -80,8 +77,7 @@ export function MapPanel({
   displayedSession,
   preferences,
   onDisplaySession,
-  onStartSession,
-  onCollapse
+  onStartSession
 }: MapPanelProps): ReactNode {
   const { t, i18n } = useTranslation()
   // A Map the user chose holds until the displayed Session or Project changes.
@@ -243,7 +239,6 @@ ${mapId ?? ''}`
             onRefresh={() => void api.map.refresh(project)}
           />
         )}
-        <IconButton icon={PanelRightClose} label={t('map.collapse')} onClick={onCollapse} />
       </div>
       <div className="map-panel__body">{body}</div>
       {map && detailed && <TicketDetails map={map} ticket={detailed} onClose={() => setInDetail(null)} />}
@@ -633,13 +628,4 @@ function MapSection({ id, title, markdown }: MapSectionProps): ReactNode {
       )}
     </>
   )
-}
-
-interface MapRailProps {
-  onExpand(): void
-}
-
-export function MapRail({ onExpand }: MapRailProps): ReactNode {
-  const { t } = useTranslation()
-  return <IconButton icon={PanelRightOpen} label={t('map.expand')} onClick={onExpand} />
 }

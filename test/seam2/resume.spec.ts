@@ -44,7 +44,7 @@ test('resumes a past Session of another Project in a new tab, and that Project b
   await row(window, 'harbor-api', 'Add an OpenAPI export').click({ button: 'right' })
   await window.getByRole('menu').getByRole('menuitem', { name: 'Resume' }).click()
 
-  await expect(window.getByRole('tab')).toHaveCount(1)
+  await expect(window.getByRole('tablist', { name: 'Hosted sessions' }).getByRole('tab')).toHaveCount(1)
   await expect(window.getByRole('tabpanel')).toContainText('Fake Claude Code')
   expect(await sessionRuns(env)).toEqual([
     expect.objectContaining({ args: ['--resume', PAST_SESSION, ...TOLD_ABOUT_THE_CLI], cwd: env.projects['harbor-api'] })
@@ -70,7 +70,7 @@ test('starts a new Session in a Project with its "+", forks a past Session, and 
         cwd: env.projects['harbor-api']
       })
     ])
-  await expect(window.getByRole('tab')).toHaveCount(2)
+  await expect(window.getByRole('tablist', { name: 'Hosted sessions' }).getByRole('tab')).toHaveCount(2)
 
   await row(window, 'harbor-api', 'Rate limiter rewrite').click({ button: 'right' })
   await expect(window.getByRole('menuitem', { name: 'Resume' })).toBeDisabled()

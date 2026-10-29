@@ -461,6 +461,24 @@
       "foundAt": "Trouvé dans"
     }
   },
+  "rightPanel": {
+    "label": "Panneau de droite",
+    "tabs": "Onglets du panneau",
+    "new": "Nouvel onglet de panneau",
+    "changed": "Mis à jour",
+    "empty": "Rien ici pour l’instant. Faites un clic droit sur cet onglet pour y ajouter un contenu, ou demandez à Claude de le remplir.",
+    "collapse": "Replier le panneau de droite",
+    "expand": "Déplier le panneau de droite",
+    "resize": "Redimensionner le panneau de droite",
+    "create": {
+      "title": "Nouvel onglet de panneau",
+      "in": "Dans {{project}}.",
+      "titleLabel": "Titre",
+      "nameLabel": "Identifiant",
+      "nameHint": "Unique dans le Projet : c’est le nom que Claude utilise pour y écrire.",
+      "create": "Créer"
+    }
+  },
   "elements": {
     "item": {
       "typeHint": "Tape cette commande sans l’envoyer",

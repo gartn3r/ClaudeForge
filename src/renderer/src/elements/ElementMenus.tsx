@@ -222,7 +222,7 @@ interface FormDialogProps {
 }
 
 /** A modal form over the window: Escape and Cancel close it unchanged. */
-function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, children, extra }: FormDialogProps): ReactNode {
+export function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, children, extra }: FormDialogProps): ReactNode {
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
   const id = useId()
@@ -273,7 +273,7 @@ function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, child
 }
 
 /** Sends a request from a dialog: it closes once the contract took it, else says why it was refused. */
-function useSubmit(onDone: () => void): {
+export function useSubmit(onDone: () => void): {
   busy: boolean
   refusal: string | null
   send(request: ElementRequest): void

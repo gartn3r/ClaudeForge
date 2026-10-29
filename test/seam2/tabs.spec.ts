@@ -112,7 +112,8 @@ test('gives only the terminal on show a WebGL renderer, and keeps it through man
 
   await newSession(window)
   await newSession(window)
-  const [first, second] = [window.getByRole('tab').first(), window.getByRole('tab').last()]
+  const sessionTabs = window.getByRole('tablist', { name: 'Hosted sessions' }).getByRole('tab')
+  const [first, second] = [sessionTabs.first(), sessionTabs.last()]
   await show(second)
   await show(first)
 
@@ -157,7 +158,7 @@ test('asks before closing a Session Claude is working in, and closes an idle one
 
   await idle.getByRole('button', { name: 'Close' }).click()
   await expect(question).toBeHidden()
-  await expect(window.getByRole('tab')).toHaveCount(0)
+  await expect(window.getByRole('tablist', { name: 'Hosted sessions' }).getByRole('tab')).toHaveCount(0)
   await expect(window.getByText('Open a folder to start a Session in it.')).toBeVisible()
   // No pseudoconsole, so no `claude`, is left running.
   await expect.poll(() => childProcessNames(mainPid), { timeout: 15_000 }).not.toContain('OpenConsole.exe')
