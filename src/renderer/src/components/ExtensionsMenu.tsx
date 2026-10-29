@@ -171,6 +171,8 @@ export function ExtensionsBar({ project, hostedTabs, onShowHostedSession, onEdit
       data-element={frame?.id}
       style={frame?.style}
       onContextMenu={frame?.onContextMenu}
+      {...frame?.dropZone}
+      {...frame?.grip}
     >
       <button
         type="button"

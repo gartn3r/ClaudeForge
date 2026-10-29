@@ -15,8 +15,8 @@
   --ansi-bright-cyan: #aeddd7; --ansi-bright-white: #f5f1e3;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
   --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-tile: 24px; --radius-dialog: 28px; --radius-full: 999px;
-  --size-titlebar: 56px; --size-tab: 38px; --size-row: 32px; --size-control: 32px; --size-explorer: 264px; --size-map: 400px;
-  --size-rail: 64px; --size-ticket: 208px;
+  --size-titlebar: 60px; --size-tab: 42px; --size-row: 36px; --size-control: 36px; --size-explorer: 280px; --size-map: 440px;
+  --size-rail: 68px; --size-ticket: 240px;
   --shadow-popover: 0 18px 40px rgba(47, 53, 63, 0.16), 0 0 0 1px rgba(47, 53, 63, 0.08);
   --shadow-dialog: 0 30px 70px rgba(47, 53, 63, 0.3); --shadow-node-lift: 0 6px 16px rgba(47, 53, 63, 0.18);
   --font-display: "Fraunces", Georgia, serif;

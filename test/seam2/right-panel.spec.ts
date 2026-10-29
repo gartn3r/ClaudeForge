@@ -69,6 +69,35 @@ test('the Map Panel tab comes first; + creates a Panel tab in the displayed Proj
   await expect(panelTabs(window)).toHaveText(['Map', 'Test report'])
 })
 
+test('a Panel tab dragged, the Map Panel tab too, moves among the others and keeps its place after a restart', async () => {
+  claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
+  let { window } = claudeforge
+  await createPanelTab(window, 'Tests', 'tests')
+  await createPanelTab(window, 'Coverage', 'coverage')
+  await createPanelTab(window, 'Lint', 'lint')
+  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
+
+  // Dropped on the left half of the Tests, the Lint lands before them; on the right half, after.
+  const tab = (name: string): Locator => panelTabs(window).filter({ hasText: name })
+  await tab('Lint').dragTo(tab('Tests'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Lint', 'Tests', 'Coverage'])
+  const { width } = (await tab('Coverage').boundingBox())!
+  await tab('Lint').dragTo(tab('Coverage'), { targetPosition: { x: width - 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
+  // The Map moves as any other, and a Panel tab lands before it.
+  await tab('Map').dragTo(tab('Coverage'), { targetPosition: { x: width - 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Map', 'Lint'])
+  await tab('Lint').dragTo(tab('Map'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Lint', 'Map'])
+
+  await claudeforge.close()
+  claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
+  window = claudeforge.window
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Lint', 'Map'])
+  // The Map still shows first, wherever it sits.
+  await expect(panelTabs(window).filter({ hasText: 'Map' })).toHaveAttribute('aria-selected', 'true')
+})
+
 test.describe('Content items in a Panel tab', () => {
   let pages: { origin: string; server: Server }
 
@@ -131,7 +160,7 @@ test.describe('Content items in a Panel tab', () => {
 test('without a Map the Right panel opens on another Panel tab, and collapses on its own only when there is none', async () => {
   claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
   let { window } = claudeforge
-  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(64)
+  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(68)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
   await createPanelTab(window, 'Notes', 'notes')
@@ -143,7 +172,8 @@ test('without a Map the Right panel opens on another Panel tab, and collapses on
   const panel = window.getByRole('complementary', { name: 'Notes' })
   await expect(panelTabs(window)).toHaveText(['Map', 'Notes'])
   await expect(panelTabs(window).filter({ hasText: 'Notes' })).toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => widthOf(panel)).toBe(400)
+  await expect(panel).toBeVisible()
+  await expect(window.getByRole('separator', { name: 'Resize the Right panel' })).toHaveAttribute('aria-valuenow', '440')
 
   // The Map Panel tab still says why it is empty.
   await panelTabs(window).filter({ hasText: 'Map' }).click()
@@ -153,7 +183,7 @@ test('without a Map the Right panel opens on another Panel tab, and collapses on
   await panelTabs(window).filter({ hasText: 'Notes' }).click({ button: 'right' })
   await window.getByRole('menu', { name: 'Notes actions' }).getByRole('menuitem', { name: 'Close' }).click()
   await window.getByRole('alertdialog', { name: 'Close Notes?' }).getByRole('button', { name: 'Close' }).click()
-  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(64)
+  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(68)
 })
 
 test('right-click on a Panel tab and on its Content items opens their menus; the Map Panel tab can be hidden, never closed', async () => {

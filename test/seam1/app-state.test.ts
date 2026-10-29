@@ -25,12 +25,12 @@ describe('app state', () => {
     await env.dispose()
   })
 
-  it('starts with the explorer at 264px and the Map panel at 400px, both expanded', async () => {
+  it('starts with the explorer at 280px and the Map panel at 440px, both expanded', async () => {
     const { api } = start()
 
     expect((await api.appState.read()).layout).toEqual({
-      explorer: { width: 264, collapsed: false },
-      map: { width: 400, collapsed: false }
+      explorer: { width: 280, collapsed: false },
+      map: { width: 440, collapsed: false }
     })
   })
 
@@ -41,20 +41,20 @@ describe('app state', () => {
 
     expect((await restarted.api.appState.read()).layout).toEqual({
       explorer: { width: 310, collapsed: false },
-      map: { width: 400, collapsed: true }
+      map: { width: 440, collapsed: true }
     })
   })
 
-  it('holds the explorer within 200–420px and the Map panel within 320–720px', async () => {
+  it('holds the explorer within 220–480px and the Map panel within 340–800px', async () => {
     const { api } = start()
 
     const narrow = await api.appState.write({ layout: { explorer: { width: 50 }, map: { width: 100 } } })
-    expect(narrow.layout.explorer.width).toBe(200)
-    expect(narrow.layout.map.width).toBe(320)
+    expect(narrow.layout.explorer.width).toBe(220)
+    expect(narrow.layout.map.width).toBe(340)
 
     const wide = await api.appState.write({ layout: { explorer: { width: 5000 }, map: { width: 5000 } } })
-    expect(wide.layout.explorer.width).toBe(420)
-    expect(wide.layout.map.width).toBe(720)
+    expect(wide.layout.explorer.width).toBe(480)
+    expect(wide.layout.map.width).toBe(800)
   })
 
   it('renders the terminal on the GPU until the user turns GPU rendering off, and remembers that across a restart', async () => {
@@ -195,7 +195,7 @@ describe('app state', () => {
     await backend.api.appState.write({ layout: { explorer: { width: 333 } } })
 
     expect(pushed).toEqual([
-      { width: 264, collapsed: true },
+      { width: 280, collapsed: true },
       { width: 333, collapsed: true }
     ])
   })

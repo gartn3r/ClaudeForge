@@ -3,8 +3,9 @@
 // Project.
 
 import { PROPERTIES_TAKEN, defaultOwnProperties, inOrder, type ElementView, type OwnElementId } from '../../../shared/elements'
+import { takesOrder } from './element-menus'
 
-/** The first Panel tab, ClaudeForge's own: it shows what the Map panel always showed. */
+/** The first Panel tab in the Default layout, ClaudeForge's own: it shows what the Map panel always showed. */
 export const MAP_TAB = 'panel-tab:map' satisfies OwnElementId
 
 /** The Map Panel tab as the Default layout has it, shown while the Elements are still being read. */
@@ -32,8 +33,10 @@ export interface RightPanelInput {
 }
 
 export interface RightPanelState {
-  /** The Panel tabs in the header, the Map Panel tab first; hidden ones left out. */
+  /** The Panel tabs in the header, in their order; hidden ones left out. */
   tabs: ElementView[]
+  /** The Panel tabs that move among themselves by drag and drop, hidden ones included, in order. */
+  movable: ElementView[]
   /** The Panel tab on show; null when there is none to show. */
   shown: ElementView | null
   /** The panel collapses on its own: neither a Map nor any other Panel tab to show. */
@@ -41,15 +44,19 @@ export interface RightPanelState {
 }
 
 export function rightPanelState({ elements, chosen, hasMap, openedAnyway }: RightPanelInput): RightPanelState {
-  const shownTabs = inOrder((elements ?? [DEFAULT_MAP_TAB]).filter((element) => element.container === 'right-panel'))
-    .filter((element) => element.properties.visible !== false)
-  // Always the first, whatever order a Created Panel tab was given.
-  const map = shownTabs.find((element) => element.id === MAP_TAB)
-  const others = shownTabs.filter((element) => element.id !== MAP_TAB)
-  const tabs = map ? [map, ...others] : others
+  const all = inOrder((elements ?? [DEFAULT_MAP_TAB]).filter((element) => element.container === 'right-panel'))
+  const tabs = all.filter((element) => element.properties.visible !== false)
+  // The Map shows first, wherever its Panel tab sits.
+  const map = tabs.find((element) => element.id === MAP_TAB)
+  const others = tabs.filter((element) => element.id !== MAP_TAB)
   const mapToShow = hasMap ? map : undefined
   const shown = tabs.find((element) => element.id === chosen) ?? mapToShow ?? others[0] ?? map ?? null
-  return { tabs, shown, autoCollapsed: elements !== null && !openedAnyway && !mapToShow && others.length === 0 }
+  return {
+    tabs,
+    movable: all.filter(takesOrder),
+    shown,
+    autoCollapsed: elements !== null && !openedAnyway && !mapToShow && others.length === 0
+  }
 }
 
 /** The Panel tab to bring to the front: the last that asks to, as it was created or added to last. */

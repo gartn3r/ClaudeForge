@@ -8,6 +8,7 @@ import { IconButton } from '../components/IconButton'
 import { ContentItemView, type ItemHandlers } from './ContentItemView'
 import { ContentItemMenu, CreateElementDialog, ElementMenu } from './ElementMenus'
 import { MAP_TAB, rightPanelState, tabToBringForward, tabsToMarkSeen, type RightPanelState } from './right-panel'
+import { useReorder } from './use-reorder'
 
 /** A Panel tab's name: its title, the Map Panel tab's own words by default. */
 function useTabName(): (tab: ElementView) => string {
@@ -118,8 +119,9 @@ interface RightPanelProps {
 }
 
 /**
- * The Right panel: its Panel tabs in its header, the Map first, then a **+** that creates one; under
- * them the Panel tab on show. Right-click on a Panel tab or a Content item opens its menu.
+ * The Right panel: its Panel tabs in its header, in their order (the Map first until it is moved),
+ * then a **+** that creates one; under them the Panel tab on show. Right-click on a Panel tab or a
+ * Content item opens its menu. A Panel tab dragged, the Map's too, moves among the others.
  */
 export function RightPanel({ state, project, map, collapseLabel, onChoose, onCollapse, onType }: RightPanelProps): ReactNode {
   const { t } = useTranslation()
@@ -127,6 +129,7 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
   const [menu, setMenu] = useState<OpenMenu | null>(null)
   const [creating, setCreating] = useState(false)
   const { shown } = state
+  const reorder = useReorder(state.movable, 'x')
   const openMenu = (event: MouseEvent, element: ElementView, item: ContentItem | null = null): void => {
     event.preventDefault()
     event.stopPropagation()
@@ -150,6 +153,8 @@ export function RightPanel({ state, project, map, collapseLabel, onChoose, onCol
               style={coloursOf(tab)}
               onClick={() => onChoose(tab.id)}
               onContextMenu={(event) => openMenu(event, tab)}
+              {...reorder.grip(tab)}
+              {...reorder.dropZone(tab)}
             >
               {tab.id === MAP_TAB && <MapIcon className="cf-icon cf-icon--sm" aria-hidden="true" />}
               <span className="cf-tab__title">{tabName(tab)}</span>

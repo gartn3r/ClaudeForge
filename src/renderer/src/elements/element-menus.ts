@@ -76,7 +76,8 @@ export const collapseRequest = (element: ElementView, collapsed: boolean): Eleme
 
 /**
  * Moves an Element just past its visible neighbour, up (-1) or down (1), hidden ones passed over: its
- * container is numbered again from 1, and only the orders that change are asked for.
+ * container is numbered again from 1, those that take no order left out, and only the orders that
+ * change are asked for.
  */
 export function moveRequests(siblings: readonly ElementView[], element: ElementView, step: -1 | 1): ElementRequest[] {
   const shown = shownAmong(siblings, element)
@@ -84,10 +85,50 @@ export function moveRequests(siblings: readonly ElementView[], element: ElementV
   if (!neighbour) return []
   const next = siblings.filter((each) => each.id !== element.id)
   next.splice(next.indexOf(neighbour) + (step > 0 ? 1 : 0), 0, element)
-  return next.flatMap((each, index) =>
-    each.properties.order === index + 1 ? [] : [{ op: 'set', ...reach(each), properties: { order: index + 1 } } as const]
-  )
+  return renumbered(next)
 }
+
+/** Where a dragged Element lands: just before or just after another of its container. */
+export interface Landing {
+  id: string
+  place: 'before' | 'after'
+}
+
+/**
+ * Where an Element lands by the one it is dropped on: before it in its first half, after it in its
+ * second, along the way the Elements follow one another (`y` down a column, `x` along a row).
+ */
+export const landingPlace = (
+  box: { left: number; top: number; width: number; height: number },
+  point: { x: number; y: number },
+  axis: 'x' | 'y'
+): Landing['place'] =>
+  (axis === 'x' ? point.x < box.left + box.width / 2 : point.y < box.top + box.height / 2) ? 'before' : 'after'
+
+/**
+ * Drops an Element where it landed among the others of its container, hidden ones keeping their
+ * place: its container is numbered again from 1, and only the orders that change are asked for.
+ * Nothing is asked when it lands where it already was.
+ */
+export function dropRequests(siblings: readonly ElementView[], element: ElementView, landing: Landing): ElementRequest[] {
+  const movable = siblings.filter(takesOrder)
+  const next = movable.filter((each) => each.id !== element.id)
+  const at = next.findIndex((each) => each.id === landing.id)
+  if (at < 0 || !takesOrder(element)) return []
+  next.splice(at + (landing.place === 'after' ? 1 : 0), 0, element)
+  return next.every((each, index) => each.id === movable[index]?.id) ? [] : renumbered(next)
+}
+
+/** Whether an Element takes an order, and so moves among the others of its container. */
+export const takesOrder = (element: Pick<ElementView, 'takes'>): boolean => element.takes.includes('order')
+
+/** The orders that change once Elements are numbered from 1 as they come; one that takes no order is passed over. */
+const renumbered = (elements: readonly ElementView[]): ElementRequest[] =>
+  elements
+    .filter(takesOrder)
+    .flatMap((each, index) =>
+      each.properties.order === index + 1 ? [] : [{ op: 'set', ...reach(each), properties: { order: index + 1 } } as const]
+    )
 
 /** The identifier a title suggests: its letters and numbers, unaccented, in lowercase words joined by hyphens. */
 export const nameFromTitle = (title: string): string =>

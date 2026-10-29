@@ -41,8 +41,10 @@ test('opens on the title bar and the three columns, with the Extensions bar unde
     window.getByRole('main').boundingBox(),
     window.getByRole('complementary', { name: 'Map' }).boundingBox()
   ])
-  expect(explorerBox!.width).toBe(264)
-  expect(mapBox!.width).toBe(400)
+  // The panels are set to their default widths, and give way before the terminal does in this window.
+  await expect(window.getByRole('separator', { name: 'Resize the explorer' })).toHaveAttribute('aria-valuenow', '280')
+  await expect(window.getByRole('separator', { name: 'Resize the Map panel' })).toHaveAttribute('aria-valuenow', '440')
+  expect(terminalBox!.width).toBeGreaterThanOrEqual(320)
   expect(explorerBox!.x).toBeLessThan(terminalBox!.x)
   expect(terminalBox!.x).toBeLessThan(mapBox!.x)
 })
@@ -108,28 +110,28 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   let { window } = claudeforge
 
   await dragEdge(window, 'Resize the explorer', 100)
-  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(380)
 
   await dragEdge(window, 'Resize the Map panel', -1000)
-  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
+  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(800)
 
   await window.getByRole('button', { name: 'Collapse the Map panel' }).click()
-  await expect.poll(() => widthOf(window, 'Map')).toBe(64)
+  await expect.poll(() => widthOf(window, 'Map')).toBe(68)
 
   await claudeforge.close()
   claudeforge = await launchClaudeForge(env)
   window = claudeforge.window
 
-  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
-  await expect.poll(() => widthOf(window, 'Map')).toBe(64)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(380)
+  await expect.poll(() => widthOf(window, 'Map')).toBe(68)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
-  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(720)
+  await expect.poll(() => setWidthOf(window, 'Resize the Map panel')).toBe(800)
 
   await window.getByRole('button', { name: 'Collapse the explorer' }).click()
-  await expect.poll(() => widthOf(window, 'Sessions')).toBe(64)
+  await expect.poll(() => widthOf(window, 'Sessions')).toBe(68)
   await window.getByRole('button', { name: 'Expand the explorer' }).click()
-  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
+  await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(380)
 })
 
 test('renames the app in place from its wordmark, and opens with the same App title after a restart', async () => {

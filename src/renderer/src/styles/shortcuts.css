@@ -83,12 +83,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   flex: none;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
 }
 .shortcuts__mark--skill {
@@ -126,8 +126,8 @@
 .shortcuts__detail {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 14px;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -166,7 +166,7 @@
   border: 0;
   border-radius: 14px;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -189,7 +189,7 @@
 
 /* The Shortcut form: its title on cream, then the fields; a Skill shortcut's command shows in slate. */
 .shortcut-dialog {
-  width: 520px;
+  width: 600px;
   max-height: calc(100vh - 48px);
   padding: 0;
   overflow: auto;
@@ -204,7 +204,7 @@
 }
 .shortcut-dialog__head p {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 16px;
 }
 .shortcut-dialog__body {
   display: flex;
@@ -218,8 +218,8 @@
 }
 .shortcut-dialog__kind button {
   flex: 1;
-  height: 38px;
-  font-size: 13.5px;
+  height: 44px;
+  font-size: 16px;
 }
 .shortcut-dialog__field {
   display: flex;
@@ -284,27 +284,27 @@
 }
 .shortcut-dialog__preview-label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .shortcut-dialog__preview code {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 17px;
+  line-height: 24px;
   overflow-wrap: anywhere;
 }
 .shortcut-dialog__preview code::after {
   content: '';
   display: inline-block;
   width: 8px;
-  height: 16px;
+  height: 18px;
   margin-left: 4px;
   vertical-align: -3px;
   background: var(--accent);
 }
 .shortcut-dialog__preview-hint {
   color: var(--text-muted);
-  font-size: 12.5px;
-  line-height: 18px;
+  font-size: 15px;
+  line-height: 22px;
 }
 .shortcut-dialog__body > .extdialog__hint {
   margin: -6px 0 0;
@@ -369,7 +369,7 @@
 .web-tab__address {
   flex: 1 1 220px;
   min-width: 0;
-  height: 38px;
+  height: 42px;
   padding: 0 14px;
   border: 0;
   border-radius: var(--radius-md);
@@ -378,7 +378,7 @@
   text-overflow: ellipsis;
 }
 .web-tab__browser {
-  height: 38px;
+  height: 42px;
   border-radius: var(--radius-md);
 }
 /* The page fills a rounded frame; the <webview> itself keeps its own display, sized by position. */
@@ -406,13 +406,13 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  max-width: min(560px, calc(100vw - 32px));
+  max-width: min(650px, calc(100vw - 32px));
   padding: 12px 10px 12px 18px;
   border-radius: 18px;
   background: var(--slate);
   /* An edge that still reads over the slate terminal. */
   box-shadow: 0 0 0 1px rgba(245, 241, 227, 0.22), 0 18px 40px rgba(47, 53, 63, 0.3);
-  line-height: 20px;
+  line-height: 24px;
   transform: translateX(-50%);
 }
 .busy-notice > .cf-dot {

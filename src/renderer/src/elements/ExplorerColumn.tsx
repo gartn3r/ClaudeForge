@@ -6,6 +6,7 @@ import type { ElementView, OwnElementId } from '../../../shared/elements'
 import { ContentItemView, type ItemHandlers } from './ContentItemView'
 import { CreateElementDialog } from './ElementMenus'
 import { isShown, markSeen, type ElementFrame, type InterfaceElements } from './interface-elements'
+import { useReorder } from './use-reorder'
 
 /** ClaudeForge's own cards of the explorer, each drawn by the window around it with its frame. */
 type OwnCards = Record<Extract<OwnElementId, 'shortcuts' | 'sessions' | 'extensions'>, (frame: ElementFrame) => ReactNode>
@@ -19,20 +20,27 @@ interface ExplorerColumnProps extends OwnCards {
 
 /**
  * The explorer's cards in their order: the Shortcuts, the Sessions and the Extensions, and the
- * displayed Project's Created cards, those hidden left out; then the + that creates a card.
+ * displayed Project's Created cards, those hidden left out; then the + that creates a card. A card
+ * dragged by its head moves among the others.
  */
 export function ExplorerColumn({ elements, project, onType, ...own }: ExplorerColumnProps): ReactNode {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
   const cards = elements.inside('explorer')
+  const reorder = useReorder(cards, 'y')
+  const frameOf = (element: ElementView): ElementFrame => ({
+    ...elements.frame(element, cards),
+    grip: reorder.grip(element),
+    dropZone: reorder.dropZone(element)
+  })
   return (
     <>
       {cards.filter(isShown).map((element) => (
         <Fragment key={element.id}>
           {element.kind === 'card' ? (
-            <CreatedCard element={element} elements={elements} frame={elements.frame(element, cards)} onType={onType} />
+            <CreatedCard element={element} elements={elements} frame={frameOf(element)} onType={onType} />
           ) : element.id in own ? (
-            own[element.id as keyof OwnCards](elements.frame(element, cards))
+            own[element.id as keyof OwnCards](frameOf(element))
           ) : null}
         </Fragment>
       ))}
@@ -84,8 +92,9 @@ function CreatedCard({ element, elements, frame, onType }: CreatedCardProps): Re
       onContextMenu={frame.onContextMenu}
       onPointerEnter={seenIfMarked}
       onFocus={seenIfMarked}
+      {...frame.dropZone}
     >
-      <div className="element-card__head">
+      <div className="element-card__head" {...frame.grip}>
         <h2 className="cf-heading" id={headingId}>
           {frame.title ?? element.id}
         </h2>

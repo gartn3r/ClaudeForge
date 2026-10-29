@@ -67,8 +67,8 @@ export const PROPERTIES_TAKEN: Record<OwnElementId | CreatedElementKind, readonl
   // The terminal stays on show: a Session's terminal is never an Element's content.
   'terminal-area': COLOURS,
   'right-panel': ['visible', 'collapsed', 'width', ...COLOURS],
-  // Always the first Panel tab.
-  'panel-tab:map': ['visible', 'title', ...COLOURS],
+  // The first Panel tab, until it is moved.
+  'panel-tab:map': ['visible', 'order', 'title', ...COLOURS],
   'panel-tab': ['visible', 'order', 'title', ...COLOURS],
   card: ['visible', 'collapsed', 'order', 'title', ...COLOURS],
   menu: ['visible', 'order', 'title', ...COLOURS]
@@ -98,7 +98,7 @@ export function defaultOwnProperties(id: OwnElementId): ElementProperties {
   }
   const panel = COLUMN_PANELS[id]
   if (panel) all.width = PANEL_BOUNDS[panel].default
-  // The explorer's cards in the order they have always had; a card created later goes after them.
+  // The explorer's cards in the order they have always had, the Map Panel tab first (0); one created later goes after them.
   all.order = { shortcuts: 1, sessions: 2, extensions: 3 }[id as string] ?? 0
   return pick(all, PROPERTIES_TAKEN[id])
 }

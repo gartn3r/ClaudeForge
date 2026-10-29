@@ -45,7 +45,7 @@ test('shows the Project’s open Map: Destination, Decided strip, open work top 
   const grocery = await boxOf(ticket('Grocery list format'))
   const leftovers = await boxOf(ticket('Carry leftovers to the next day'))
   const portions = await boxOf(ticket('Portion sizes per household'))
-  expect(weekView.width).toBe(120)
+  expect(weekView.width).toBe(130)
   expect(grocery.y).toBe(weekView.y)
   expect(leftovers.y).toBeGreaterThan(weekView.y + weekView.height)
   expect(portions.y).toBeGreaterThan(leftovers.y + leftovers.height)
@@ -94,11 +94,11 @@ test('zooms the graph in and out and fits it back to the panel', async () => {
   const weekView = panel.getByRole('group', { name: 'Shape of the week view' })
 
   await panel.getByRole('button', { name: 'Zoom in' }).click()
-  await expect.poll(async () => (await boxOf(weekView)).width).toBeGreaterThan(120)
+  await expect.poll(async () => (await boxOf(weekView)).width).toBeGreaterThan(130)
 
   await panel.getByRole('button', { name: 'Zoom out' }).click()
   await panel.getByRole('button', { name: 'Zoom out' }).click()
-  await expect.poll(async () => (await boxOf(weekView)).width).toBeLessThan(120)
+  await expect.poll(async () => (await boxOf(weekView)).width).toBeLessThan(130)
 
   await panel.getByRole('button', { name: 'Fit the Map to the panel' }).click()
   const graph = await boxOf(panel.getByRole('region', { name: 'Open work' }))
@@ -109,7 +109,7 @@ test('collapses the Map panel on its own in a Project with no Map', async () => 
   claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
   const { window } = claudeforge
 
-  await expect.poll(async () => (await boxOf(window.getByRole('complementary', { name: 'Map' }))).width).toBe(64)
+  await expect.poll(async () => (await boxOf(window.getByRole('complementary', { name: 'Map' }))).width).toBe(68)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
   await expect(window.getByRole('complementary', { name: 'Map' })).toContainText('No Map in this Project')
