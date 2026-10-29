@@ -45,6 +45,9 @@ test('New skill creates one from the template in the Project, opens it in a tab,
 
   await menu.getByRole('button', { name: 'New skill' }).click()
   const dialog = window.getByRole('dialog', { name: 'New skill in recipe-box' })
+  // The dialog is a card over the slate menu: its words read dark on it, not cream.
+  await expect(dialog.getByRole('heading', { name: 'New skill in recipe-box' })).toHaveCSS('color', 'rgb(47, 53, 63)')
+  await expect(dialog.getByText('Lowercase letters, numbers and hyphens.')).toHaveCSS('color', 'rgb(94, 100, 112)')
   await dialog.getByRole('textbox', { name: 'Name' }).fill('Menu planner')
   // Claude Code names skills in lowercase letters, numbers and hyphens.
   await expect(dialog.getByRole('button', { name: 'Create' })).toBeDisabled()

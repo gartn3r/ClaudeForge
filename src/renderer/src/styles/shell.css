@@ -1088,7 +1088,7 @@ dialog.cf-dialog::backdrop {
 .extmenu .cf-row {
   cursor: default;
 }
-.extmenu .cf-chip {
+.extmenu__group .cf-chip {
   background: rgba(245, 241, 227, 0.12);
   color: var(--text);
 }

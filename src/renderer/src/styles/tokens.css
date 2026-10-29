@@ -1,5 +1,7 @@
 /* ClaudeForge design system tokens (Bento, "Crème vanille"), from design/tokens.json. */
-:root {
+/* A dialog opened from a slate tile (the Extensions menu) is a card again: its roles read on card. */
+:root,
+.cf-on-slate .cf-dialog {
   --ground: #f5f1e3; --tile: #ebe5d0; --card: #fbf9f2; --slate: #2f353f; --slate-deep: #262b33;
   --text: #2f353f; --text-muted: #5e6470; --text-faint: #8a8f99; --on-slate: #f5f1e3; --on-slate-muted: #d8dbc8;
   --accent: #b0c92e; --accent-soft: #e4edb5; --accent-text: #5a6810; --on-accent: #2f353f;
