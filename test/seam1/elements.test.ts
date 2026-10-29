@@ -600,6 +600,15 @@ describe('Elements', () => {
       expect(await find(restarted, 'panel-tab:ci', harborApi)).toMatchObject({ properties: { visible: true, title: 'CI' } })
     })
 
+    it('keeps the App title the user gave, which is no Element of the Default layout', async () => {
+      const backend = start()
+      await backend.api.appState.write({ appTitle: 'Atelier de Paul' })
+
+      await must(backend, { op: 'restore-default' })
+
+      expect((await start().api.appState.read()).appTitle).toBe('Atelier de Paul')
+    })
+
     /** A backend on a data folder of its own, which never changed anything: the Default layout as it ships. */
     function createdBackendWithDefaults(): Backend {
       const backend = startBackend({ ...env, userDataDir: join(env.root, 'pristine') })

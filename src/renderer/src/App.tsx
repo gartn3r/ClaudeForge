@@ -194,7 +194,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   if (claudeCode.state !== 'found') {
     return (
       <div className="shell">
-        <TitleBar />
+        <TitleBar appTitle={state.appTitle} />
         <FirstRun problem={claudeCode} onStatus={setClaudeCode} />
       </div>
     )
@@ -203,6 +203,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   return (
     <div className="shell" data-resizing={resizing}>
       <TitleBar
+        appTitle={state.appTitle}
         tabs={
           <SessionTabs
             tabs={hosted.tabs}

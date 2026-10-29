@@ -26,6 +26,12 @@ A Session whose `claude` process now runs outside ClaudeForge (resumed from anot
 Anything that extends Claude Code for a Session: a skill, a subagent, an MCP server or a plugin, at user (global) or Project scope.
 _Avoid_: capability, tool, add-on
 
+### Window
+
+**App title**:
+The name at the top left of the title bar, set as the wordmark: "ClaudeForge" until the user renames it in place. It is the same for every Project and lasts across restarts; a blank one gives back "ClaudeForge". It is always words only, never an icon, and it is not an Element's title: restoring the Default layout keeps it.
+_Avoid_: logo, brand, window title
+
 ### Shortcuts
 
 **Shortcut**:

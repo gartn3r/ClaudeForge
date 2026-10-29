@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 // page.evaluate callbacks run in the window, so this file needs the DOM types.
-import { expect, test, type Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { launchClaudeForge, type RunningClaudeForge } from './claudeforge'
 
@@ -128,6 +130,51 @@ test('resizes and collapses the side panels, and opens with the same layout afte
   await expect.poll(() => widthOf(window, 'Sessions')).toBe(64)
   await window.getByRole('button', { name: 'Expand the explorer' }).click()
   await expect.poll(() => setWidthOf(window, 'Resize the explorer')).toBe(364)
+})
+
+test('renames the app in place from its wordmark, and opens with the same App title after a restart', async () => {
+  claudeforge = await launchClaudeForge(env)
+  let { window } = claudeforge
+  const wordmark = (): Locator => claudeforge!.window.getByTitle('Double-click to rename')
+  const field = (): Locator => claudeforge!.window.getByRole('textbox', { name: 'App title' })
+  // The wordmark shows a kept title while it saves: until the first save, there is no state.json.
+  const savedAppTitle = async (): Promise<unknown> => {
+    const saved = await readFile(join(env.userDataDir, 'state.json'), 'utf8').catch(() => '{}')
+    return (JSON.parse(saved) as { appTitle?: unknown }).appTitle
+  }
+
+  // Escape leaves the title as it was.
+  await wordmark().dblclick()
+  await expect(field()).toBeFocused()
+  await expect(field()).toHaveValue('ClaudeForge')
+  await field().fill('Brouillon')
+  await window.keyboard.press('Escape')
+  await expect(field()).toBeHidden()
+  await expect(wordmark()).toHaveText('ClaudeForge')
+
+  // Enter keeps the new one, shown at once.
+  await wordmark().dblclick()
+  await field().fill('Atelier de Paul')
+  await window.keyboard.press('Enter')
+  await expect(wordmark()).toHaveText('Atelier de Paul')
+  await expect(wordmark().locator('.brand__mark')).toHaveText('Paul')
+  await expect.poll(savedAppTitle).toBe('Atelier de Paul')
+
+  await claudeforge.close()
+  claudeforge = await launchClaudeForge(env)
+  window = claudeforge.window
+  await expect(wordmark()).toHaveText('Atelier de Paul')
+
+  // Leaving the field keeps what it holds too; a blank title gives back ClaudeForge, after a restart as well.
+  await wordmark().dblclick()
+  await field().fill('   ')
+  await window.getByRole('main', { name: 'Terminal' }).click()
+  await expect(wordmark()).toHaveText('ClaudeForge')
+  await expect.poll(savedAppTitle).toBeNull()
+
+  await claudeforge.close()
+  claudeforge = await launchClaudeForge(env)
+  await expect(wordmark()).toHaveText('ClaudeForge')
 })
 
 test('keeps both panels and the terminal inside a window at its minimum size', async () => {

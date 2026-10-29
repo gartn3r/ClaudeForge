@@ -57,8 +57,8 @@ body {
 .titlebar button {
   -webkit-app-region: no-drag;
 }
-/* The wordmark: "ClaudeForge" in the display face, a lime marker stroke behind the lower half of
-   "Forge". Never any icon. */
+/* The wordmark: the App title ("ClaudeForge" until the user renames it) in the display face, a
+   lime marker stroke behind the lower half of its last word, as of "Forge". Never any icon. */
 .brand {
   flex: none;
   font-family: var(--font-display);
@@ -68,11 +68,42 @@ body {
   letter-spacing: -0.01em;
   white-space: nowrap;
   color: var(--text);
+  /* A long App title gives way to the tabs. */
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .brand__mark {
   margin-left: 1px;
   padding: 0 2px;
   background: linear-gradient(transparent 56%, var(--accent) 56%, var(--accent) 92%, transparent 92%);
+}
+.brand__mark--word {
+  margin-left: -2px;
+}
+.brand:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+/* Renaming in place: the title in the same face over a lime underline, as wide as what it holds. */
+.brand__field {
+  field-sizing: content;
+  min-width: 4ch;
+  max-width: 320px;
+  padding: 0 2px;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  user-select: text;
+}
+.brand__field::selection {
+  background: var(--selection);
 }
 /* Hosted session tabs: the tab strip shrinks its tabs before the "+" leaves the bar. */
 .session-tabs {
