@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
+  APP_TITLE_MAX_LENGTH,
   PANEL_BOUNDS,
   clampPanelWidth,
   type AppState,
@@ -23,6 +24,7 @@ export const SESSION_TITLE_MAX_LENGTH = 200
 export function defaultAppState(): AppState {
   return {
     version: 1,
+    appTitle: null,
     layout: {
       explorer: { width: PANEL_BOUNDS.explorer.default, collapsed: false },
       map: { width: PANEL_BOUNDS.map.default, collapsed: false }
@@ -159,9 +161,12 @@ function openWebTabs(ids: unknown[], shortcuts: Shortcut[]): string[] {
 
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs } =
+  const { appTitle, layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs } =
     (patch ?? {}) as AppStatePatch
   let next = state
+  if (typeof appTitle === 'string' || appTitle === null) {
+    next = { ...next, appTitle: appTitle?.trim().slice(0, APP_TITLE_MAX_LENGTH).trim() || null }
+  }
   if (typeof layout === 'object' && layout !== null) {
     next = {
       ...next,

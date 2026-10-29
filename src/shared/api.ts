@@ -81,8 +81,13 @@ export type Shortcut =
 /** Where every Web tab keeps its pages' storage, apart from the interface's: sign-ins survive a restart. */
 export const WEB_TAB_PARTITION = 'persist:web-tabs'
 
+/** The longest App title the user can give, which the title bar holds beside the tabs. */
+export const APP_TITLE_MAX_LENGTH = 60
+
 export interface AppState {
   version: 1
+  /** The App title the user gave, trimmed; null to show ClaudeForge's own name. */
+  appTitle: string | null
   layout: Record<PanelId, PanelLayout>
   /** The `claude` the user chose, or null to look for it. */
   claudePath: string | null
@@ -104,6 +109,8 @@ export interface AppState {
 
 /** A partial update of the app state; nested objects merge. */
 export interface AppStatePatch {
+  /** A blank title or null gives back ClaudeForge's own name. */
+  appTitle?: string | null
   layout?: Partial<Record<PanelId, Partial<PanelLayout>>>
   claudePath?: string | null
   gpuRendering?: boolean

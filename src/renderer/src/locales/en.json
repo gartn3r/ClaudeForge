@@ -3,6 +3,8 @@
     "name": "ClaudeForge"
   },
   "titleBar": {
+    "appTitle": "App title",
+    "renameHint": "Double-click to rename",
     "hostedSessions": "Hosted sessions",
     "minimize": "Minimize",
     "maximize": "Maximize",

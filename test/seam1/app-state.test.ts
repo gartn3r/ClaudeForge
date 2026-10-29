@@ -2,6 +2,7 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend } from '../../src/backend'
+import { APP_TITLE_MAX_LENGTH } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -70,6 +71,28 @@ describe('app state', () => {
     await start().api.appState.write({ notifications: false })
 
     expect((await start().api.appState.read()).notifications).toBe(false)
+  })
+
+  it('names the app ClaudeForge until the user renames it, and keeps their App title across a restart', async () => {
+    expect((await start().api.appState.read()).appTitle).toBeNull()
+
+    expect((await start().api.appState.write({ appTitle: '  Atelier de Paul  ' })).appTitle).toBe('Atelier de Paul')
+
+    expect((await start().api.appState.read()).appTitle).toBe('Atelier de Paul')
+  })
+
+  it('gives back the ClaudeForge name for an empty or blank App title, and cuts a long one short', async () => {
+    const { api } = start()
+    await api.appState.write({ appTitle: 'Atelier' })
+
+    expect((await api.appState.write({ appTitle: '   ' })).appTitle).toBeNull()
+    await api.appState.write({ appTitle: 'Atelier' })
+    expect((await api.appState.write({ appTitle: '' })).appTitle).toBeNull()
+    await api.appState.write({ appTitle: 'Atelier' })
+    expect((await api.appState.write({ appTitle: null })).appTitle).toBeNull()
+
+    expect((await api.appState.write({ appTitle: 'x'.repeat(500) })).appTitle).toBe('x'.repeat(APP_TITLE_MAX_LENGTH))
+    expect((await api.appState.write({ appTitle: 42 } as never)).appTitle).toBe('x'.repeat(APP_TITLE_MAX_LENGTH))
   })
 
   it('shows every Map as a graph with closed Tickets and nothing folded until the user changes it', async () => {
