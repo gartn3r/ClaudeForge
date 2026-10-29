@@ -1446,7 +1446,7 @@ dialog.cf-dialog::backdrop {
 }
 /* Ticket details: the state over the title, on cream, then the question and the answer. */
 .ticket-details {
-  padding: 0;
+  padding: 0 0 24px;
   gap: 0;
   overflow: hidden;
 }
@@ -1466,9 +1466,6 @@ dialog.cf-dialog::backdrop {
 }
 .ticket-details > :not(.ticket-details__state):not(.cf-dialog__title) {
   margin: 16px 26px 0;
-}
-.ticket-details > .cf-dialog__actions {
-  margin-bottom: 24px;
 }
 .ticket-details__state,
 .ticket-details__reason,
