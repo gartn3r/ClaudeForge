@@ -43,9 +43,15 @@ describe('the Right panel’s Panel tabs', () => {
     expect(ids(state.tabs)).toEqual([MAP_TAB, 'panel-tab:tests', 'panel-tab:coverage'])
   })
 
-  it('keeps the Map Panel tab first even when a Created one is ordered before it', () => {
+  it('puts the Map Panel tab where its order puts it, as any other: a Created one ordered before it comes first', () => {
     const state = rightPanelState({ elements: [own(MAP_TAB), tab('tests', -5)], chosen: null, hasMap: true, openedAnyway: false })
-    expect(ids(state.tabs)).toEqual([MAP_TAB, 'panel-tab:tests'])
+    expect(ids(state.tabs)).toEqual(['panel-tab:tests', MAP_TAB])
+    // The Map still shows first, wherever it sits.
+    expect(state.shown?.id).toBe(MAP_TAB)
+    const moved = { ...own(MAP_TAB), properties: { ...own(MAP_TAB).properties, order: 2 } }
+    expect(ids(rightPanelState({ elements: [moved, tab('tests', 1), tab('coverage', 3)], chosen: null, hasMap: true, openedAnyway: false }).tabs)).toEqual(
+      ['panel-tab:tests', MAP_TAB, 'panel-tab:coverage']
+    )
   })
 
   it('leaves hidden Panel tabs out, the Map Panel tab included', () => {
@@ -59,14 +65,14 @@ describe('the Right panel’s Panel tabs', () => {
     expect(state.shown?.id).toBe('panel-tab:coverage')
   })
 
-  it('moves among them the Created Panel tabs only, hidden ones included, in their order', () => {
+  it('moves every Panel tab among the others, the Map Panel tab and hidden ones included, in their order', () => {
     const state = rightPanelState({
       elements: [own(MAP_TAB), tab('coverage', 3), card, tab('tests', 2, { visible: false }), tab('lint', 1)],
       chosen: null,
       hasMap: true,
       openedAnyway: false
     })
-    expect(ids(state.movable)).toEqual(['panel-tab:lint', 'panel-tab:tests', 'panel-tab:coverage'])
+    expect(ids(state.movable)).toEqual([MAP_TAB, 'panel-tab:lint', 'panel-tab:tests', 'panel-tab:coverage'])
   })
 
   it('shows only the Map Panel tab while the Elements are still being read', () => {

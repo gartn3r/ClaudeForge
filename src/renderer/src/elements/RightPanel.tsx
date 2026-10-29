@@ -119,9 +119,9 @@ interface RightPanelProps {
 }
 
 /**
- * The Right panel: its Panel tabs in its header, the Map first, then a **+** that creates one; under
- * them the Panel tab on show. Right-click on a Panel tab or a Content item opens its menu. A Created
- * Panel tab dragged moves among the others; the Map stays first.
+ * The Right panel: its Panel tabs in its header, in their order (the Map first until it is moved),
+ * then a **+** that creates one; under them the Panel tab on show. Right-click on a Panel tab or a
+ * Content item opens its menu. A Panel tab dragged, the Map's too, moves among the others.
  */
 export function RightPanel({ state, project, map, collapseLabel, onChoose, onCollapse, onType }: RightPanelProps): ReactNode {
   const { t } = useTranslation()

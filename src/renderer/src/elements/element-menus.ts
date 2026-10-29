@@ -119,7 +119,7 @@ export function dropRequests(siblings: readonly ElementView[], element: ElementV
   return next.every((each, index) => each.id === movable[index]?.id) ? [] : renumbered(next)
 }
 
-/** Whether an Element moves among the others of its container: the Map Panel tab, for one, does not. */
+/** Whether an Element takes an order, and so moves among the others of its container. */
 export const takesOrder = (element: Pick<ElementView, 'takes'>): boolean => element.takes.includes('order')
 
 /** The orders that change once Elements are numbered from 1 as they come; one that takes no order is passed over. */

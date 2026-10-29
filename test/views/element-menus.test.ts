@@ -167,8 +167,8 @@ describe("an Element's right-click menu", () => {
     expect(landingPlace(box, { x: 170, y: 55 }, 'x')).toBe('after')
   })
 
-  it("leaves out of the numbering an Element that takes no order, as the Map Panel tab", () => {
-    const map = { ...own('panel-tab:map', ['visible', 'title']), container: 'right-panel' as const }
+  it('leaves out of the numbering an Element that takes no order', () => {
+    const map = { ...own('panel-tab:fixed', ['visible', 'title']), container: 'right-panel' as const }
     const tab = (name: string, order: number): ElementView => ({
       ...card,
       id: `panel-tab:${name}`,

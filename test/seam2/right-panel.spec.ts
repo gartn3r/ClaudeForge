@@ -69,7 +69,7 @@ test('the Map Panel tab comes first; + creates a Panel tab in the displayed Proj
   await expect(panelTabs(window)).toHaveText(['Map', 'Test report'])
 })
 
-test('a Created Panel tab dragged moves among the others, the Map staying first, and keeps its place after a restart', async () => {
+test('a Panel tab dragged, the Map Panel tab too, moves among the others and keeps its place after a restart', async () => {
   claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
   let { window } = claudeforge
   await createPanelTab(window, 'Tests', 'tests')
@@ -84,17 +84,18 @@ test('a Created Panel tab dragged moves among the others, the Map staying first,
   const { width } = (await tab('Coverage').boundingBox())!
   await tab('Lint').dragTo(tab('Coverage'), { targetPosition: { x: width - 4, y: 10 } })
   await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
-  // The Map moves not, and nothing lands on it.
-  await expect(tab('Map')).not.toHaveAttribute('draggable', 'true')
-  await tab('Coverage').dragTo(tab('Map'), { targetPosition: { x: 4, y: 10 } })
-  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
-  await tab('Coverage').dragTo(tab('Tests'), { targetPosition: { x: 4, y: 10 } })
-  await expect(panelTabs(window)).toHaveText(['Map', 'Coverage', 'Tests', 'Lint'])
+  // The Map moves as any other, and a Panel tab lands before it.
+  await tab('Map').dragTo(tab('Coverage'), { targetPosition: { x: width - 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Map', 'Lint'])
+  await tab('Lint').dragTo(tab('Map'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Lint', 'Map'])
 
   await claudeforge.close()
   claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
   window = claudeforge.window
-  await expect(panelTabs(window)).toHaveText(['Map', 'Coverage', 'Tests', 'Lint'])
+  await expect(panelTabs(window)).toHaveText(['Tests', 'Coverage', 'Lint', 'Map'])
+  // The Map still shows first, wherever it sits.
+  await expect(panelTabs(window).filter({ hasText: 'Map' })).toHaveAttribute('aria-selected', 'true')
 })
 
 test.describe('Content items in a Panel tab', () => {

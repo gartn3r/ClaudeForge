@@ -66,7 +66,7 @@ The arrangement of Elements ClaudeForge starts with. Restoring it gives ClaudeFo
 The column on the right of the Hosted sessions, holding Panel tabs in its header. Without a Map it opens on the first other Panel tab; it collapses on its own only when the displayed Project has neither a Map nor any other Panel tab.
 
 **Panel tab**:
-A tab of the Right panel. The first is the Map Panel tab; the others are Created Elements.
+A tab of the Right panel. One is the Map Panel tab, first until the user moves it; the others are Created Elements. Each moves among the others by drag and drop.
 _Avoid_: tab alone (a Web tab or a Hosted session's tab is something else)
 
 ### Wayfinder

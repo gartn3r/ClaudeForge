@@ -88,7 +88,11 @@ describe('Elements', () => {
       expect(byId.shortcuts).toMatchObject({ container: 'explorer', properties: { order: 1, title: null, collapsed: false } })
       expect(byId.sessions!.properties.order).toBe(2)
       expect(byId.extensions!.properties.order).toBe(3)
-      expect(byId['panel-tab:map']).toMatchObject({ container: 'right-panel', takes: ['visible', 'title', 'textColor', 'backgroundColor'] })
+      expect(byId['panel-tab:map']).toMatchObject({
+        container: 'right-panel',
+        takes: ['visible', 'order', 'title', 'textColor', 'backgroundColor'],
+        properties: { order: 0 }
+      })
       expect(byId['title-bar']!.takes).toEqual(['textColor', 'backgroundColor'])
       expect(byId['terminal-area']!.takes).toEqual(['textColor', 'backgroundColor'])
     })
@@ -571,7 +575,7 @@ describe('Elements', () => {
       await must(backend, { op: 'set', element: 'explorer', properties: { width: 380, collapsed: true, visible: false, backgroundColor: '#000' } })
       await must(backend, { op: 'set', element: 'right-panel', properties: { width: 700, collapsed: true } })
       await must(backend, { op: 'set', element: 'shortcuts', properties: { title: 'Links', order: 9, textColor: '#f00' } })
-      await must(backend, { op: 'set', element: 'panel-tab:map', properties: { visible: false } })
+      await must(backend, { op: 'set', element: 'panel-tab:map', properties: { visible: false, order: 5 } })
       await must(backend, { op: 'create', project: recipeBox, kind: 'card', name: 'release', title: 'Release' })
       await must(backend, {
         op: 'set',
