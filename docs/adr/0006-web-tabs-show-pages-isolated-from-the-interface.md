@@ -18,4 +18,5 @@ Google refuses to sign in from what it takes for an embedded browser, so ClaudeF
 
 - Sites that sign in through a popup are signed into inside the Web tab: the popup shows in a ClaudeForge window and closes itself once done. A page can open such a window at will, as a browser would let it; it gets nothing more than the Web tab's page has.
 - Every request ClaudeForge makes through Electron, not only a Web tab's, carries the browser's user agent.
+- A popup a page opens blank (`about:blank`) to fill or redirect it later is dropped like any other address that is not http or https; and Chromium reports a shift-clicked link as a popup too, so that one opens in a ClaudeForge window rather than the default browser.
 - Accepting `file` addresses lets a Web shortcut show any local file the user's account can read; the address is always one the user typed.

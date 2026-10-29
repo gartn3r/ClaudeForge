@@ -33,11 +33,14 @@ export function opensInBrowser(address: string): boolean {
   return url.protocol !== 'file:' || /\.html?$/i.test(url.pathname)
 }
 
-/** Whether a page may have the default browser open this new window: only an http or https one. */
+/** Whether a page may have this new window opened, in a ClaudeForge window or the default browser: only an http or https one. */
 export const isPopupAddress = (address: string): boolean => isWebAddress(address) && /^https?:/i.test(address.trim())
 
 /** Where a new window a Web tab's page asks for opens: a ClaudeForge window, the default browser, or nowhere. */
 export type NewWindowPlace = 'popup' | 'browser' | 'nowhere'
+
+/** How a page asked for a new window, as Electron tells it. */
+export type NewWindowDisposition = 'default' | 'foreground-tab' | 'background-tab' | 'new-window' | 'other'
 
 /**
  * Where a new window a page asks for opens, from its address and how it asked (Electron's
@@ -45,7 +48,7 @@ export type NewWindowPlace = 'popup' | 'browser' | 'nowhere'
  * in a ClaudeForge window, so a sign-in can post back to it (ADR 0006); `target=_blank` and every
  * other new window go to the default browser. Neither takes anything but an http or https address.
  */
-export function whereNewWindowOpens(address: string, disposition: string): NewWindowPlace {
+export function whereNewWindowOpens(address: string, disposition: NewWindowDisposition): NewWindowPlace {
   if (!isPopupAddress(address)) return 'nowhere'
   return disposition === 'new-window' ? 'popup' : 'browser'
 }

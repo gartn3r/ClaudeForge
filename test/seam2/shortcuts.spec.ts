@@ -117,7 +117,7 @@ const openedInBrowser = (app: ElectronApplication): Promise<string[] | undefined
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
-let pages: { origin: string; server: Server }
+let pages: { origin: string; server: Server; userAgents: string[] }
 
 test.beforeEach(async () => {
   pages = await serveFixturePages()
@@ -355,6 +355,10 @@ for (const locale of LOCALES) {
       await inSignInPopup(app, 'window.close()')
       await expect.poll(() => windowCount(app)).toBe(1)
       await expect(tabs(window, locale)).toHaveCount(1)
+
+      // What a site reads: every request, the Web tab's and the popup's, sent as a browser's.
+      expect(pages.userAgents.length).toBeGreaterThan(1)
+      for (const userAgent of pages.userAgents) expect(userAgent).not.toMatch(/electron|claudeforge/i)
     })
 
     test('a Skill shortcut clears the prompt of a ready Session on show and types its command, unsent', async () => {

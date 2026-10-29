@@ -114,9 +114,11 @@ export async function clickNotification(app: ElectronApplication, index: number)
 
 const FIXTURE_PAGES = resolve(__dirname, '../fixtures/web')
 
-/** Serves test/fixtures/web on this machine, as a Project's dev server would. */
-export async function serveFixturePages(): Promise<{ origin: string; server: Server }> {
+/** Serves test/fixtures/web on this machine, as a Project's dev server would, noting each request's user agent. */
+export async function serveFixturePages(): Promise<{ origin: string; server: Server; userAgents: string[] }> {
+  const userAgents: string[] = []
   const server = createServer((request, response) => {
+    userAgents.push(request.headers['user-agent'] ?? '')
     const path = new URL(request.url ?? '/', 'http://localhost').pathname
     readFile(join(FIXTURE_PAGES, path === '/' ? 'index.html' : path)).then(
       (page) => response.writeHead(200, { 'content-type': 'text/html' }).end(page),
@@ -124,7 +126,7 @@ export async function serveFixturePages(): Promise<{ origin: string; server: Ser
     )
   })
   await new Promise<void>((listening) => server.listen(0, '127.0.0.1', listening))
-  return { origin: `http://localhost:${(server.address() as AddressInfo).port}`, server }
+  return { origin: `http://localhost:${(server.address() as AddressInfo).port}`, server, userAgents }
 }
 
 /** Runs a script in the Web tab's page, from the main process, as a user gesture; null with no Web tab. */
@@ -134,10 +136,11 @@ export const inWebTab = (app: ElectronApplication, script: string): Promise<unkn
     return page ? page.executeJavaScript(script, true) : null
   }, script)
 
-/** Runs a script in the sign-in popup a Web tab's page opened, from the main process; null with none. */
+/** Runs a script in the sign-in popup a Web tab's page opened, from the main process, as a user gesture; null with none. */
 export const inSignInPopup = (app: ElectronApplication, script: string): Promise<unknown> =>
   app.evaluate(
     async ({ session, webContents }, { script, partition }) => {
+      // The sign-in popup: a window in the Web tabs' storage, where the interface's never is.
       const pages = session.fromPartition(partition)
       const popup = webContents
         .getAllWebContents()
@@ -147,21 +150,21 @@ export const inSignInPopup = (app: ElectronApplication, script: string): Promise
     { script, partition: WEB_TAB_PARTITION }
   )
 
+/** How the sign-in popup a Web tab's page opened was set up, as Electron reports it; null with none. */
+export const signInPopupPreferences = (app: ElectronApplication): Promise<Record<string, unknown> | null> =>
+  app.evaluate(({ session, webContents }, partition) => {
+    // Found as inSignInPopup finds it.
+    const pages = session.fromPartition(partition)
+    const popup = webContents
+      .getAllWebContents()
+      .find((contents) => contents.getType() === 'window' && contents.session === pages && !contents.isDestroyed())
+    if (!popup) return null
+    // Electron keeps this one out of its typings, but still reports what a window was given.
+    const reported = (popup as unknown as { getLastWebPreferences(): Electron.WebPreferences | null }).getLastWebPreferences()
+    const { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag } = reported ?? {}
+    return { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag }
+  }, WEB_TAB_PARTITION)
+
 /** The windows ClaudeForge shows: its interface, and any sign-in popup a Web tab's page opened. */
 export const windowCount = (app: ElectronApplication): Promise<number> =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
-
-/** How the sign-in popup a Web tab's page opened was set up, as Electron reports it; null with none. */
-export const signInPopupPreferences = (app: ElectronApplication): Promise<Record<string, unknown> | null> =>
-  app.evaluate(
-    ({ session, webContents }, partition) => {
-      const pages = session.fromPartition(partition)
-      const popup = webContents.getAllWebContents().find((contents) => contents.getType() === 'window' && contents.session === pages)
-      if (!popup) return null
-      // Electron keeps this one out of its typings, but still reports what a window was given.
-      const reported = (popup as unknown as { getLastWebPreferences(): Electron.WebPreferences | null }).getLastWebPreferences()
-      const { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag } = reported ?? {}
-      return { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag }
-    },
-    WEB_TAB_PARTITION
-  )
