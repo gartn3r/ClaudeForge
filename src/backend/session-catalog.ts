@@ -62,6 +62,8 @@ export class SessionCatalog {
   private reading: Promise<ProjectSessions[]> | undefined
   /** The catalog last returned or pushed, as JSON, so only real changes are pushed. */
   private lastSeen: string | undefined
+  /** How many batches are running: while any is, the catalog pushes nothing. */
+  private batches = 0
   private disposed = false
 
   /**
@@ -146,9 +148,25 @@ export class SessionCatalog {
     this.settle = setTimeout(() => this.refresh(), SETTLE_MS)
   }
 
+  /**
+   * Runs changes to Claude Code's files as one batch: the files they move push nothing midway, and
+   * the catalog is pushed once the whole batch is done, even when it fails.
+   */
+  async batch<T>(work: () => Promise<T>): Promise<T> {
+    this.batches++
+    try {
+      return await work()
+    } finally {
+      this.batches--
+      await this.refresh()
+    }
+  }
+
   /** Reads the catalog again and pushes it if it differs from the last one seen. */
   refresh(): Promise<void> {
     this.watch()
+    // The batch reads it once it is done.
+    if (this.batches > 0) return Promise.resolve()
     return (
       this.read()
         .then((projects) => {

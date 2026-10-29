@@ -17,8 +17,8 @@ describe('tidying the explorer', () => {
   let env: FakeEnvironment
   const backends: Backend[] = []
 
-  const start = (): Backend => {
-    const backend = startBackend(env)
+  const start = (from: FakeEnvironment = env): Backend => {
+    const backend = startBackend(from)
     backends.push(backend)
     return backend
   }
@@ -163,7 +163,14 @@ describe('tidying the explorer', () => {
       const transcript = join(harbor, AUDIT_LOG, 'subagents', 'agent-a1.jsonl')
       await writeFile(transcript, '')
       const held = await open(transcript)
-      const backend = start()
+      // A Recycle Bin slower than the catalog takes to notice a moved file, as on a busy machine.
+      const backend = start({
+        ...env,
+        trashItem: async (path) => {
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          return env.trashItem(path)
+        }
+      })
       const pushed: string[][] = []
       backend.on('sessions.changed', (projects) =>
         pushed.push(projects.flatMap((project) => project.sessions.map((session) => session.id)))
