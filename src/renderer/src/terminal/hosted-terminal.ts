@@ -106,7 +106,7 @@ export class HostedTerminal {
     this.terminal = new Terminal({
       // The mono-terminal text style.
       fontFamily: token('font-mono'),
-      fontSize: 15,
+      fontSize: 17,
       lineHeight: 1.3,
       fontWeight: 400,
       fontWeightBold: 600,
