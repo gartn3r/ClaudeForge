@@ -5,7 +5,7 @@
   min-width: 0;
   gap: var(--space-2);
   color: var(--text);
-  font-size: 13px;
+  font-size: 16px;
 }
 .content-item--text {
   display: block;
@@ -45,7 +45,7 @@
   overflow: hidden;
   margin-left: auto;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -78,7 +78,7 @@
   padding: var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
-  font-size: 12px;
+  font-size: 14px;
   white-space: pre-wrap;
 }
 .content-item__page {
@@ -90,7 +90,7 @@
 }
 
 .element-dialog {
-  width: 480px;
+  width: 560px;
   max-height: calc(100vh - 48px);
   overflow: auto;
 }
@@ -106,7 +106,7 @@
 }
 .element-dialog__kind button {
   flex: 1;
-  height: 34px;
+  height: 40px;
 }
 .element-dialog__field {
   display: flex;
@@ -179,7 +179,7 @@
   flex: none;
   margin-left: auto;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 .element-card__items,
 .element-menu__items {
@@ -200,13 +200,13 @@
   margin: 0;
   padding: 0 10px 4px;
   color: var(--text-muted);
-  font-size: 12.5px;
-  line-height: 18px;
+  font-size: 15px;
+  line-height: 22px;
 }
 .explorer__new-card {
   flex: none;
   align-self: flex-start;
-  height: 28px;
+  height: 32px;
   padding: 0 10px;
   color: var(--text-muted);
 }
@@ -251,8 +251,8 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 240px;
-  max-width: 360px;
+  min-width: 280px;
+  max-width: 420px;
   max-height: 60vh;
   padding: var(--space-2);
   color: var(--text);
@@ -268,7 +268,7 @@
 .element-dialog__prefixed {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 48px;
   overflow: hidden;
   border: 1px solid var(--line-control);
   border-radius: var(--radius-md);
@@ -286,7 +286,7 @@
 .element-dialog__prefixed input {
   flex: 1;
   min-width: 0;
-  height: 42px;
+  height: 46px;
   padding: 0 var(--space-3) 0 0;
   border: 0;
   outline: none;

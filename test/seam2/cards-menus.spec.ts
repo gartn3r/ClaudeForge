@@ -267,7 +267,7 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     const splitter = window.getByRole('separator', { name: 'Resize the explorer' })
     await splitter.focus()
     await window.keyboard.press('End')
-    await expect(splitter).toHaveAttribute('aria-valuenow', '420')
+    await expect(splitter).toHaveAttribute('aria-valuenow', '480')
 
     const sessionsHead = card(window, 'Sessions').getByRole('heading', { name: 'Sessions' })
     await elementAction(window, sessionsHead, 'Sessions', 'Collapse')
@@ -280,7 +280,7 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     await expect(card(window, 'Favourites')).toHaveCSS('background-color', 'rgb(243, 214, 198)')
     expect(await explorerOrder(window)).toEqual(['sessions', 'shortcuts'])
     await expect(titleBar(window)).toHaveCSS('color', 'rgb(59, 63, 115)')
-    await expect(window.getByRole('separator', { name: 'Resize the explorer' })).toHaveAttribute('aria-valuenow', '420')
+    await expect(window.getByRole('separator', { name: 'Resize the explorer' })).toHaveAttribute('aria-valuenow', '480')
 
     // Collapsed by its own button, the explorer's menu on its rail offers to expand it.
     await window.getByRole('button', { name: 'Collapse the explorer' }).click()

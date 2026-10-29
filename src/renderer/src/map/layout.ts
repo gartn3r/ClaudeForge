@@ -4,12 +4,12 @@
 import { Graph, layout } from '@dagrejs/dagre'
 import type { Ticket, TicketEdge } from '../../../shared/api'
 
-/** A compact Ticket: 120px wide, three per rank in the 400px panel. */
-export const TICKET_WIDTH = 120
+/** A compact Ticket: 130px wide, three per rank in the 440px panel. */
+export const TICKET_WIDTH = 130
 /** Every Ticket takes the height of a three-line name, so ranks line up. */
-const TICKET_HEIGHT = 84
+const TICKET_HEIGHT = 98
 /** A Parent Ticket's two-line name, roll-up bar and two-line roll-up. */
-const PARENT_TICKET_HEIGHT = 108
+const PARENT_TICKET_HEIGHT = 128
 /** `space-6` between ranks, `space-2` between the Tickets of a rank. */
 const RANK_GAP = 24
 const TICKET_GAP = 8

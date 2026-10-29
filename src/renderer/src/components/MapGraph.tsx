@@ -1,6 +1,7 @@
 import '@xyflow/react/dist/base.css'
 import {
   ReactFlow,
+  ReactFlowProvider,
   ViewportPortal,
   useReactFlow,
   useStore,
@@ -406,33 +407,38 @@ export function MapGraph({
     })
   }, [map, layout, ticketSessions, displayedSessionId, entering, reachedFrontier, onDisplaySession, onOpen, onAct])
 
+  // The zoom buttons sit under the graph, beside the counts, so they never cover a Ticket: the
+  // provider lets them reach the graph from there.
   return (
-    <section className="map-graph" aria-label={t('map.graph')}>
-      {nodes.length === 0 ? (
-        <p className="empty">{t('map.allDecided')}</p>
-      ) : (
-        <ReactFlow
-          key={levelKey}
-          nodes={nodes}
-          edges={[]}
-          nodeTypes={NODE_TYPES}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          nodesFocusable={false}
-          elementsSelectable={false}
-          panOnScroll
-          zoomOnScroll={false}
-          zoomOnDoubleClick={false}
-          minZoom={0.25}
-          maxZoom={2}
-          attributionPosition="top-right"
-        >
-          <Edges layout={layout} signature={signature} relayout={relayout} names={names} />
-          <Placement signature={signature} graphWidth={layout.width} />
-          <ZoomControls />
-        </ReactFlow>
-      )}
-      <Counts tickets={counted} />
-    </section>
+    <ReactFlowProvider key={levelKey}>
+      <section className="map-graph" aria-label={t('map.graph')}>
+        {nodes.length === 0 ? (
+          <p className="empty">{t('map.allDecided')}</p>
+        ) : (
+          <ReactFlow
+            nodes={nodes}
+            edges={[]}
+            nodeTypes={NODE_TYPES}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            nodesFocusable={false}
+            elementsSelectable={false}
+            panOnScroll
+            zoomOnScroll={false}
+            zoomOnDoubleClick={false}
+            minZoom={0.25}
+            maxZoom={2}
+            attributionPosition="top-right"
+          >
+            <Edges layout={layout} signature={signature} relayout={relayout} names={names} />
+            <Placement signature={signature} graphWidth={layout.width} />
+          </ReactFlow>
+        )}
+        <div className="map-graph__foot">
+          {nodes.length > 0 && <ZoomControls />}
+          <Counts tickets={counted} />
+        </div>
+      </section>
+    </ReactFlowProvider>
   )
 }

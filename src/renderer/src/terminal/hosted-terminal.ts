@@ -106,7 +106,7 @@ export class HostedTerminal {
     this.terminal = new Terminal({
       // The mono-terminal text style.
       fontFamily: token('font-mono'),
-      fontSize: 13,
+      fontSize: 15,
       lineHeight: 1.3,
       fontWeight: 400,
       fontWeightBold: 600,
@@ -245,7 +245,7 @@ export class HostedTerminal {
   private async open(): Promise<void> {
     // xterm.js measures its cells once, so the bundled font must be ready first.
     const font = token('font-mono')
-    await Promise.all([document.fonts.load(`400 13px ${font}`), document.fonts.load(`600 13px ${font}`)])
+    await Promise.all([document.fonts.load(`400 15px ${font}`), document.fonts.load(`600 15px ${font}`)])
     if (this.disposed) return
     this.terminal.open(this.container!)
     this.updateRenderer()

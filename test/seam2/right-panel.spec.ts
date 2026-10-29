@@ -131,7 +131,7 @@ test.describe('Content items in a Panel tab', () => {
 test('without a Map the Right panel opens on another Panel tab, and collapses on its own only when there is none', async () => {
   claudeforge = await launchClaudeForge(env, { project: 'dotfiles' })
   let { window } = claudeforge
-  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(64)
+  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(68)
 
   await window.getByRole('button', { name: 'Expand the Map panel' }).click()
   await createPanelTab(window, 'Notes', 'notes')
@@ -143,7 +143,8 @@ test('without a Map the Right panel opens on another Panel tab, and collapses on
   const panel = window.getByRole('complementary', { name: 'Notes' })
   await expect(panelTabs(window)).toHaveText(['Map', 'Notes'])
   await expect(panelTabs(window).filter({ hasText: 'Notes' })).toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => widthOf(panel)).toBe(400)
+  await expect(panel).toBeVisible()
+  await expect(window.getByRole('separator', { name: 'Resize the Right panel' })).toHaveAttribute('aria-valuenow', '440')
 
   // The Map Panel tab still says why it is empty.
   await panelTabs(window).filter({ hasText: 'Map' }).click()
@@ -153,7 +154,7 @@ test('without a Map the Right panel opens on another Panel tab, and collapses on
   await panelTabs(window).filter({ hasText: 'Notes' }).click({ button: 'right' })
   await window.getByRole('menu', { name: 'Notes actions' }).getByRole('menuitem', { name: 'Close' }).click()
   await window.getByRole('alertdialog', { name: 'Close Notes?' }).getByRole('button', { name: 'Close' }).click()
-  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(64)
+  await expect.poll(() => widthOf(window.getByRole('complementary', { name: 'Map' }))).toBe(68)
 })
 
 test('right-click on a Panel tab and on its Content items opens their menus; the Map Panel tab can be hidden, never closed', async () => {

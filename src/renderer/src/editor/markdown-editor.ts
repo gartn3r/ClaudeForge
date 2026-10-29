@@ -20,7 +20,7 @@ const theme = EditorView.theme(
   {
     '&': { height: '100%', color: 'var(--text)', backgroundColor: 'var(--ground)' },
     '&.cm-focused': { outline: '2px solid var(--focus)', outlineOffset: '-2px' },
-    '.cm-scroller': { fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.7' },
+    '.cm-scroller': { fontFamily: 'var(--font-mono)', fontSize: '15px', lineHeight: '1.7' },
     '.cm-content': { padding: 'var(--space-4) 0', caretColor: 'var(--slate)' },
     '.cm-line': { padding: '0 18px' },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--slate)', borderLeftWidth: '2px' },

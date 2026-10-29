@@ -11,12 +11,12 @@ export const SUPPORTED_LANGUAGES: readonly Language[] = ['en', 'fr']
 
 /** Width bounds of the side panels, in CSS pixels. */
 export const PANEL_BOUNDS = {
-  explorer: { min: 200, max: 420, default: 264 },
-  map: { min: 320, max: 720, default: 400 }
+  explorer: { min: 220, max: 480, default: 280 },
+  map: { min: 340, max: 800, default: 440 }
 } as const
 
 /** Width of a collapsed side panel. */
-export const RAIL_WIDTH = 64
+export const RAIL_WIDTH = 68
 
 export type PanelId = keyof typeof PANEL_BOUNDS
 
