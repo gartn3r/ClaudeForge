@@ -2,7 +2,7 @@
 // page.evaluate callbacks run in the window, so this file needs the DOM types.
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
-import { launchClaudeForge, pickFolderInDialogs, sessionRuns, type RunningClaudeForge } from './claudeforge'
+import { TOLD_ABOUT_THE_CLI, launchClaudeForge, pickFolderInDialogs, sessionRuns, type RunningClaudeForge } from './claudeforge'
 
 let env: FakeEnvironment
 let claudeforge: RunningClaudeForge | undefined
@@ -47,7 +47,7 @@ test('opens a folder, runs Claude Code there and takes what the user types', asy
   await expect(terminalOf(window)).toContainText('You wrote: "hello"')
   const runs = await sessionRuns(env)
   expect(runs.map(({ args, cwd }) => ({ args, cwd }))).toEqual([
-    { args: ['--session-id', expect.any(String)], cwd: env.projects['harbor-api'] }
+    { args: ['--session-id', expect.any(String), ...TOLD_ABOUT_THE_CLI], cwd: env.projects['harbor-api'] }
   ])
 })
 

@@ -18,6 +18,7 @@ import type {
 import type { Asker } from '../shared/elements'
 import { opensInBrowser } from '../shared/shortcuts'
 import { AppStateStore } from './app-state'
+import { CliChannel, type CliPlace } from './cli-channel'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
 import { Elements } from './elements'
@@ -33,6 +34,7 @@ import { SessionIdStore } from './session-ids'
 import { Updates, type Updater } from './updates'
 import { placeFolder } from './worktree'
 
+export type { CliPlace } from './cli-channel'
 export type { Updater } from './updates'
 
 /** The window the interface runs in, as the backend sees it. */
@@ -80,6 +82,12 @@ export interface BackendOptions {
   shell?: DesktopShell
   /** ClaudeForge's own updater; absent when it does not update itself (development builds, tests). */
   updater?: Updater
+  /**
+   * The ClaudeForge CLI every Hosted session's Claude gets (ADR 0007): the folder holding the
+   * `claudeforge` command, and the executable that runs its script as Node. Absent, Hosted sessions
+   * go without (Seam 1 tests other than the CLI's).
+   */
+  cli?: CliPlace
 }
 
 /** Where the desktop opens what the interface links to. */
@@ -164,8 +172,13 @@ export function createBackend(options: BackendOptions): Backend {
     return status.path
   }
 
+  const cliChannel: CliChannel | undefined =
+    options.cli &&
+    new CliChannel({ ...options.cli, elements: (hostedSession): BackendApi['elements'] => elements.as({ kind: 'session', hostedSession }) })
+
   const sessionHost = new SessionHost({
     env: options.env,
+    cli: cliChannel,
     claudeHome: options.claudeHome,
     claudePath,
     recordSession: (sessionId) => sessionIds.add(sessionId),
@@ -354,6 +367,7 @@ export function createBackend(options: BackendOptions): Backend {
     elements: (asker) => elements.as(asker),
     on: (event, listener) => events.on(event, listener),
     dispose: () => {
+      cliChannel?.close()
       elements.dispose()
       unsubscribeMaximized?.()
       unsubscribeVisibility?.()

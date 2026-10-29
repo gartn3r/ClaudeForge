@@ -2,6 +2,7 @@
 // It answers the `mcp` and `plugin` subcommands ClaudeForge runs from the fake environment's copy of
 // test/fixtures/claude, which its changes change, and runs a scriptable stand-in for Claude Code's
 // prompt that sends the status signals Claude Code sends its terminal.
+import { spawnSync } from 'node:child_process'
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, relative } from 'node:path'
 import { record } from './record.mjs'
@@ -200,6 +201,8 @@ if (args[0] === 'mcp' || args[0] === 'plugin') refuse(`The fake claude does not 
 // - `/fail`: works briefly, then fails with `API Error`.
 // - `/wayfinder <args>`: recorded as Claude Code records the slash command, then works briefly.
 // - `/clear`: goes on in a new Session, with a new id; `/resume <id>`: goes on in that Session.
+// - `!<command>`: like Claude Code's bash mode, runs the command in a shell (here cmd.exe) with its
+//   environment and prints what it printed, as Claude's Bash tool runs `claudeforge`.
 //
 // Like Claude Code, while it runs it keeps an entry in the live-session registry,
 // `sessions/<pid>.json`, naming the Session it is in, and removes it when it exits on its own.
@@ -350,6 +353,9 @@ function submit() {
     sessionId = resumed ?? crypto.randomUUID()
     register()
     write(`${resumed ? 'Resumed' : 'Cleared'}: ${sessionId}\r\n> `)
+  } else if (text.startsWith('!')) {
+    const run = spawnSync(text.slice(1), { shell: true, encoding: 'utf8', windowsHide: true })
+    write(`${run.stdout ?? ''}${run.stderr ?? ''}`.replace(/\r?\n/g, '\r\n') + `Exit code ${run.status}\r\n> `)
   } else if (text.startsWith('/wayfinder ')) {
     // Recorded as Claude Code records a slash command, then worked on like any skill.
     const args = text.slice('/wayfinder '.length)

@@ -1,6 +1,7 @@
 import {
   createBackend,
   type Backend,
+  type BackendOptions,
   type DesktopShell,
   type Dialogs,
   type Updater,
@@ -17,7 +18,8 @@ export function startBackend(
   window?: WindowHost,
   dialogs?: Partial<Dialogs>,
   shell?: DesktopShell,
-  updater?: Updater
+  updater?: Updater,
+  cli?: BackendOptions['cli']
 ): Backend {
   return createBackend({
     stateDir: env.userDataDir,
@@ -32,6 +34,7 @@ export function startBackend(
     },
     trashItem: env.trashItem,
     shell,
-    updater
+    updater,
+    cli
   })
 }
