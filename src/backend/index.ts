@@ -306,9 +306,11 @@ export function createBackend(options: BackendOptions): Backend {
       listProblem: () => sessionIds.problem(),
       rename: (id, title) => tidySession(id, { title }),
       setHidden: (id, hidden) => tidySession(id, { hidden }),
-      delete: async (ids) => {
-        const deletions: Record<string, SessionDeletion> = {}
-        try {
+      // One push once the whole batch is done: even a delete that failed midway (a file held open)
+      // may have moved some files.
+      delete: (ids) =>
+        sessions.batch(async () => {
+          const deletions: Record<string, SessionDeletion> = {}
           for (const id of ids) {
             try {
               deletions[id] = await sessions.delete(id, options.trashItem)
@@ -320,11 +322,7 @@ export function createBackend(options: BackendOptions): Backend {
           const deleted = ids.filter((id) => deletions[id]?.deleted)
           if (deleted.length > 0) await writeAppState({ sessions: Object.fromEntries(deleted.map((id) => [id, null])) })
           return deletions
-        } finally {
-          // Even a delete that failed midway (a file held open) may have moved some files.
-          await sessions.refresh()
-        }
-      }
+        })
     },
     system: {
       info: async () => ({ language, startFolder })
