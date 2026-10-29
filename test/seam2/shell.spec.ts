@@ -137,8 +137,11 @@ test('renames the app in place from its wordmark, and opens with the same App ti
   let { window } = claudeforge
   const wordmark = (): Locator => claudeforge!.window.getByTitle('Double-click to rename')
   const field = (): Locator => claudeforge!.window.getByRole('textbox', { name: 'App title' })
-  const savedAppTitle = async (): Promise<unknown> =>
-    JSON.parse(await readFile(join(env.userDataDir, 'state.json'), 'utf8')).appTitle
+  // The wordmark shows a kept title while it saves: until the first save, there is no state.json.
+  const savedAppTitle = async (): Promise<unknown> => {
+    const saved = await readFile(join(env.userDataDir, 'state.json'), 'utf8').catch(() => '{}')
+    return (JSON.parse(saved) as { appTitle?: unknown }).appTitle
+  }
 
   // Escape leaves the title as it was.
   await wordmark().dblclick()
