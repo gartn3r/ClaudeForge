@@ -18,6 +18,7 @@ import { ContentItemMenu, ElementMenu } from './ElementMenus'
 import { isShown, reach } from './element-menus'
 import { elementStyle } from './element-style'
 import { useElements } from './use-elements'
+import type { DropZoneProps, GripProps } from './use-reorder'
 
 export { isShown }
 
@@ -31,6 +32,10 @@ export interface ElementFrame {
   style: CSSProperties
   /** Opens its right-click menu, unless something inside already answered the right-click. */
   onContextMenu(event: MouseEvent): void
+  /** What it is dragged by, when it moves among the others of its container by drag and drop. */
+  grip?: GripProps
+  /** What another is dropped on, to land before or after it. */
+  dropZone?: DropZoneProps
 }
 
 /** ClaudeForge's own Element as the Default layout has it, before the backend first lists it. */

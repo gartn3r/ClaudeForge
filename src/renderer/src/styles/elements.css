@@ -294,3 +294,46 @@
   color: var(--text);
   font-weight: 400;
 }
+
+/* An Element moved by drag and drop: dragged by its grip, it lands just before or after the one it is dropped by. */
+[data-grip] {
+  cursor: grab;
+}
+[data-dragged] {
+  opacity: 0.4;
+}
+[data-drop-zone] {
+  position: relative;
+}
+[data-landing]::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+/* Inside the card's edge: the explorer's first card has nothing above it to draw in. */
+[data-landing='before']::after {
+  top: 2px;
+}
+[data-landing='after']::after {
+  bottom: 2px;
+}
+/* Between the Panel tabs of the row. */
+.right-panel__tab[data-landing]::after {
+  top: 6px;
+  bottom: 6px;
+  left: auto;
+  right: auto;
+  width: 3px;
+  height: auto;
+}
+.right-panel__tab[data-landing='before']::after {
+  left: -5px;
+}
+.right-panel__tab[data-landing='after']::after {
+  right: -5px;
+}

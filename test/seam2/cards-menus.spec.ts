@@ -288,6 +288,25 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     await expect(window.locator('[data-panel="explorer"]')).toHaveAttribute('data-collapsed', 'false')
   })
 
+  test('cards dragged by their head move among the others, and keep their place after a restart', async () => {
+    let window = await launch()
+    await create(window, explorer(window).getByRole('button', { name: 'New card' }), 'New card', 'Release', 'release')
+    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'extensions', 'card:release'])
+
+    // The Shortcuts, dropped on the lower half of the Sessions, land below them.
+    const sessions = card(window, 'Sessions')
+    const { height } = (await sessions.boundingBox())!
+    await card(window, 'Shortcuts').getByRole('heading').dragTo(sessions, { targetPosition: { x: 40, y: height - 10 } })
+    await expect.poll(() => explorerOrder(window)).toEqual(['sessions', 'shortcuts', 'extensions', 'card:release'])
+
+    // A Created card, dropped on the upper half of the first, lands first.
+    await card(window, 'Release').getByRole('heading').dragTo(sessions, { targetPosition: { x: 40, y: 4 } })
+    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'sessions', 'shortcuts', 'extensions'])
+
+    window = await restart()
+    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'sessions', 'shortcuts', 'extensions'])
+  })
+
   test('Restore default layout brings back their properties, shows and expands Created Elements, keeps their titles and colours, removes nothing', async () => {
     await seedElements({
       version: 1,

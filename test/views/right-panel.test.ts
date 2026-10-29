@@ -59,6 +59,16 @@ describe('the Right panel’s Panel tabs', () => {
     expect(state.shown?.id).toBe('panel-tab:coverage')
   })
 
+  it('moves among them the Created Panel tabs only, hidden ones included, in their order', () => {
+    const state = rightPanelState({
+      elements: [own(MAP_TAB), tab('coverage', 3), card, tab('tests', 2, { visible: false }), tab('lint', 1)],
+      chosen: null,
+      hasMap: true,
+      openedAnyway: false
+    })
+    expect(ids(state.movable)).toEqual(['panel-tab:lint', 'panel-tab:tests', 'panel-tab:coverage'])
+  })
+
   it('shows only the Map Panel tab while the Elements are still being read', () => {
     const state = rightPanelState({ elements: null, chosen: null, hasMap: true, openedAnyway: false })
     expect(ids(state.tabs)).toEqual([MAP_TAB])

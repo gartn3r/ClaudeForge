@@ -235,8 +235,9 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, onSta
         data-collapsed={frame?.collapsed}
         style={frame?.style}
         onContextMenu={frame?.onContextMenu}
+        {...frame?.dropZone}
       >
-        <div className="cf-panel-head">
+        <div className="cf-panel-head" {...frame?.grip}>
           <h2 className="cf-eyebrow" id={headingId}>
             {frame?.title ?? t('explorer.heading')}
           </h2>

@@ -84,7 +84,7 @@ async function ask(request: ElementRequest): Promise<ElementRefusal | null> {
 }
 
 /** Asks the contract each request in turn, stopping at the first refused. */
-async function askAll(requests: ElementRequest[]): Promise<ElementRefusal | null> {
+export async function askAll(requests: ElementRequest[]): Promise<ElementRefusal | null> {
   for (const request of requests) {
     const refused = await ask(request)
     if (refused) return refused

@@ -95,8 +95,9 @@ export function ShortcutsCard(props: ShortcutsCardProps): ReactNode {
       data-element={frame?.id}
       style={frame?.style}
       onContextMenu={frame?.onContextMenu}
+      {...frame?.dropZone}
     >
-      <div className="shortcuts__head">
+      <div className="shortcuts__head" {...frame?.grip}>
         <h2 className="cf-heading" id={headingId}>
           {frame?.title ?? t('shortcuts.heading')}
         </h2>

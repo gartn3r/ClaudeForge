@@ -4,7 +4,9 @@ import {
   collapseRequest,
   colorRequest,
   createRequest,
+  dropRequests,
   elementMenuKeys,
+  landingPlace,
   hideRequest,
   itemMenuKeys,
   itemRequest,
@@ -123,6 +125,62 @@ describe("an Element's right-click menu", () => {
       { op: 'set', element: 'extensions', properties: { order: 4 } }
     ])
     expect(moveRequests(explorerCards, card, 1)).toEqual([])
+  })
+
+  it('drops an Element before or after another of its container, numbering it again, asking only for the orders that change', () => {
+    const [shortcuts, sessions] = explorerCards
+    // The Shortcuts dropped below the Sessions.
+    expect(dropRequests(explorerCards, shortcuts!, { id: 'sessions', place: 'after' })).toEqual([
+      { op: 'set', element: 'sessions', properties: { order: 1 } },
+      { op: 'set', element: 'shortcuts', properties: { order: 2 } }
+    ])
+    expect(dropRequests(explorerCards, card, { id: 'shortcuts', place: 'before' })).toEqual([
+      { op: 'set', project, element: 'card:release', properties: { order: 1 } },
+      { op: 'set', element: 'shortcuts', properties: { order: 2 } },
+      { op: 'set', element: 'sessions', properties: { order: 3 } },
+      { op: 'set', element: 'extensions', properties: { order: 4 } }
+    ])
+    // Hidden Elements keep their place among the others.
+    const hidden = explorerCards.map((each) => (each === sessions ? { ...each, properties: { ...each.properties, visible: false } } : each))
+    expect(dropRequests(hidden, card, { id: 'extensions', place: 'before' })).toEqual([
+      { op: 'set', project, element: 'card:release', properties: { order: 3 } },
+      { op: 'set', element: 'extensions', properties: { order: 4 } }
+    ])
+  })
+
+  it('asks for nothing when the drop leaves the Element where it was, or lands on what is not among them', () => {
+    const [shortcuts, sessions] = explorerCards
+    expect(dropRequests(explorerCards, sessions!, { id: 'sessions', place: 'before' })).toEqual([])
+    expect(dropRequests(explorerCards, sessions!, { id: 'shortcuts', place: 'after' })).toEqual([])
+    expect(dropRequests(explorerCards, shortcuts!, { id: 'sessions', place: 'before' })).toEqual([])
+    expect(dropRequests(explorerCards, shortcuts!, { id: 'card:gone', place: 'after' })).toEqual([])
+    // Even when the orders are not numbered from 1, nothing moves, so nothing is asked.
+    const sparse = explorerCards.map((each, index) => ({ ...each, properties: { ...each.properties, order: (index + 1) * 10 } }))
+    expect(dropRequests(sparse, sparse[1]!, { id: sparse[0]!.id, place: 'after' })).toEqual([])
+  })
+
+  it('lands before the Element dropped on in its first half, after it in its second, along the way they follow', () => {
+    const box = { left: 100, top: 50, width: 80, height: 40 }
+    expect(landingPlace(box, { x: 110, y: 85 }, 'y')).toBe('after')
+    expect(landingPlace(box, { x: 170, y: 55 }, 'y')).toBe('before')
+    expect(landingPlace(box, { x: 110, y: 85 }, 'x')).toBe('before')
+    expect(landingPlace(box, { x: 170, y: 55 }, 'x')).toBe('after')
+  })
+
+  it("leaves out of the numbering an Element that takes no order, as the Map Panel tab", () => {
+    const map = { ...own('panel-tab:map', ['visible', 'title']), container: 'right-panel' as const }
+    const tab = (name: string, order: number): ElementView => ({
+      ...card,
+      id: `panel-tab:${name}`,
+      kind: 'panel-tab',
+      container: 'right-panel',
+      properties: { ...card.properties, order }
+    })
+    const tabs = [map, tab('tests', 1), tab('coverage', 2)]
+    expect(dropRequests(tabs, tabs[2]!, { id: 'panel-tab:tests', place: 'before' })).toEqual([
+      { op: 'set', project, element: 'panel-tab:coverage', properties: { order: 1 } },
+      { op: 'set', project, element: 'panel-tab:tests', properties: { order: 2 } }
+    ])
   })
 })
 

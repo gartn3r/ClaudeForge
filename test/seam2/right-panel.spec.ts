@@ -69,6 +69,34 @@ test('the Map Panel tab comes first; + creates a Panel tab in the displayed Proj
   await expect(panelTabs(window)).toHaveText(['Map', 'Test report'])
 })
 
+test('a Created Panel tab dragged moves among the others, the Map staying first, and keeps its place after a restart', async () => {
+  claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
+  let { window } = claudeforge
+  await createPanelTab(window, 'Tests', 'tests')
+  await createPanelTab(window, 'Coverage', 'coverage')
+  await createPanelTab(window, 'Lint', 'lint')
+  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
+
+  // Dropped on the left half of the Tests, the Lint lands before them; on the right half, after.
+  const tab = (name: string): Locator => panelTabs(window).filter({ hasText: name })
+  await tab('Lint').dragTo(tab('Tests'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Lint', 'Tests', 'Coverage'])
+  const { width } = (await tab('Coverage').boundingBox())!
+  await tab('Lint').dragTo(tab('Coverage'), { targetPosition: { x: width - 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
+  // The Map moves not, and nothing lands on it.
+  await expect(tab('Map')).not.toHaveAttribute('draggable', 'true')
+  await tab('Coverage').dragTo(tab('Map'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Tests', 'Coverage', 'Lint'])
+  await tab('Coverage').dragTo(tab('Tests'), { targetPosition: { x: 4, y: 10 } })
+  await expect(panelTabs(window)).toHaveText(['Map', 'Coverage', 'Tests', 'Lint'])
+
+  await claudeforge.close()
+  claudeforge = await launchClaudeForge(env, { project: 'recipe-box' })
+  window = claudeforge.window
+  await expect(panelTabs(window)).toHaveText(['Map', 'Coverage', 'Tests', 'Lint'])
+})
+
 test.describe('Content items in a Panel tab', () => {
   let pages: { origin: string; server: Server }
 
