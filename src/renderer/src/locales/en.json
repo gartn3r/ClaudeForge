@@ -461,6 +461,15 @@
       "foundAt": "Found at"
     }
   },
+  "rightPanel": {
+    "label": "Right panel",
+    "tabs": "Panel tabs",
+    "new": "New Panel tab",
+    "empty": "Nothing here yet. Right-click this Panel tab to add content, or ask Claude to fill it.",
+    "collapse": "Collapse the Right panel",
+    "expand": "Expand the Right panel",
+    "resize": "Resize the Right panel"
+  },
   "elements": {
     "item": {
       "typeHint": "Types this command without sending it",

@@ -20,6 +20,7 @@ import {
   ELEMENT_NAME_MAX_LENGTH,
   ELEMENT_TITLE_MAX_LENGTH,
   isColor,
+  isElementName,
   isOwnElement,
   itemProblem,
   type ContentItem,
@@ -284,7 +285,7 @@ interface FormDialogProps {
 }
 
 /** A modal form over the window: Escape and Cancel close it unchanged. */
-function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, children, extra }: FormDialogProps): ReactNode {
+export function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, children, extra }: FormDialogProps): ReactNode {
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
   const id = useId()
@@ -337,7 +338,7 @@ function FormDialog({ title, submitLabel, error, busy, onSubmit, onCancel, child
 }
 
 /** Sends a request from a dialog: it closes once the contract took it, else says why it was refused. */
-function useSubmit(onDone: () => void): {
+export function useSubmit(onDone: () => void): {
   busy: boolean
   refusal: string | null
   send(request: ElementRequest): void
@@ -582,15 +583,19 @@ export function CreateElementDialog({
   const id = useId()
   const [title, setTitle] = useState('')
   const [name, setName] = useState<string | null>(null)
-  const { busy, refusal, send } = useSubmit(onDone)
+  const { busy, refusal, send, setRefusal } = useSubmit(onDone)
   const shownName = name ?? nameFromTitle(title)
+  const submit = (): void => {
+    if (!isElementName(kind, shownName.trim())) return setRefusal(t('elements.refusal.bad-name'))
+    send(createRequest(kind, project, shownName, title))
+  }
   return (
     <FormDialog
       title={t(`elements.create.${kind}`)}
       submitLabel={t('elements.create.action')}
       error={refusal}
       busy={busy}
-      onSubmit={() => send(createRequest(kind, project, shownName, title))}
+      onSubmit={submit}
       onCancel={onDone}
     >
       <p className="cf-muted element-dialog__lead">{t('elements.create.inProject', { project: folderName(project) })}</p>
@@ -606,18 +611,21 @@ export function CreateElementDialog({
       </label>
       <div className="element-dialog__field">
         <label htmlFor={`${id}-name`}>{t('elements.create.name')}</label>
-        <span className="element-dialog__name">
-          <span className="cf-mono" aria-hidden="true">{`${kind}:`}</span>
+        <span className="element-dialog__prefixed">
+          <span className="cf-mono element-dialog__prefix" aria-hidden="true">{`${kind}:`}</span>
           <input
             id={`${id}-name`}
             className="cf-mono"
             value={shownName}
             maxLength={ELEMENT_NAME_MAX_LENGTH}
             spellCheck={false}
+            aria-describedby={`${id}-hint`}
             onChange={(event) => setName(event.target.value)}
           />
         </span>
-        <span className="extdialog__hint">{t('elements.create.nameHint')}</span>
+        <span className="extdialog__hint" id={`${id}-hint`}>
+          {t('elements.create.nameHint')}
+        </span>
       </div>
     </FormDialog>
   )

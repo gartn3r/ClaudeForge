@@ -126,7 +126,7 @@ test('Edit opens a global subagent beside the Hosted sessions, keeping unsaved t
   // Editing it again shows the tab already open.
   menu = await openMenu(window, 'Global')
   await row(menu, 'Subagents', 'code-reviewer').getByRole('button', { name: 'Edit code-reviewer' }).click()
-  await expect(window.getByRole('tab')).toHaveCount(2)
+  await expect(window.getByRole('tablist', { name: 'Hosted sessions' }).getByRole('tab')).toHaveCount(2)
   await expect(text).toContainText('Keep it short.')
 
   await tab.getByRole('button', { name: 'Close' }).click()

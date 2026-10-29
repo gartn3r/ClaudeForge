@@ -91,6 +91,8 @@ const openedKey = (opened: Opened): string =>
   [opened.element.id, opened.kind === 'item' ? opened.item.id : '', opened.at.x, opened.at.y].join(' ')
 
 export interface InterfaceElements {
+  /** ClaudeForge's own Elements and the displayed Project's; null until that Project's are listed. */
+  listed: ElementView[] | null
   /** One of ClaudeForge's own Elements, as it is now. */
   own(id: OwnElementId): ElementView
   /** The Elements a container holds, ClaudeForge's own and the displayed Project's, in their order. */
@@ -108,9 +110,12 @@ export interface InterfaceElements {
  * A Created card or menu that asks to come to the front is put on show.
  */
 export function useInterfaceElements(project: string, layout: AppState['layout']): InterfaceElements {
-  const listed = useElements(project)
+  const listing = useElements(project)
   const [opened, setOpened] = useState<Opened | null>(null)
   const close = useCallback(() => setOpened(null), [])
+  // While another Project's are listed, ClaudeForge's own stay as they were, so nothing jumps.
+  const current = listing?.project === project
+  const listed = current ? listing.elements : listing?.elements.filter((element) => element.project === null)
   const views = listed?.map((view) => {
     const panel = isOwnElement(view.id) ? COLUMN_PANELS[view.id] : undefined
     return panel ? { ...view, properties: { ...view.properties, width: layout[panel].width, collapsed: layout[panel].collapsed } } : view
@@ -135,6 +140,7 @@ export function useInterfaceElements(project: string, layout: AppState['layout']
   const at = (event: MouseEvent): { x: number; y: number } => ({ x: event.clientX, y: event.clientY })
 
   return {
+    listed: current && views ? views : null,
     own,
     inside,
     frame: (element, siblings) => ({

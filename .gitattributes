@@ -1,0 +1,4 @@
+# The claudeforge command's shims run as they are checked out: a POSIX shell script breaks on CRLF,
+# and cmd.exe reads batch files best with them.
+cli/claudeforge text eol=lf
+cli/*.cmd text eol=crlf

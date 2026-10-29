@@ -7,7 +7,7 @@ import { CloseWarning } from './components/CloseWarning'
 import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
 import { ExtensionsBar } from './components/ExtensionsMenu'
 import { FirstRun } from './components/FirstRun'
-import { MapPanel, MapRail, shownMap } from './components/MapPanel'
+import { MapPanel, shownMap } from './components/MapPanel'
 import { SettingsMenu } from './components/SettingsMenu'
 import { SessionTabs } from './components/SessionTabs'
 import { BusyNotice, ShortcutDialog, ShortcutsCard, ShortcutsRail, lacksSkill, useProjectSkills } from './components/Shortcuts'
@@ -17,6 +17,8 @@ import { TitleBar } from './components/TitleBar'
 import { useEditorTabs } from './editor/editor-tabs'
 import { ExplorerColumn } from './elements/ExplorerColumn'
 import { columnProps, isShown, useInterfaceElements } from './elements/interface-elements'
+import { RightPanel, RightPanelRail, useRightPanel, useRightPanelLabels } from './elements/RightPanel'
+import { MAP_TAB } from './elements/right-panel'
 import { RestoreDefaultButton, TitleBarMenus } from './elements/TitleBarMenus'
 import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-sessions'
 import type { SessionLaunch } from './terminal/hosted-terminal'
@@ -72,7 +74,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   const project = samePath(displayedProject, startProject) ? startProject : displayedProject
   // ClaudeForge's own Elements and the displayed Project's Created ones, as the user or Claude set them.
   const elements = useInterfaceElements(project, state.layout)
-  const rightPanel = elements.own('right-panel')
+  const rightPanelElement = elements.own('right-panel')
 
   // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
   const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
@@ -141,8 +143,6 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // The displayed Project's Maps, listed again whenever the backend says they may have changed.
   const [maps, setMaps] = useState<{ project: string; listing: MapListing; listedAt: number } | null>(null)
   const [mapRevision, setMapRevision] = useState(0)
-  // Expanding the panel of a Project with no Map shows it anyway, until the Project changes.
-  const [mapOpenedAnyway, setMapOpenedAnyway] = useState<string | null>(null)
   useEffect(
     () => onEvent('map.changed', (change) => samePath(change.project, project) && setMapRevision((revision) => revision + 1)),
     [project]
@@ -171,14 +171,24 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     !listing.problem &&
     !shownMap(listing) &&
     !listing.maps.some((map) => map.id === linkedMapId)
-  // The panel collapses on its own without a Map; the user's own setting stays as it was.
-  const mapLayout = noMap && mapOpenedAnyway !== project ? { ...state.layout.map, collapsed: true } : state.layout.map
+  // The Right panel holds the Map Panel tab and the displayed Project's Created Panel tabs. It
+  // collapses on its own with neither a Map nor any other Panel tab; the user's own setting stays as it was.
+  const expandRightPanel = useCallback(() => void api.appState.write({ layout: { map: { collapsed: false } } }), [])
+  const rightPanel = useRightPanel({
+    project,
+    elements: elements.listed,
+    hasMap: !noMap,
+    layoutCollapsed: state.layout.map.collapsed,
+    expand: expandRightPanel
+  })
+  const rightPanelLabels = useRightPanelLabels(rightPanel.state.shown)
+  const mapLayout = { ...state.layout.map, collapsed: rightPanel.collapsed }
   const expandMap = (): void => {
-    setMapOpenedAnyway(project)
-    if (state.layout.map.collapsed) collapseHandler('map', false)()
+    rightPanel.openAnyway()
+    if (state.layout.map.collapsed) expandRightPanel()
   }
   // The backend keeps the displayed Project's Maps fresh, polling GitHub only while the Map is on show.
-  const mapShown = !mapLayout.collapsed
+  const mapShown = !mapLayout.collapsed && rightPanel.state.shown?.id === MAP_TAB
   useEffect(() => void api.map.watch(project, mapShown), [project, mapShown])
 
   if (claudeCode.state !== 'found') {
@@ -279,28 +289,43 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           onEditorRename={(key, name) => editing.editors.rename(key, name)}
           frame={elements.frame(elements.own('terminal-area'))}
         />
-        {isShown(rightPanel) && (
+        {isShown(rightPanelElement) && (
         <SidePanel
           id="map"
           side="right"
           layout={mapLayout}
-          label={t('map.label')}
-          resizeLabel={t('map.resize')}
-          rail={<MapRail onExpand={expandMap} />}
+          label={rightPanelLabels.label}
+          resizeLabel={rightPanelLabels.resize}
+          rail={
+            <RightPanelRail
+              label={rightPanelLabels.expand}
+              marked={rightPanel.state.tabs.some((tab) => tab.attention === 'mark')}
+              onExpand={expandMap}
+            />
+          }
           onResizingChange={setResizing}
-          {...columnProps(elements.frame(rightPanel), { railOnly: true })}
+          {...columnProps(elements.frame(rightPanelElement), { railOnly: true })}
         >
-          <MapPanel
+          <RightPanel
+            state={rightPanel.state}
             project={project}
-            listing={listing}
-            revision={mapRevision}
-            listedAt={maps?.project === project ? maps.listedAt : null}
-            sessions={projectSessions}
-            displayedSession={displayed?.session ?? null}
-            preferences={state.maps[project] ?? {}}
-            onDisplaySession={setDisplayedSessionId}
-            onStartSession={(typed) => startHostedSession(project, { kind: 'new', typed })}
+            map={
+              <MapPanel
+                project={project}
+                listing={listing}
+                revision={mapRevision}
+                listedAt={maps?.project === project ? maps.listedAt : null}
+                sessions={projectSessions}
+                displayedSession={displayed?.session ?? null}
+                preferences={state.maps[project] ?? {}}
+                onDisplaySession={setDisplayedSessionId}
+                onStartSession={(typed) => startHostedSession(project, { kind: 'new', typed })}
+              />
+            }
+            collapseLabel={rightPanelLabels.collapse}
+            onChoose={rightPanel.choose}
             onCollapse={collapseHandler('map', true)}
+            onType={typeCommand}
           />
         </SidePanel>
         )}

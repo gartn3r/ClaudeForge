@@ -65,3 +65,23 @@ test('starts a Hosted session in its own ConPTY and takes what the user types', 
   await expect(terminal).toContainText('You wrote: "hello"')
   expect((await runningOpenConsoles()).map((path) => path.toLowerCase())).toContain(join(CONPTY, 'OpenConsole.exe').toLowerCase())
 })
+
+test('ships the claudeforge command, which ClaudeForge.exe runs as Node for a Hosted session (ADR 0007)', async () => {
+  const cli = join(dirname(EXECUTABLE), 'resources/cli')
+  for (const file of ['claudeforge.cmd', 'claudeforge', 'claudeforge.mjs']) expect(existsSync(join(cli, file)), file).toBe(true)
+  claudeforge = await launchClaudeForge(env)
+  const { app, window } = claudeforge
+  await window.getByRole('button', { name: 'Settings' }).click()
+  await window.getByRole('switch', { name: 'GPU rendering' }).click()
+  await window.keyboard.press('Escape')
+  await pickFolderInDialogs(app, env.projects['harbor-api'])
+  await window.getByRole('button', { name: 'Open folder' }).click()
+  const terminal = window.getByRole('main', { name: 'Terminal' })
+  await expect(terminal).toContainText('Fake Claude Code')
+
+  // As Claude's Bash tool would run it.
+  await window.keyboard.type('!claudeforge create panel-tab:tests')
+  await window.keyboard.press('Enter')
+
+  await expect(terminal).toContainText('Created panel-tab:tests.')
+})
