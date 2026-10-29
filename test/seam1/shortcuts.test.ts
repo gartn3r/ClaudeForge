@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Backend, DesktopShell } from '../../src/backend'
 import type { Shortcut } from '../../src/shared/api'
-import { commandText, isPopupAddress, isWebAddress, opensInBrowser, shortcutProblems } from '../../src/shared/shortcuts'
+import {
+  commandText,
+  isPopupAddress,
+  isWebAddress,
+  opensInBrowser,
+  shortcutProblems,
+  webTabUserAgent,
+  whereNewWindowOpens
+} from '../../src/shared/shortcuts'
 import { createFakeEnvironment, type FakeEnvironment } from '../fake-env'
 import { startBackend } from './backend'
 
@@ -149,5 +157,27 @@ describe('Shortcuts', () => {
     expect(isPopupAddress('http://localhost:3000/help')).toBe(true)
     expect(isPopupAddress('file:///C:/reports/index.html')).toBe(false)
     expect(isPopupAddress('file:///C:/Windows/System32/calc.exe')).toBe(false)
+  })
+
+  it("opens a page's sign-in popup in a ClaudeForge window, its other new windows in the default browser", () => {
+    expect(whereNewWindowOpens('https://accounts.google.com/gsi/select', 'new-window')).toBe('popup')
+    expect(whereNewWindowOpens('http://localhost:3000/sign-in', 'new-window')).toBe('popup')
+    expect(whereNewWindowOpens('https://example.com/docs', 'foreground-tab')).toBe('browser')
+    expect(whereNewWindowOpens('https://example.com/docs', 'background-tab')).toBe('browser')
+    expect(whereNewWindowOpens('https://example.com/docs', 'other')).toBe('browser')
+    // A page never has the desktop open a file, which could be a program, in a window or in the browser.
+    expect(whereNewWindowOpens('file:///C:/reports/index.html', 'new-window')).toBe('nowhere')
+    expect(whereNewWindowOpens('file:///C:/Windows/System32/calc.exe', 'foreground-tab')).toBe('nowhere')
+    expect(whereNewWindowOpens('about:blank', 'new-window')).toBe('nowhere')
+  })
+
+  it("gives Web tabs a browser's user agent, without Electron's and ClaudeForge's tokens", () => {
+    const electron =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ClaudeForge/0.1.0 Chrome/140.0.7339.41 Electron/45.0.0 Safari/537.36'
+    const browser =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.41 Safari/537.36'
+    expect(webTabUserAgent(electron, 'ClaudeForge')).toBe(browser)
+    expect(webTabUserAgent(electron.replace('ClaudeForge/', 'claudeforge/'), 'ClaudeForge')).toBe(browser)
+    expect(webTabUserAgent(browser, 'ClaudeForge')).toBe(browser)
   })
 })

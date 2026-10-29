@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { join, resolve } from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { CLI_INSTRUCTION } from '../../src/backend/cli-channel'
+import { WEB_TAB_PARTITION } from '../../src/shared/api'
 import type { FakeEnvironment, FixtureProject, Invocation } from '../fake-env'
 
 /** The runs of the fake `claude` that started a Session: not the locator's version checks, nor the Extension listings. */
@@ -132,3 +133,35 @@ export const inWebTab = (app: ElectronApplication, script: string): Promise<unkn
     const page = webContents.getAllWebContents().find((contents) => contents.getType() === 'webview')
     return page ? page.executeJavaScript(script, true) : null
   }, script)
+
+/** Runs a script in the sign-in popup a Web tab's page opened, from the main process; null with none. */
+export const inSignInPopup = (app: ElectronApplication, script: string): Promise<unknown> =>
+  app.evaluate(
+    async ({ session, webContents }, { script, partition }) => {
+      const pages = session.fromPartition(partition)
+      const popup = webContents
+        .getAllWebContents()
+        .find((contents) => contents.getType() === 'window' && contents.session === pages && !contents.isDestroyed())
+      return popup ? popup.executeJavaScript(script, true) : null
+    },
+    { script, partition: WEB_TAB_PARTITION }
+  )
+
+/** The windows ClaudeForge shows: its interface, and any sign-in popup a Web tab's page opened. */
+export const windowCount = (app: ElectronApplication): Promise<number> =>
+  app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
+
+/** How the sign-in popup a Web tab's page opened was set up, as Electron reports it; null with none. */
+export const signInPopupPreferences = (app: ElectronApplication): Promise<Record<string, unknown> | null> =>
+  app.evaluate(
+    ({ session, webContents }, partition) => {
+      const pages = session.fromPartition(partition)
+      const popup = webContents.getAllWebContents().find((contents) => contents.getType() === 'window' && contents.session === pages)
+      if (!popup) return null
+      // Electron keeps this one out of its typings, but still reports what a window was given.
+      const reported = (popup as unknown as { getLastWebPreferences(): Electron.WebPreferences | null }).getLastWebPreferences()
+      const { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag } = reported ?? {}
+      return { preload, sandbox, contextIsolation, nodeIntegration, nodeIntegrationInSubFrames, webviewTag }
+    },
+    WEB_TAB_PARTITION
+  )

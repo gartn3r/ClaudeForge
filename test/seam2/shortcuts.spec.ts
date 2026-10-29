@@ -4,7 +4,16 @@ import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 import type { Shortcut } from '../../src/shared/api'
 import { createFakeEnvironment, type FakeEnvironment, type FixtureProject } from '../fake-env'
-import { inWebTab, launchClaudeForge, serveFixturePages, sessionRuns, type RunningClaudeForge } from './claudeforge'
+import {
+  inSignInPopup,
+  inWebTab,
+  launchClaudeForge,
+  serveFixturePages,
+  sessionRuns,
+  signInPopupPreferences,
+  windowCount,
+  type RunningClaudeForge
+} from './claudeforge'
 
 /** What the Shortcuts journeys read and click, in each language ClaudeForge speaks. */
 const LOCALES = [
@@ -296,6 +305,56 @@ for (const locale of LOCALES) {
       await expect.poll(() => inWebTab(claudeforge!.app, 'document.title')).toBe('Fixture dev server')
       // Signed in as before: the cookie the page set lasts across the restart.
       expect(await inWebTab(claudeforge!.app, 'document.cookie')).toBe('visited=first')
+    })
+
+    test("a page's sign-in popup opens in a ClaudeForge window, isolated like the Web tab, and posts back to the page", async () => {
+      await seedShortcuts([devServer(pages.origin)])
+      const window = await launch(locale)
+      const { app } = claudeforge!
+      await recordBrowser(app)
+      await shortcutButton(window, locale, 'Dev server').click()
+      await expect.poll(() => inWebTab(app, 'document.title')).toBe('Fixture dev server')
+
+      // Sent as a browser's: sites such as Google's sign-in refuse an embedded browser.
+      expect(await inWebTab(app, 'navigator.userAgent')).not.toMatch(/electron|claudeforge/i)
+
+      // A target=_blank link still goes to the default browser, in no ClaudeForge window.
+      await inWebTab(app, "document.getElementById('blank').click()")
+      await expect.poll(() => openedInBrowser(app)).toEqual(['https://example.com/docs'])
+      expect(await windowCount(app)).toBe(1)
+
+      await inWebTab(app, "void window.open('/sign-in.html', 'sign-in', 'width=480,height=600')")
+      await expect.poll(() => windowCount(app)).toBe(2)
+      await expect.poll(() => inSignInPopup(app, 'document.title')).toBe('Fixture sign-in')
+      // The popup stays the page's own: what it posts reaches the page in the Web tab.
+      await expect.poll(() => inWebTab(app, 'document.body.dataset.signedIn')).toBe('fixture-token')
+      // In the Web tab's storage, apart from the interface, with no bridge, no Node, sandboxed.
+      expect(await inSignInPopup(app, 'document.cookie')).toBe('visited=first')
+      expect(await inSignInPopup(app, 'typeof window.claudeforge + typeof window.require + typeof window.process')).toBe(
+        'undefinedundefinedundefined'
+      )
+      expect(await signInPopupPreferences(app)).toEqual({
+        preload: undefined,
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        nodeIntegrationInSubFrames: false,
+        webviewTag: false
+      })
+      expect(await inSignInPopup(app, 'navigator.userAgent')).not.toMatch(/electron|claudeforge/i)
+
+      // The popup follows the Web tab's rules: its new windows go to the default browser, never a file.
+      await inSignInPopup(app, "void window.open('https://example.com/help')")
+      await inSignInPopup(app, "void window.open('file:///C:/Windows/System32/calc.exe', 'x', 'width=200,height=200')")
+      await expect.poll(() => openedInBrowser(app)).toEqual(['https://example.com/docs', 'https://example.com/help'])
+      await inSignInPopup(app, "location.href = 'file:///C:/Windows/System32/calc.exe'")
+      await expect.poll(() => inSignInPopup(app, 'location.href')).toBe(`${pages.origin}/sign-in.html`)
+      expect(await windowCount(app)).toBe(2)
+
+      // Signed in, the popup closes itself; the Web tab stays.
+      await inSignInPopup(app, 'window.close()')
+      await expect.poll(() => windowCount(app)).toBe(1)
+      await expect(tabs(window, locale)).toHaveCount(1)
     })
 
     test('a Skill shortcut clears the prompt of a ready Session on show and types its command, unsent', async () => {

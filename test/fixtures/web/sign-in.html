@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture sign-in</title>
+  </head>
+  <body>
+    <h1>Sign in</h1>
+    <script>
+      // As a sign-in popup does once the user is signed in: hand the token to the page that opened it.
+      window.opener.postMessage({ token: 'fixture-token' }, '*')
+    </script>
+  </body>
+</html>
