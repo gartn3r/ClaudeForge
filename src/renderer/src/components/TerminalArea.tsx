@@ -135,6 +135,12 @@ function TypedBanner({ typed, onCancel }: { typed: TypedCommand; onCancel(): voi
       <span>
         {'shortcut' in typed ? (
           <Trans i18nKey="terminal.typed.shortcut" values={{ shortcut: typed.shortcut }} components={{ b: <strong /> }} />
+        ) : 'workItem' in typed ? (
+          <Trans
+            i18nKey="terminal.typed.workItem"
+            values={{ action: typed.action, id: typed.workItem }}
+            components={{ b: <strong /> }}
+          />
         ) : typed.map === null ? (
           <Trans i18nKey="terminal.typed.map" values={{ ticket: typed.ticket }} components={{ b: <strong /> }} />
         ) : (

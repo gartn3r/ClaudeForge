@@ -62,6 +62,7 @@ const OWN_NAMES = {
   'title-bar': 'elements.own.titleBar',
   explorer: 'elements.own.explorer',
   shortcuts: 'elements.own.shortcuts',
+  'work-items': 'elements.own.workItems',
   sessions: 'elements.own.sessions',
   extensions: 'elements.own.extensions',
   'terminal-area': 'elements.own.terminalArea',

@@ -98,7 +98,7 @@ test.describe('cards and menus', () => {
     const head = release.getByRole('heading', { name: 'Release' })
     await expect(release).toBeVisible()
     await expect(release).toContainText('card:release')
-    expect(await explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'extensions', 'card:release'])
+    expect(await explorerOrder(window)).toEqual(['shortcuts', 'work-items', 'sessions', 'extensions', 'card:release'])
 
     // A card takes no web page.
     await elementAction(window, head, 'Release', 'Add content')
@@ -253,7 +253,7 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     await expect(favourites).toHaveCSS('background-color', 'rgb(243, 214, 198)')
 
     await elementAction(window, card(window, 'Sessions').getByRole('heading', { name: 'Sessions' }), 'Sessions', 'Move up')
-    await expect.poll(() => explorerOrder(window)).toEqual(['sessions', 'shortcuts', 'extensions'])
+    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'work-items', 'extensions'])
 
     await elementAction(window, card(window, 'Extensions'), 'Extensions', 'Hide')
     await expect(card(window, 'Extensions')).toHaveCount(0)
@@ -278,7 +278,7 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
     await elementAction(window, card(window, 'Sessions').getByRole('heading', { name: 'Sessions' }), 'Sessions', 'Expand')
     await expect(card(window, 'Sessions').getByRole('tree')).toBeVisible()
     await expect(card(window, 'Favourites')).toHaveCSS('background-color', 'rgb(243, 214, 198)')
-    expect(await explorerOrder(window)).toEqual(['sessions', 'shortcuts'])
+    expect(await explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'work-items'])
     await expect(titleBar(window)).toHaveCSS('color', 'rgb(59, 63, 115)')
     await expect(window.getByRole('separator', { name: 'Resize the explorer' })).toHaveAttribute('aria-valuenow', '480')
 
@@ -291,20 +291,20 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
   test('cards dragged by their head move among the others, and keep their place after a restart', async () => {
     let window = await launch()
     await create(window, explorer(window).getByRole('button', { name: 'New card' }), 'New card', 'Release', 'release')
-    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'extensions', 'card:release'])
+    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'work-items', 'sessions', 'extensions', 'card:release'])
 
     // The Shortcuts, dropped on the lower half of the Sessions, land below them.
     const sessions = card(window, 'Sessions')
     const { height } = (await sessions.boundingBox())!
     await card(window, 'Shortcuts').getByRole('heading').dragTo(sessions, { targetPosition: { x: 40, y: height - 10 } })
-    await expect.poll(() => explorerOrder(window)).toEqual(['sessions', 'shortcuts', 'extensions', 'card:release'])
+    await expect.poll(() => explorerOrder(window)).toEqual(['work-items', 'sessions', 'shortcuts', 'extensions', 'card:release'])
 
     // A Created card, dropped on the upper half of the first, lands first.
-    await card(window, 'Release').getByRole('heading').dragTo(sessions, { targetPosition: { x: 40, y: 4 } })
-    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'sessions', 'shortcuts', 'extensions'])
+    await card(window, 'Release').getByRole('heading').dragTo(card(window, 'Work items'), { targetPosition: { x: 40, y: 4 } })
+    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'work-items', 'sessions', 'shortcuts', 'extensions'])
 
     window = await restart()
-    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'sessions', 'shortcuts', 'extensions'])
+    await expect.poll(() => explorerOrder(window)).toEqual(['card:release', 'work-items', 'sessions', 'shortcuts', 'extensions'])
   })
 
   test('Restore default layout brings back their properties, shows and expands Created Elements, keeps their titles and colours, removes nothing', async () => {
@@ -332,13 +332,13 @@ test.describe("ClaudeForge's own Elements and the Default layout", () => {
       }
     })
     const window = await launch()
-    expect(await explorerOrder(window)).toEqual(['sessions', 'card:release', 'shortcuts'])
+    expect(await explorerOrder(window)).toEqual(['work-items', 'sessions', 'card:release', 'shortcuts'])
     await expect(card(window, 'Release v2')).not.toContainText('Code freeze')
     await expect(menuButton(window, 'Tests')).toHaveCount(0)
 
     await titleBar(window).getByRole('button', { name: 'Restore default layout' }).click()
 
-    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'sessions', 'extensions', 'card:release'])
+    await expect.poll(() => explorerOrder(window)).toEqual(['shortcuts', 'work-items', 'sessions', 'extensions', 'card:release'])
     await expect(card(window, 'Shortcuts')).toHaveCSS('background-color', 'rgb(251, 249, 242)')
     await expect(titleBar(window)).toHaveCSS('color', 'rgb(47, 53, 63)')
     // Created Elements are shown and expanded again, with their titles and colours.

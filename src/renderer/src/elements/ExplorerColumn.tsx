@@ -9,7 +9,7 @@ import { isShown, markSeen, type ElementFrame, type InterfaceElements } from './
 import { useReorder } from './use-reorder'
 
 /** ClaudeForge's own cards of the explorer, each drawn by the window around it with its frame. */
-type OwnCards = Record<Extract<OwnElementId, 'shortcuts' | 'sessions' | 'extensions'>, (frame: ElementFrame) => ReactNode>
+type OwnCards = Record<Extract<OwnElementId, 'shortcuts' | 'work-items' | 'sessions' | 'extensions'>, (frame: ElementFrame) => ReactNode>
 
 interface ExplorerColumnProps extends OwnCards {
   elements: InterfaceElements
@@ -19,7 +19,7 @@ interface ExplorerColumnProps extends OwnCards {
 }
 
 /**
- * The explorer's cards in their order: the Shortcuts, the Sessions and the Extensions, and the
+ * The explorer's cards in their order: the Shortcuts, the Work items, the Sessions and the Extensions, and the
  * displayed Project's Created cards, those hidden left out; then the + that creates a card. A card
  * dragged by its head moves among the others.
  */

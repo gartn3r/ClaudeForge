@@ -1,0 +1,474 @@
+/* The Work items card and its configuration form. */
+
+/* Work items card: a card above the Sessions tile; each Work item in a box of its own. */
+.work-items {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 8px;
+  max-height: 55%;
+  padding: 12px 10px 10px;
+}
+.work-items__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 0 10px;
+}
+.work-items__head .cf-heading {
+  flex: 1;
+  min-width: 0;
+}
+.work-items__round {
+  width: 32px;
+  height: 32px;
+}
+.work-items__round[data-reading='true'],
+.work-items__round[data-reading='true']:disabled {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.work-items__spinner {
+  animation: work-items-spin 900ms linear infinite;
+}
+@keyframes work-items-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-items__spinner {
+    animation: none;
+  }
+}
+.work-items__sprint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+/* An upcoming sprint: when it starts, in a soft lime chip. */
+.work-items__upcoming {
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.work-items__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 10px 6px;
+}
+.work-items__lead {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+.work-items__note,
+.work-items__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  font-size: 14px;
+  line-height: 20px;
+}
+.work-items__note .cf-icon,
+.work-items__problem .cf-icon {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.work-items > .work-items__note {
+  margin: 0 10px;
+}
+.work-items__problem {
+  background: var(--danger-soft);
+}
+.work-items__problem strong {
+  color: var(--danger);
+}
+.work-items__problem .cf-icon {
+  color: var(--danger);
+}
+.work-items__command {
+  align-self: stretch;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--slate);
+  color: var(--on-slate);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.work-items__skeleton {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 8px;
+  opacity: 0.5;
+}
+.work-items__skeleton span {
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--tile);
+}
+.work-items__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.work-items__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.work-items__group-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.work-items__group-head:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.work-items__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.work-items__hint {
+  margin: 0;
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* One Work item: a beige a step lighter than the ground, not white, with a visible border. */
+.work-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: #f8f5ea;
+}
+.work-item:hover {
+  background: #f2edda;
+}
+.work-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.work-item__glyph,
+.work-item__type {
+  color: var(--text);
+}
+.work-item__id {
+  font-variant-numeric: tabular-nums;
+}
+.work-item__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.work-item__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--slate);
+}
+/* Not started yet: a ring rather than a dot. */
+.work-item__dot--todo {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+}
+.work-item__title {
+  display: -webkit-box;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  text-align: left;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  cursor: pointer;
+}
+.work-item__title:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+.work-item__title:focus-visible,
+.work-item__action:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.work-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+/* An action's button: outlined unless it has a colour; its label light or dark on it. */
+.work-item__action {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line-control);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.work-item__action:hover {
+  filter: brightness(0.95);
+}
+/* A skill the displayed Project lacks: greyed out, and it types nothing. */
+.work-item__action[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+
+/* The configuration form, on the Shortcut form's frame. */
+.work-items-dialog {
+  width: 760px;
+}
+.work-items-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.work-items-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.work-items-dialog__section + .work-items-dialog__section {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.work-items-dialog__section h3 {
+  margin: 0;
+}
+.work-items-dialog__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.work-items-dialog__failure {
+  color: var(--danger);
+}
+.work-items-dialog__test {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.work-items-dialog__result {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--ground);
+  font-size: 14px;
+  line-height: 20px;
+}
+.work-items-dialog__result .cf-icon {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.work-items-dialog__result--failed {
+  background: var(--danger-soft);
+}
+.work-items-dialog__result--failed .cf-icon,
+.work-items-dialog__result--failed strong {
+  color: var(--danger);
+}
+.work-items-dialog__actions-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.work-items-dialog__lead {
+  margin: -4px 0 0;
+}
+.work-items-dialog__action {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+.work-items-dialog__action-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.work-items-dialog__action-head .cf-muted {
+  flex: 1;
+  font-size: 14px;
+}
+.work-items-dialog__action-head .cf-btn--icon {
+  width: 32px;
+  height: 32px;
+}
+.work-items-dialog__number {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+.work-items-dialog__insert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  font-size: 14px;
+}
+.work-items-dialog__insert .cf-chip {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.work-items-dialog__insert .cf-chip:hover {
+  background: var(--dormant);
+}
+.work-items-dialog__colours {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.work-items-dialog__colour-label {
+  font-weight: 600;
+}
+.work-items-dialog__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.work-items-dialog__swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.work-items-dialog__swatch--outline {
+  border: 1.5px solid var(--line-control);
+  background: transparent;
+}
+.work-items-dialog__swatch[aria-pressed='true'],
+.work-items-dialog__other[aria-pressed='true'] {
+  outline: 2px solid var(--slate);
+  outline-offset: 3px;
+}
+.work-items-dialog__swatch:focus-visible,
+.work-items-dialog__other:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.work-items-dialog__other {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px dashed var(--line-control);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* The native colour picker opens from "Other…"; the input itself stays out of sight. */
+.work-items-dialog__picker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.work-items-dialog__colour-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 14px;
+}
+.work-items-dialog__colour-preview .work-item__action {
+  cursor: default;
+}
+.work-items-dialog__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+.work-items-dialog__warning .cf-icon {
+  margin-top: 2px;
+  color: var(--danger);
+}
+.work-items-dialog__warning strong {
+  color: var(--danger);
+}
+.work-items-dialog__add {
+  align-self: flex-start;
+  border-style: dashed;
+  border-color: var(--line-control);
+}

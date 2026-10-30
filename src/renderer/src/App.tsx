@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppState, ClaudeCodeStatus, MapListing, PanelId, Shortcut } from '../../shared/api'
+import type { AppState, ClaudeCodeStatus, MapListing, PanelId, Shortcut, WorkItem, WorkItemAction } from '../../shared/api'
 import { commandText } from '../../shared/shortcuts'
+import { actionCommand, workItemUrl } from '../../shared/work-items'
 import { api, onEvent } from './api'
 import { CloseWarning } from './components/CloseWarning'
 import { Explorer, ExplorerRail, useSessionCatalog } from './components/Explorer'
@@ -14,6 +15,8 @@ import { BusyNotice, ShortcutDialog, ShortcutsCard, ShortcutsRail, lacksSkill, u
 import { SidePanel } from './components/SidePanel'
 import { TerminalArea } from './components/TerminalArea'
 import { TitleBar } from './components/TitleBar'
+import { WorkItemsCard, useWorkItems } from './components/WorkItems'
+import { WorkItemsDialog } from './components/WorkItemsDialog'
 import { useEditorTabs } from './editor/editor-tabs'
 import { ExplorerColumn } from './elements/ExplorerColumn'
 import { columnProps, isShown, useInterfaceElements } from './elements/interface-elements'
@@ -61,6 +64,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // A Web tab closes with its Shortcut.
   useEffect(() => webbing.web.keepOnly(new Set(webIds.split(' '))), [webbing.web, webIds])
   const webTabs = webbing.tabs.flatMap((tab) => {
+    if (tab.page) return [{ ...tab, title: tab.page.title, address: tab.page.address }]
     const shortcut = webShortcuts.find((each) => each.id === tab.shortcutId)
     return shortcut ? [{ ...tab, title: shortcut.name, address: shortcut.address }] : []
   })
@@ -141,6 +145,22 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     if (lacksSkill(shortcut, targetSkills)) return
     typeCommand(commandText(shortcut.command), shortcut.name, null)
   }
+
+  // The Work items card reads the backlog when a Project is displayed and when the user asks. Its
+  // actions type into a new Session of the displayed Project, whose skills say which are greyed out.
+  const workItems = useWorkItems(state.backlog, project)
+  const [configuringBacklog, setConfiguringBacklog] = useState(false)
+  const sharesTargetSkills = namesSkill && samePath(skillTarget, project)
+  const ownSkills = useProjectSkills(state.workItemActions.length && !sharesTargetSkills ? project : null)
+  const workItemSkills = sharesTargetSkills ? targetSkills : ownSkills
+  const runWorkItemAction = (action: WorkItemAction, workItem: WorkItem): void => {
+    const command = actionCommand(action, workItem, workItemUrl(state.backlog!, workItem.id))
+    startHostedSession(project, { kind: 'new', typed: { command, action: action.label, workItem: workItem.id } })
+  }
+  const openWorkItem = (workItem: WorkItem): void =>
+    showWebTab(() => webbing.web.openPage(`work-item-${workItem.id}`, workItemUrl(state.backlog!, workItem.id), `#${workItem.id}`))
+  // A command that puts `az` right runs in Claude Code's shell mode (`!`), typed into a new Session, never sent.
+  const typeFix = (command: string): void => startHostedSession(project, { kind: 'new', typed: { command: `!${command}`, shortcut: command } })
   const shortcutsProps = {
     shortcuts: state.shortcuts,
     target: skillTarget,
@@ -268,6 +288,20 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
                 frame={frame}
               />
             )}
+            work-items={(frame) => (
+              <WorkItemsCard
+                config={state.backlog}
+                actions={state.workItemActions}
+                reading={workItems}
+                project={project}
+                skills={workItemSkills}
+                onConfigure={() => setConfiguringBacklog(true)}
+                onAction={runWorkItemAction}
+                onOpen={openWorkItem}
+                onTypeFix={typeFix}
+                frame={frame}
+              />
+            )}
             sessions={(frame) => (
               <Explorer
                 projects={catalog}
@@ -351,6 +385,15 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           shortcuts={state.shortcuts}
           project={project}
           onDone={() => setEditingShortcut(null)}
+        />
+      )}
+      {configuringBacklog && (
+        <WorkItemsDialog
+          config={state.backlog}
+          actions={state.workItemActions}
+          project={project}
+          sample={(workItems.listing?.ok && workItems.listing.workItems[0]) || null}
+          onDone={() => setConfiguringBacklog(false)}
         />
       )}
       {busySession && <BusyNotice session={busySession} onDismiss={dismissBusy} />}

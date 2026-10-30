@@ -19,7 +19,11 @@ export type SessionEnd = { exitCode: number } | { exitCode: null; missingFolder:
  * command for a Ticket of a Map, or, without a Map, a Ticket worked as a Map of its own; or a Skill
  * shortcut's command, named by its Shortcut.
  */
-export type TypedCommand = { command: string; ticket: string; map: string | null } | { command: string; shortcut: string }
+export type TypedCommand =
+  | { command: string; ticket: string; map: string | null }
+  | { command: string; shortcut: string }
+  /** A Work item action's command, for the Work item numbered `workItem`. */
+  | { command: string; action: string; workItem: number }
 
 /**
  * Clears Claude Code's prompt before ClaudeForge types into it: Ctrl+E goes to the end of the

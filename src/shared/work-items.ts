@@ -177,7 +177,7 @@ export const workItemUrl = (config: BacklogConfig, id: number): string =>
   `${organizationUrl(config.organization)}/${encodeURIComponent(config.project)}/_workitems/edit/${id}`
 
 /** Whether a configuration has every field it needs to read the backlog. */
-export const backlogConfigured = (config: BacklogConfig | null): config is BacklogConfig =>
+export const backlogConfigured = (config: BacklogConfig | null): boolean =>
   !!config && /^https?:\/\/\S+$/i.test(config.organization) && !!config.project && !!config.areaPath && !!config.iterationRoot
 
 /** The configuration as the app state keeps it: trimmed, the organisation as an address. */
