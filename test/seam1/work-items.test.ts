@@ -209,10 +209,9 @@ describe('Work items read from az', () => {
     )
   })
 
-  it('takes an organisation by its address or its name alone', () => {
+  it('keeps an organisation by its address, trimmed, never assuming a host', () => {
     expect(organizationUrl(' https://devops.example.test/acme/ ')).toBe('https://devops.example.test/acme')
-    expect(organizationUrl('acme')).toBe('https://devops.example.test/acme')
-    expect(organizationUrl('https://acme.example.test')).toBe('https://acme.example.test')
+    expect(organizationUrl('acme')).toBe('acme')
     expect(organizationUrl('')).toBe('')
   })
 })

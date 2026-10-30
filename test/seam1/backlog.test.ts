@@ -77,7 +77,7 @@ describe('the Work items card’s backlog', () => {
     expect(initial.workItemActions).toEqual([])
 
     await start().api.appState.write({
-      backlog: { ...config, organization: ' fixture-org ', project: ' Harbor ' },
+      backlog: { ...config, organization: ' https://devops.example.test/fixture-org/ ', project: ' Harbor ' },
       workItemActions: [action({ label: ' Analyse ' }), action({ id: 'code', label: 'Code', colour: '#E58A7A' })]
     })
 
@@ -182,7 +182,7 @@ describe('the Work items card’s backlog', () => {
   it('offers the organisation’s projects, the project’s areas, and the iterations that hold sprints', async () => {
     const { api } = start()
 
-    expect(await api.backlog.projects('fixture-org')).toEqual({ ok: true, values: ['Harbor', 'Maintenance'] })
+    expect(await api.backlog.projects('https://devops.example.test/fixture-org')).toEqual({ ok: true, values: ['Harbor', 'Maintenance'] })
     expect(await api.backlog.areas(config.organization, 'Harbor')).toEqual({
       ok: true,
       values: ['Harbor', 'Harbor\\Platform & Ops', 'Harbor\\Platform & Ops\\Gateway', 'Harbor\\Mobile']
@@ -191,7 +191,7 @@ describe('the Work items card’s backlog', () => {
       ok: true,
       values: ['Harbor', 'Harbor\\Team Rocket', 'Harbor\\Team Rocket\\2026']
     })
-    expect(await api.backlog.projects('nobody')).toMatchObject({ ok: false, problem: 'az-failed' })
+    expect(await api.backlog.projects('https://devops.example.test/nobody')).toMatchObject({ ok: false, problem: 'az-failed' })
   })
 })
 

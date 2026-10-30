@@ -173,12 +173,8 @@ const NOT_STARTED = new Set(['to do', 'to refine', 'new', 'proposed', 'approved'
 /** Whether a Work item's state is one of work in progress (a solid dot) rather than not started (a ring). */
 export const workItemStarted = (state: string): boolean => !NOT_STARTED.has(state.trim().toLowerCase())
 
-/** An organisation as its address, given that or its name alone; empty stays empty. */
-export function organizationUrl(input: string): string {
-  const text = input.trim().replace(/\/+$/, '')
-  if (!text || /^https?:\/\//i.test(text)) return text
-  return `https://devops.example.test/${text}`
-}
+/** An organisation's address as ClaudeForge keeps it: trimmed, without a closing slash. No host is ever assumed. */
+export const organizationUrl = (input: string): string => input.trim().replace(/\/+$/, '')
 
 /** Where a Work item opens in Azure DevOps. */
 export const workItemUrl = (config: BacklogConfig, id: number): string =>

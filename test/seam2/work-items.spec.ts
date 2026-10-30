@@ -62,7 +62,7 @@ test.describe('the Work items card', () => {
 
     await card(window).getByRole('button', { name: 'Connect Azure DevOps' }).click()
     const dialog = window.getByRole('dialog', { name: 'Configure Azure DevOps' })
-    await dialog.getByLabel('Organisation').fill('fixture-org')
+    await dialog.getByLabel('Organisation').fill('https://devops.example.test/fixture-org/')
     await dialog.getByLabel('Project').selectOption('Harbor')
     await dialog.getByLabel('Area path').selectOption('Harbor\\Platform & Ops')
     await dialog.getByLabel('Iteration root').selectOption('Harbor\\Team Rocket')

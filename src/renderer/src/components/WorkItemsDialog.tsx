@@ -117,7 +117,7 @@ export function WorkItemsDialog({ config, actions: savedActions, project, sample
   // The first Work item a test found, else the card's, else a sample one.
   const found = typeof test === 'object' && test?.ok ? test.workItems[0] : undefined
   const preview: WorkItem = found ?? sample ?? { id: 12345, type: 'Product Backlog Item', state: 'To Do', title: t('workItems.dialog.sample'), assignedToMe: false }
-  const previewUrl = workItemUrl(backlogConfigured(draft) ? draft : { ...draft, organization: 'https://devops.example.test/organisation' }, preview.id)
+  const previewUrl = workItemUrl(draft, preview.id)
 
   const blank = !organization.trim() && !azProject && !areaPath && !iterationRoot
   const incomplete = !blank && !backlogConfigured(draft)
@@ -172,7 +172,6 @@ export function WorkItemsDialog({ config, actions: savedActions, project, sample
                 <input
                   className="extdialog__input cf-mono"
                   value={organization}
-                  placeholder="https://devops.example.test/organisation"
                   spellCheck={false}
                   autoFocus
                   aria-invalid={(tried && incomplete && !/^https?:[/][/]\S+$/i.test(draft.organization)) || undefined}

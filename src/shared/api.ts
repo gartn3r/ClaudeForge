@@ -83,7 +83,7 @@ export type Shortcut =
  * configuration for every Project.
  */
 export interface BacklogConfig {
-  /** The organisation's address, `https://devops.example.test/<organisation>`. */
+  /** The organisation's address, as the browser shows it on Azure DevOps. */
   organization: string
   project: string
   /** The area the Work items are in, sub-areas included, as a Work item names it: `Acme\Acquisition`. */

@@ -87,7 +87,7 @@
       "title": "Configurer Azure DevOps",
       "backlog": "Backlog",
       "organization": "Organisation",
-      "organizationHint": "Son adresse, ou son nom seul.",
+      "organizationHint": "Son adresse, telle que votre navigateur l’affiche sur Azure DevOps.",
       "project": "Projet",
       "areaPath": "Area path",
       "areaHint": "Ses sous-areas sont incluses.",
