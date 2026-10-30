@@ -65,6 +65,15 @@ describe('app state', () => {
     expect((await start().api.appState.read()).gpuRendering).toBe(false)
   })
 
+  it('follows Windows for its Theme until the user picks light or dark, and remembers that across a restart', async () => {
+    expect((await start().api.appState.read()).theme).toBe('system')
+
+    await start().api.appState.write({ theme: 'dark' })
+    await start().api.appState.write({ theme: 'sepia' as never })
+
+    expect((await start().api.appState.read()).theme).toBe('dark')
+  })
+
   it('notifies the user about Sessions until they turn notifications off, and remembers that across a restart', async () => {
     expect((await start().api.appState.read()).notifications).toBe(true)
 

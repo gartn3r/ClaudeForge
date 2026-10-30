@@ -23,6 +23,14 @@
   --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 
+  /* A pressed choice (a segmented control, the settings button), a Work item's box, words on soft lime. */
+  --pressed: var(--slate); --on-pressed: var(--on-slate);
+  --work-item: #f8f5ea; --work-item-hover: #f2edda;
+  --on-accent-soft: #2f353f; --on-accent-soft-muted: #4a5320;
+  --scrollbar: rgba(47, 53, 63, 0.25); --section-hover: #e3dcc3;
+  /* The Slate a Work item action can take, which turns over with the Theme. */
+  --action-slate: #2f353f; --action-slate-text: #f5f1e3;
+
   /* What a tile's content sits on: each tile sets its own (a card by default). */
   --surface: var(--card); --surface-raised: var(--ground); --surface-overlay: var(--card);
   color-scheme: light;
@@ -36,4 +44,30 @@
   --focus: var(--accent); --dormant: #8a8f99; --done: var(--on-slate-muted); --waiting: var(--accent-soft);
   --danger: #f0a99b; --danger-soft: rgba(240, 169, 155, 0.16); --selection: var(--terminal-selection);
   color: var(--text);
+}
+
+/* Bento · Nuit, the dark Theme: the same roles on warm dark fills, never black (the work's, #202328, is the darkest). */
+:root[data-theme='dark'],
+:root[data-theme='dark'] .cf-on-slate .cf-dialog {
+  --ground: #26282d; --tile: #2d3036; --card: #33363d; --slate: #202328; --slate-deep: #1c1e22;
+  --text: #ece6d6; --text-muted: #b3b6a6; --text-faint: #80847c; --on-slate: #ece6d6; --on-slate-muted: #c9ccbb;
+  --accent: #b8d23a; --accent-soft: #3a4419; --accent-text: #c5dc5a; --on-accent: #202328;
+  --line: rgba(236, 230, 214, 0.08); --line-strong: rgba(236, 230, 214, 0.2); --line-control: #8a8f86; --focus: #ece6d6;
+  --dormant: #5b5f66; --done: #b3b6a6; --waiting: #c5dc5a; --danger: #f0a99b; --danger-soft: rgba(229, 138, 122, 0.16);
+  --selection: rgba(184, 210, 58, 0.35);
+  --terminal: #202328; --terminal-text: #e6e3d6; --terminal-selection: rgba(184, 210, 58, 0.3);
+  --ansi-black: #2d3036; --ansi-green: #b8d23a; --ansi-bright-white: #ece6d6;
+  --shadow-popover: 0 18px 40px rgba(20, 22, 26, 0.55), 0 0 0 1px rgba(236, 230, 214, 0.1);
+  --shadow-dialog: 0 30px 70px rgba(20, 22, 26, 0.6); --shadow-node-lift: 0 6px 16px rgba(20, 22, 26, 0.5);
+  --pressed: #ece6d6; --on-pressed: #202328;
+  --work-item: #3a3e45; --work-item-hover: #41464e;
+  --on-accent-soft: #ece6d6; --on-accent-soft-muted: #cfe07a;
+  --scrollbar: rgba(236, 230, 214, 0.22); --section-hover: #3a3e45;
+  --action-slate: #ece6d6; --action-slate-text: #202328;
+  --surface-overlay: #3a3e46;
+  color-scheme: dark;
+}
+/* On the work's fill, soft lime would vanish: a waiting Session says so in lime. */
+:root[data-theme='dark'] .cf-on-slate {
+  --waiting: var(--accent-text);
 }

@@ -9,6 +9,7 @@ import { hasForbiddenCharacter, isWebAddress, opensInBrowser } from './shortcuts
 
 /** ClaudeForge's own Elements, by their fixed identifiers: one set of properties for the whole of ClaudeForge. */
 export const OWN_ELEMENTS = [
+  'window',
   'title-bar',
   'explorer',
   'shortcuts',
@@ -60,6 +61,8 @@ const COLOURS: PropertyName[] = ['textColor', 'backgroundColor']
 
 /** The properties each Element takes, by own Element or created kind; any other is refused. */
 export const PROPERTIES_TAKEN: Record<OwnElementId | CreatedElementKind, readonly PropertyName[]> = {
+  // Its background is what shows between the tiles and behind the title bar.
+  window: COLOURS,
   'title-bar': COLOURS,
   explorer: ['visible', 'collapsed', 'width', ...COLOURS],
   shortcuts: ['visible', 'collapsed', 'order', 'title', ...COLOURS],

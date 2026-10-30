@@ -27,6 +27,7 @@ import { tabTitle, useHostedSessions, useSavedTabs } from './terminal/hosted-ses
 import type { SessionLaunch } from './terminal/hosted-terminal'
 import { useSessionNotifications } from './terminal/session-notifications'
 import { planTyping, samePath } from './terminal/typing'
+import { useTheme } from './theme'
 import { useWebTabs } from './web/web-tabs'
 
 interface AppProps {
@@ -79,6 +80,9 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   // ClaudeForge's own Elements and the displayed Project's Created ones, as the user or Claude set them.
   const elements = useInterfaceElements(project, state.layout)
   const rightPanelElement = elements.own('right-panel')
+  // The window's colours show between the tiles; its right-click menu opens from those gaps only.
+  const windowFrame = elements.frame(elements.own('window'))
+  useTheme(state.theme)
 
   // A Hosted session started anywhere goes on show, so its Project becomes the displayed one.
   const startHostedSession = (folder: string, launch?: SessionLaunch): void => {
@@ -233,7 +237,15 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
   }
 
   return (
-    <div className="shell" data-resizing={resizing}>
+    <div
+      className="shell"
+      data-resizing={resizing}
+      style={windowFrame.style}
+      onContextMenu={(event) => {
+        const target = event.target as Element
+        if (target === event.currentTarget || target.classList.contains('columns')) windowFrame.onContextMenu(event)
+      }}
+    >
       <TitleBar
         appTitle={state.appTitle}
         tabs={

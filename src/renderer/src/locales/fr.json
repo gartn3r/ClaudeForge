@@ -18,7 +18,14 @@
     "gpuRendering": "Rendu GPU",
     "gpuRenderingHint": "Désactivez-le si le terminal affiche du texte brouillé.",
     "notifications": "Notifications",
-    "notificationsHint": "Quand une Session en arrière-plan vous attend ou a terminé."
+    "notificationsHint": "Quand une Session en arrière-plan vous attend ou a terminé.",
+    "theme": "Thème",
+    "themes": {
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    },
+    "themeHint": "Système suit le réglage de Windows."
   },
   "shortcuts": {
     "heading": "Raccourcis",
@@ -564,6 +571,7 @@
       "action": "Action"
     },
     "own": {
+      "window": "Fenêtre",
       "titleBar": "Barre de titre",
       "explorer": "Explorateur",
       "shortcuts": "Raccourcis",

@@ -169,6 +169,11 @@ export const APP_TITLE_MAX_LENGTH = 60
 /** An App title as ClaudeForge keeps it: trimmed and cut short; null, for ClaudeForge's own name, once blank. */
 export const tidyAppTitle = (title: string): string | null => title.trim().slice(0, APP_TITLE_MAX_LENGTH).trim() || null
 
+/** How ClaudeForge looks: light, dark, or as Windows is set. */
+export type Theme = 'light' | 'dark' | 'system'
+
+export const THEMES: readonly Theme[] = ['light', 'dark', 'system']
+
 export interface AppState {
   version: 1
   /** The App title the user gave, trimmed; null to show ClaudeForge's own name. */
@@ -180,6 +185,8 @@ export interface AppState {
   gpuRendering: boolean
   /** Whether a background Hosted session that waits for the user or finishes raises a Windows notification. */
   notifications: boolean
+  /** The Theme the user picked; `system` follows Windows. */
+  theme: Theme
   /** By Session id; a Session the user never tidied has no entry. */
   sessions: Record<string, SessionPreferences>
   /** By Project folder, then Map id; a Map the user never changed has no entry. */
@@ -204,6 +211,7 @@ export interface AppStatePatch {
   claudePath?: string | null
   gpuRendering?: boolean
   notifications?: boolean
+  theme?: Theme
   /** By Session id: a null field drops that preference, a null entry every one of them. */
   sessions?: Record<string, { title?: string | null; hidden?: boolean | null } | null>
   /** By Project folder, then Map id: a default value or null drops that preference, a null entry every one of them. */

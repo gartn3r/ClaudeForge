@@ -37,15 +37,17 @@ export interface LaunchOptions {
   project?: FixtureProject
   /** Variables set on top of the fake environment's. */
   variables?: Record<string, string>
+  /** How Windows is set, which the System Theme follows: light unless a journey says otherwise. */
+  colorScheme?: 'light' | 'dark'
 }
 
 /** Launches the built (or packaged) ClaudeForge on a fake environment and waits for its window. */
 export async function launchClaudeForge(
   env: FakeEnvironment,
-  { project = 'recipe-box', variables }: LaunchOptions = {}
+  { project = 'recipe-box', variables, colorScheme = 'light' }: LaunchOptions = {}
 ): Promise<RunningClaudeForge> {
   const launch = PACKAGED ? { executablePath: PACKAGED } : { args: [MAIN] }
-  const app = await electron.launch({ ...launch, env: { ...env.processEnv, ...variables }, cwd: env.projects[project] })
+  const app = await electron.launch({ ...launch, env: { ...env.processEnv, ...variables }, cwd: env.projects[project], colorScheme })
   const window = await app.firstWindow()
   await window.getByRole('main').waitFor()
   await app.evaluate(({ BrowserWindow }, { width, height }) => {
