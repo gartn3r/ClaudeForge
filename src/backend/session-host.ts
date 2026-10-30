@@ -20,6 +20,36 @@ const HOSTED_ENVIRONMENT: Environment = {
   TERM_PROGRAM_VERSION: undefined
 }
 
+/**
+ * What a Claude Code session sets for the programs it runs, so that a `claude` among them knows it is
+ * that session's child. ClaudeForge started from a Claude Code terminal (`npm run dev` there) inherits
+ * them; each Hosted session's `claude` must not, or it takes itself for a child session: it stops
+ * naming its terminal and keeping its history as usual, and could reach the parent through its socket.
+ */
+const PARENT_SESSION_VARIABLES = new Set([
+  'CLAUDECODE',
+  'CLAUDE_PID',
+  'CLAUDE_CODE_ENTRYPOINT',
+  'CLAUDE_CODE_EXECPATH',
+  'CLAUDE_CODE_CHILD_SESSION',
+  'CLAUDE_CODE_SESSION_ID',
+  'CLAUDE_CODE_HOST_SESSION_ID',
+  'CLAUDE_CODE_SESSION_ATTENDED',
+  'CLAUDE_CODE_DISABLE_TERMINAL_TITLE',
+  'CLAUDE_CODE_TERMINAL_MCP_TOOLS'
+])
+const PARENT_SESSION_PREFIXES = ['CLAUDE_CODE_MESSAGING_', 'CLAUDE_CODE_SDK_', 'CLAUDE_AGENT_SDK_']
+
+const isParentSessionVariable = (name: string): boolean => {
+  const upper = name.toUpperCase()
+  return PARENT_SESSION_VARIABLES.has(upper) || PARENT_SESSION_PREFIXES.some((prefix) => upper.startsWith(prefix))
+}
+
+/** The environment without what a parent Claude Code session set for its own children. */
+export function withoutParentSession(env: Environment): Environment {
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !isParentSessionVariable(name)))
+}
+
 /** The environment with the given variables set or removed, whatever case it spells them in. */
 function withVariables(env: Environment, variables: Environment): Environment {
   const names = new Set(Object.keys(variables).map((name) => name.toUpperCase()))
@@ -159,7 +189,7 @@ export class SessionHost {
     const granted = (await cli?.grant(id, this.options.env)) ?? null
     const { sessionId, args: startArgs } = withSessionId(args)
     const claudeArgs = cli && granted ? [...startArgs, '--append-system-prompt', cli.instruction] : startArgs
-    const env = withVariables(this.options.env, { ...HOSTED_ENVIRONMENT, ...granted })
+    const env = withVariables(withoutParentSession(this.options.env), { ...HOSTED_ENVIRONMENT, ...granted })
     const ptyOptions = { name: 'xterm-256color', cols, rows, cwd: folder, env, useConptyDll: true }
     let pty: IPty
     try {

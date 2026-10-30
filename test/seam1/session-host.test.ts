@@ -109,6 +109,31 @@ describe('the Session host', () => {
     ])
   })
 
+  it('starts claude without what a parent Claude Code session set for its children, keeping the user\'s own variables', async () => {
+    env = await createFakeEnvironment()
+    // ClaudeForge started from a Claude Code terminal, as `npm run dev` run there does.
+    Object.assign(env.processEnv, {
+      CLAUDECODE: '1',
+      CLAUDE_CODE_ENTRYPOINT: 'claude-desktop',
+      CLAUDE_CODE_CHILD_SESSION: '1',
+      CLAUDE_CODE_SESSION_ID: '4146162d-f8f4-4363-a831-d9b23d4ddf88',
+      CLAUDE_CODE_DISABLE_TERMINAL_TITLE: '1',
+      CLAUDE_CODE_MESSAGING_SOCKET: '\\\\.\\pipe\\LOCAL\\cc-msg',
+      CLAUDE_CODE_MESSAGING_TOKEN: 'parent-token',
+      CLAUDE_CODE_USE_BEDROCK: '1'
+    })
+    backend = startBackend(env)
+
+    await backend.api.sessionHost.start(env.projects['recipe-box'], SIZE)
+
+    await vi.waitFor(async () => expect(await sessionRuns()).toHaveLength(1), { timeout: 15_000 })
+    const claudeEnv = (await sessionRuns())[0]!.env
+    expect(claudeEnv).toMatchObject({ CLAUDE_CODE_USE_BEDROCK: '1', TERM_PROGRAM: 'ClaudeForge' })
+    for (const name of ['CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_DISABLE_TERMINAL_TITLE', 'CLAUDE_CODE_MESSAGING_SOCKET', 'CLAUDE_CODE_MESSAGING_TOKEN']) {
+      expect(claudeEnv).not.toHaveProperty(name)
+    }
+  })
+
   it('resumes a past Session with claude --resume <id> in its Project', async () => {
     const { api } = await start()
 
