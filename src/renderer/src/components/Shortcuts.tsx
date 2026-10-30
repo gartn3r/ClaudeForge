@@ -253,9 +253,36 @@ export function ShortcutsRail({ shortcuts, target, skills, onOpen, onAdd }: Shor
 }
 
 /** How the Shortcut form shows a skill: by Claude Code's name for it, and where it comes from. */
-interface SkillChoice {
+export interface SkillChoice {
   value: string
   label: string
+}
+
+/**
+ * The skills a form offers from a Project's Extensions: the Project's own first, then the user's,
+ * then the plugins'. A skill already chosen that the Project lacks stays on offer, first, so editing keeps it.
+ */
+export function skillChoices(
+  listing: ReturnType<typeof useExtensions>['listing'],
+  chosen: string,
+  t: ReturnType<typeof useTranslation>['t']
+): SkillChoice[] {
+  const rank = (skill: Extension): number => (skill.plugin ? 2 : skill.scope === 'project' ? 0 : 1)
+  const skills: SkillChoice[] =
+    typeof listing === 'object'
+      ? listing.extensions
+          .filter((extension) => extension.kind === 'skill')
+          .sort((a, b) => rank(a) - rank(b))
+          .map((extension) => ({
+            value: skillCommandName(extension),
+            label: t('shortcuts.form.skillOption', {
+              name: extension.name,
+              origin: extension.plugin ?? t(`extensions.origin.${extension.scope}`)
+            })
+          }))
+      : []
+  if (chosen && !skills.some((choice) => choice.value === chosen)) skills.unshift({ value: chosen, label: chosen })
+  return skills
 }
 
 interface ShortcutDialogProps {
@@ -300,23 +327,7 @@ export function ShortcutDialog({ editing, shortcuts, project, onDone }: Shortcut
     return () => element.close()
   }, [])
 
-  // The Project's own skills first, then the user's, then the plugins'.
-  const rank = (skill: Extension): number => (skill.plugin ? 2 : skill.scope === 'project' ? 0 : 1)
-  const skills: SkillChoice[] =
-    typeof listing === 'object'
-      ? listing.extensions
-          .filter((extension) => extension.kind === 'skill')
-          .sort((a, b) => rank(a) - rank(b))
-          .map((extension) => ({
-            value: skillCommandName(extension),
-            label: t('shortcuts.form.skillOption', {
-              name: extension.name,
-              origin: extension.plugin ?? t(`extensions.origin.${extension.scope}`)
-            })
-          }))
-      : []
-  // A skill the Shortcut names but the displayed Project lacks stays on offer, so editing keeps it.
-  if (skill && !skills.some((choice) => choice.value === skill)) skills.unshift({ value: skill, label: skill })
+  const skills = skillChoices(listing, skill, t)
   const chosenSkill = skill || skills[0]?.value || ''
 
   const command: ShortcutCommand = mode === 'skill' ? { mode, skill: chosenSkill, args } : { mode, text }
