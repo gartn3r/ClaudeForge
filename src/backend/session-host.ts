@@ -250,9 +250,9 @@ export class SessionHost {
     return { id, sessionId, windowsPty: windowsPty() }
   }
 
-  /** The Hosted sessions whose `claude` still runs, oldest first. */
-  running(): Array<{ id: string; folder: string }> {
-    return [...this.sessions.values()].map(({ id, folder }) => ({ id, folder }))
+  /** The Hosted sessions whose `claude` still runs, oldest first, with the Session each runs now. */
+  running(): Array<{ id: string; folder: string; sessionId: string }> {
+    return [...this.sessions.values()].map(({ id, folder, sessionId }) => ({ id, folder, sessionId }))
   }
 
   /** A Hosted session whose `claude` still runs: its folder, and the Session it runs now; undefined for any other. */

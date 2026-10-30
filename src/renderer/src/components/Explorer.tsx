@@ -187,14 +187,18 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, onSta
     startNew: (project) => onStartSession(project, { kind: 'new' })
   }
 
-  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends,
+  // Only a past Session can be resumed or forked: one running, here or elsewhere, runs until it ends,
   // and one whose folder is gone has nowhere to run.
   const startItem = (session: SessionSummary, project: string, kind: 'resume' | 'fork', icon: LucideIcon): MenuItem => ({
     label: t(`explorer.${kind}`),
     icon,
     disabled: session.state !== 'past' || session.folderMissing,
     disabledReason:
-      session.state !== 'past' ? t('explorer.openElsewhereTooltip') : t('explorer.folderMissing', { folder: session.cwd }),
+      session.state === 'hosted'
+        ? t('explorer.hostedTooltip')
+        : session.state === 'external'
+          ? t('explorer.openElsewhereTooltip')
+          : t('explorer.folderMissing', { folder: session.cwd }),
     onSelect: () => onStartSession(project, { kind, sessionId: session.id })
   })
 
@@ -354,14 +358,17 @@ interface SessionRowProps {
 function SessionRow({ session, project, now, actions }: SessionRowProps): ReactNode {
   const { t, i18n } = useTranslation()
   const external = session.state === 'external'
+  const hosted = session.state === 'hosted'
   const renaming = actions.renaming === session.id
   const title = session.title ?? t('explorer.untitled')
   // A Session whose folder is gone is greyed out, and says why in its tooltip.
-  const missing = !external && session.folderMissing
+  const missing = session.state === 'past' && session.folderMissing
   // Rows never show ids: the tooltip carries the Session id under the title or the notice.
   const notice = external
     ? t('explorer.openElsewhereTooltip')
-    : missing
+    : hosted
+      ? `${title}\n${t('explorer.hostedTooltip')}`
+      : missing
       ? t('explorer.folderMissing', { folder: session.cwd })
       : title
   const tooltip = `${notice}\n${session.id}`
@@ -402,6 +409,10 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
       {external ? (
         <span className="cf-status cf-status--external">
           <ExternalLink className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </span>
+      ) : hosted ? (
+        <span className="cf-status cf-status--hosted" role="img" aria-label={t('explorer.hosted')}>
+          <span className="cf-dot" />
         </span>
       ) : missing ? (
         <span className="cf-status">

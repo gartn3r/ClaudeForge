@@ -41,6 +41,7 @@
 .cf-status--done { color: var(--done); }
 .cf-status--dormant .cf-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dormant); }
 .cf-status--external { color: var(--text-muted); }
+.cf-status--hosted .cf-dot { background: var(--accent); }
 .cf-status--error { color: var(--danger); }
 .cf-pill { height: 28px; padding: 0 10px 0 8px; border-radius: var(--radius-full); font-weight: 700; }
 .cf-status--working.cf-pill { background: var(--accent); color: var(--on-accent); }

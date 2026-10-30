@@ -89,6 +89,13 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     webbing.web.deselect()
     hosted.sessions.select(key)
   }
+  // A Hosted session is displayed in its own tab; any other Session in the explorer and the Map panel.
+  const displaySession = (id: string): void => {
+    const hostedId = catalog?.flatMap((group) => group.sessions).find((session) => session.id === id)?.hostedId
+    const tab = hostedId && hosted.tabs.find((each) => each.terminal.hostedId === hostedId)
+    if (tab) selectHostedSession(tab.key)
+    else setDisplayedSessionId(id)
+  }
   const showEditor = (show: () => void): void => {
     webbing.web.deselect()
     show()
@@ -260,7 +267,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
               <Explorer
                 projects={catalog}
                 displayedSessionId={displayedSessionId}
-                onDisplaySession={setDisplayedSessionId}
+                onDisplaySession={displaySession}
                 onStartSession={startHostedSession}
                 onCollapse={collapseHandler('explorer', true)}
                 frame={frame}
@@ -319,7 +326,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
                 sessions={projectSessions}
                 displayedSession={displayed?.session ?? null}
                 preferences={state.maps[project] ?? {}}
-                onDisplaySession={setDisplayedSessionId}
+                onDisplaySession={displaySession}
                 onStartSession={(typed) => startHostedSession(project, { kind: 'new', typed })}
               />
             }
