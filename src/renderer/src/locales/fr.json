@@ -74,6 +74,8 @@
     "untitled": "Nouvelle Session",
     "openElsewhere": "Ouverte ailleurs",
     "openElsewhereTooltip": "Ouverte ailleurs. Elle pourra être reprise ici une fois terminée.",
+    "hosted": "En cours dans ClaudeForge",
+    "hostedTooltip": "En cours dans ClaudeForge, dans son propre onglet.",
     "folderMissing": "Son dossier n’existe plus, elle ne peut donc pas être reprise ici : {{folder}}",
     "activity": {
       "now": "maintenant",

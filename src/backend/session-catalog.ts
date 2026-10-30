@@ -31,6 +31,12 @@ interface CachedLink {
   link: Promise<WayfinderLink | null>
 }
 
+/** A Hosted session whose `claude` runs, and the Session it runs now. */
+export interface RunningHostedSession {
+  id: string
+  sessionId: string
+}
+
 /** A Session and the path of the Project it belongs to. */
 interface PlacedSession {
   project: string
@@ -69,14 +75,15 @@ export class SessionCatalog {
   /**
    * Calls back with the whole catalog whenever Claude Code's files change it, once watching.
    * `preferences` reads how the user tidied each Session in ClaudeForge, by Session id; `sessionIds`
-   * reads the list of Session ids.
+   * reads the list of Session ids; `hosted` names the Hosted sessions running now.
    */
   constructor(
     private readonly claudeHome: string,
     private readonly onChange: (projects: ProjectSessions[]) => void,
     private readonly preferences: () => Promise<Record<string, SessionPreferences>>,
     private readonly sessionIds: () => Promise<ReadonlySet<string>>,
-    private readonly resolveLink: LinkResolver
+    private readonly resolveLink: LinkResolver,
+    private readonly hosted: () => readonly RunningHostedSession[]
   ) {}
 
   /** The catalog as it is now. The first call starts watching Claude Code's files. */
@@ -195,9 +202,12 @@ export class SessionCatalog {
       this.sessionIds()
     ])
     const liveById = new Map(live.map((session) => [session.sessionId, session]))
+    const hostedById = new Map(this.hosted().map(({ id, sessionId }) => [sessionId, id]))
     const ids = [...new Set([...histories.keys(), ...liveById.keys()])].filter((id) => listed.has(id))
     const placed = await Promise.all(
-      ids.map((id) => this.place(id, histories.get(id), liveById.get(id), preferences[id] ?? {}))
+      ids.map((id) =>
+        this.place(id, histories.get(id), liveById.get(id), hostedById.get(id) ?? null, preferences[id] ?? {})
+      )
     )
     return group(placed.filter((entry) => entry !== null))
   }
@@ -207,6 +217,7 @@ export class SessionCatalog {
     id: string,
     history: HistorySummary | undefined,
     live: LiveSession | undefined,
+    hostedId: string | null,
     preferences: SessionPreferences
   ): Promise<PlacedSession | null> {
     // The running process knows the Session's name first: it writes the history afterwards.
@@ -215,7 +226,6 @@ export class SessionCatalog {
     // A finished history with nothing typed in it holds no Session worth listing.
     if (!cwd || (!live && claudeTitle === null)) return null
     const { project, worktree } = await this.placeOf(cwd)
-    // Nothing runs in ClaudeForge yet, so every running Session is External.
     const session: SessionSummary = {
       id,
       // The user's own name for it wins over every name Claude Code gives it.
@@ -224,7 +234,9 @@ export class SessionCatalog {
       worktree,
       // A running claude reports activity (a status change) before it reaches the history.
       lastActivity: Math.max(history?.lastActivity ?? 0, live?.updatedAt ?? 0),
-      state: live ? 'external' : 'past',
+      // A running Session that no Hosted session runs is External.
+      state: hostedId ? 'hosted' : live ? 'external' : 'past',
+      hostedId,
       hidden: preferences.hidden ?? false,
       // Looked at on every read, so a worktree created again at that path brings the Session back.
       folderMissing: !(await isFolder(cwd)),

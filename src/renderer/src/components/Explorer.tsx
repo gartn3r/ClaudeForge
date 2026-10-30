@@ -4,6 +4,7 @@ import {
   EyeOff,
   ExternalLink,
   Folder,
+  FolderOpen,
   FolderX,
   GitBranch,
   GitFork,
@@ -36,6 +37,8 @@ interface ExplorerProps {
   onDisplaySession(id: string): void
   /** Starts a Hosted session in a Project: a new Session, or one resumed or forked from a past Session. */
   onStartSession(project: string, launch: SessionLaunch): void
+  /** Asks for a folder and starts a new Session in it, whatever runs already. */
+  onOpenFolder(): void
   onCollapse(): void
   /** What the Sessions tile takes from its Element: its title, collapsed state, colours and right-click menu. */
   frame?: ElementFrame
@@ -112,7 +115,15 @@ interface RowActions {
 }
 
 /** The Sessions tile of the explorer: Sessions grouped by Project. */
-export function Explorer({ projects, displayedSessionId, onDisplaySession, onStartSession, onCollapse, frame }: ExplorerProps): ReactNode {
+export function Explorer({
+  projects,
+  displayedSessionId,
+  onDisplaySession,
+  onStartSession,
+  onOpenFolder,
+  onCollapse,
+  frame
+}: ExplorerProps): ReactNode {
   const { t } = useTranslation()
   const now = useNow()
   const [tidying, setTidying] = useState<Tidying | null>(null)
@@ -187,14 +198,18 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, onSta
     startNew: (project) => onStartSession(project, { kind: 'new' })
   }
 
-  // Only a past Session can be resumed or forked: one running elsewhere is read-only until it ends,
+  // Only a past Session can be resumed or forked: one running, here or elsewhere, runs until it ends,
   // and one whose folder is gone has nowhere to run.
   const startItem = (session: SessionSummary, project: string, kind: 'resume' | 'fork', icon: LucideIcon): MenuItem => ({
     label: t(`explorer.${kind}`),
     icon,
     disabled: session.state !== 'past' || session.folderMissing,
     disabledReason:
-      session.state !== 'past' ? t('explorer.openElsewhereTooltip') : t('explorer.folderMissing', { folder: session.cwd }),
+      session.state === 'hosted'
+        ? t('explorer.hostedTooltip')
+        : session.state === 'external'
+          ? t('explorer.openElsewhereTooltip')
+          : t('explorer.folderMissing', { folder: session.cwd }),
     onSelect: () => onStartSession(project, { kind, sessionId: session.id })
   })
 
@@ -241,6 +256,7 @@ export function Explorer({ projects, displayedSessionId, onDisplaySession, onSta
           <h2 className="cf-eyebrow" id={headingId}>
             {frame?.title ?? t('explorer.heading')}
           </h2>
+          <IconButton icon={FolderOpen} label={t('terminal.openFolder')} onClick={onOpenFolder} />
           <IconButton icon={PanelLeftClose} label={t('explorer.collapse')} onClick={onCollapse} />
         </div>
         <div className="explorer__tree" hidden={frame?.collapsed}>
@@ -354,14 +370,17 @@ interface SessionRowProps {
 function SessionRow({ session, project, now, actions }: SessionRowProps): ReactNode {
   const { t, i18n } = useTranslation()
   const external = session.state === 'external'
+  const hosted = session.state === 'hosted'
   const renaming = actions.renaming === session.id
   const title = session.title ?? t('explorer.untitled')
   // A Session whose folder is gone is greyed out, and says why in its tooltip.
-  const missing = !external && session.folderMissing
+  const missing = session.state === 'past' && session.folderMissing
   // Rows never show ids: the tooltip carries the Session id under the title or the notice.
   const notice = external
     ? t('explorer.openElsewhereTooltip')
-    : missing
+    : hosted
+      ? `${title}\n${t('explorer.hostedTooltip')}`
+      : missing
       ? t('explorer.folderMissing', { folder: session.cwd })
       : title
   const tooltip = `${notice}\n${session.id}`
@@ -402,6 +421,10 @@ function SessionRow({ session, project, now, actions }: SessionRowProps): ReactN
       {external ? (
         <span className="cf-status cf-status--external">
           <ExternalLink className="cf-icon cf-icon--sm" aria-hidden="true" />
+        </span>
+      ) : hosted ? (
+        <span className="cf-status cf-status--hosted" role="img" aria-label={t('explorer.hosted')}>
+          <span className="cf-dot" />
         </span>
       ) : missing ? (
         <span className="cf-status">
@@ -588,15 +611,18 @@ function formatActivity(time: number, now: number, language: string, t: Translat
 
 interface ExplorerRailProps {
   onExpand(): void
+  /** Asks for a folder and starts a new Session in it. */
+  onOpenFolder(): void
   /** The Shortcuts, under the expand button. */
   children?: ReactNode
 }
 
-export function ExplorerRail({ onExpand, children }: ExplorerRailProps): ReactNode {
+export function ExplorerRail({ onExpand, onOpenFolder, children }: ExplorerRailProps): ReactNode {
   const { t } = useTranslation()
   return (
     <>
       <IconButton icon={PanelLeftOpen} label={t('explorer.expand')} onClick={onExpand} />
+      <IconButton icon={FolderOpen} label={t('terminal.openFolder')} onClick={onOpenFolder} />
       {children}
       <div className="rail__end">
         <IconButton icon={Puzzle} label={t('extensions.heading')} onClick={onExpand} />

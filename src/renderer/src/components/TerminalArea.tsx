@@ -1,7 +1,6 @@
 import { FolderOpen } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { api } from '../api'
 import type { EditorTab } from '../editor/editor-tabs'
 import type { ElementFrame } from '../elements/interface-elements'
 import type { HostedTab } from '../terminal/hosted-sessions'
@@ -20,8 +19,8 @@ interface TerminalAreaProps {
   activeKey: string | null
   /** Whether the terminal on show renders with WebGL rather than the DOM renderer. */
   gpuRendering: boolean
-  /** Starts a Session in the folder the user opened. */
-  onStart(project: string): void
+  /** Asks for a folder and starts a Session in it. */
+  onOpenFolder(): void
   /** Closes a tab, stopping its `claude`. */
   onClose(key: string): void
   onEditorDirtyChange(key: string, dirty: boolean): void
@@ -47,7 +46,7 @@ export function TerminalArea({
   webTabs,
   activeKey,
   gpuRendering,
-  onStart,
+  onOpenFolder,
   onClose,
   onEditorDirtyChange,
   onEditorRename,
@@ -58,17 +57,8 @@ export function TerminalArea({
   // An editor or a Web tab on show leaves no room for the empty terminal's prompt to open a folder.
   const otherShown = editors.some((editor) => editor.key === activeKey) || webTabs.some((web) => web.key === activeKey)
 
-  const openFolder = async (): Promise<void> => {
-    const project = await api.sessionHost.chooseProject()
-    if (project) onStart(project)
-  }
-
   const openFolderButton = (primary: boolean): ReactNode => (
-    <button
-      type="button"
-      className={primary ? 'cf-btn cf-btn--primary' : 'cf-btn'}
-      onClick={() => void openFolder()}
-    >
+    <button type="button" className={primary ? 'cf-btn cf-btn--primary' : 'cf-btn'} onClick={onOpenFolder}>
       <FolderOpen className="cf-icon" aria-hidden="true" />
       {t('terminal.openFolder')}
     </button>

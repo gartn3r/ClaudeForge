@@ -139,7 +139,8 @@ export function createBackend(options: BackendOptions): Backend {
     (projects) => events.emit('sessions.changed', projects),
     async () => (await appState.read()).sessions,
     () => sessionIds.ids(),
-    (project, args) => resolveWayfinderLink(maps, project, args)
+    (project, args) => resolveWayfinderLink(maps, project, args),
+    () => sessionHost.running()
   )
   const language = resolveLanguage(options.systemLanguages)
   const startFolder = options.startFolder ?? process.cwd()
@@ -252,8 +253,8 @@ export function createBackend(options: BackendOptions): Backend {
   const resumeSession = async (id: string, size: TerminalSize, args: string[] = []): Promise<HostedSession> => {
     const session = await sessions.find(id)
     if (!session) throw new Error(`There is no Session ${id}`)
-    // Never two `claude` on one Session: an External one is read-only until it ends.
-    if (session.state !== 'past') throw new Error(`Session ${id} still runs outside ClaudeForge`)
+    // Never two `claude` on one Session: a Hosted or External one runs until it ends.
+    if (session.state !== 'past') throw new Error(`Session ${id} still runs ${session.state === 'hosted' ? 'in' : 'outside'} ClaudeForge`)
     return sessionHost.start(session.cwd, size, ['--resume', id, ...args])
   }
 

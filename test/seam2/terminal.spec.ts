@@ -33,7 +33,7 @@ async function openFolder(project: 'harbor-api' | 'recipe-box' = 'harbor-api'): 
   const { app, window } = claudeforge
   await turnOffGpuRendering(window)
   await pickFolderInDialogs(app, env.projects[project])
-  await window.getByRole('button', { name: 'Open folder' }).click()
+  await window.getByRole('main', { name: 'Terminal' }).getByRole('button', { name: 'Open folder' }).click()
   await expect(terminalOf(window)).toContainText('Fake Claude Code')
   return window
 }
@@ -90,7 +90,7 @@ test('draws the terminal with WebGL where the machine has it, and with the DOM r
   // WebGL draws the cells on a canvas; the DOM renderer writes them into the page as text.
   const cellsOnCanvas = terminal.locator('canvas')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
-  await window.getByRole('button', { name: 'Open folder' }).click()
+  await window.getByRole('main', { name: 'Terminal' }).getByRole('button', { name: 'Open folder' }).click()
   await expect.poll(async () => (await sessionRuns(env)).length).toBe(1)
 
   const hasWebgl = await window.evaluate(() => document.createElement('canvas').getContext('webgl2') !== null)

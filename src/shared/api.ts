@@ -259,8 +259,8 @@ export type ClaudeCodeStatus =
   | { state: 'outdated'; path: string; version: string; minimumVersion: string }
   | { state: 'missing'; lookedIn: string[] }
 
-/** Where a Session's `claude` process is: none (past) or outside ClaudeForge (External). */
-export type SessionState = 'past' | 'external'
+/** Where a Session's `claude` process is: none (past), in a ClaudeForge terminal (Hosted) or outside ClaudeForge (External). */
+export type SessionState = 'past' | 'hosted' | 'external'
 
 /**
  * The Map, and the Ticket when one is named, that a Session works on: from its latest
@@ -284,6 +284,8 @@ export interface SessionSummary {
   /** When the Session was last active, in milliseconds since the epoch. */
   lastActivity: number
   state: SessionState
+  /** The Session host's id for the Hosted session it runs in; null unless it is Hosted. */
+  hostedId: string | null
   /** Hidden by the user: the explorer lists it only when asked to show hidden Sessions. */
   hidden: boolean
   /** Its folder (`cwd`) is no longer there, a removed worktree say: it cannot be resumed or forked. */

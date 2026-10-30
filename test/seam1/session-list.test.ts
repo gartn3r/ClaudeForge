@@ -105,6 +105,24 @@ describe('the list of Session ids', () => {
       expect((await sessionOf(start(), OPENAPI_EXPORT))?.state).toBe('external')
     })
 
+    it('lists a Session as Hosted, with its Hosted session, while its claude runs in ClaudeForge, and past once it ends', async () => {
+      const backend = startWatching(start())
+      const { id, sessionId } = await backend.api.sessionHost.start(env.projects.dotfiles, SIZE)
+      await waitForText(id, `Terminal ${SIZE.cols}x${SIZE.rows}`)
+      await backend.api.sessionHost.write(id, '/work 300\r')
+
+      await vi.waitFor(async () => expect(await sessionOf(backend, sessionId)).toMatchObject({ state: 'hosted', hostedId: id }), {
+        timeout: 15_000
+      })
+      await expect(backend.api.sessionHost.resume(sessionId, SIZE)).rejects.toThrow('still runs in ClaudeForge')
+
+      await waitForText(id, 'Done.')
+      await backend.api.sessionHost.write(id, '/exit\r')
+      await vi.waitFor(async () => expect(await sessionOf(backend, sessionId)).toMatchObject({ state: 'past', hostedId: null }), {
+        timeout: 15_000
+      })
+    })
+
     it('neither resumes, forks, renames, hides nor deletes a conversation not on the list, and keeps its preferences', async () => {
       await writeCliConversations()
       // Named and hidden as a Session in an earlier ClaudeForge, which kept no list.

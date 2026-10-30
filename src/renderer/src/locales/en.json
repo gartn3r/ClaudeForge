@@ -74,6 +74,8 @@
     "untitled": "New Session",
     "openElsewhere": "Open elsewhere",
     "openElsewhereTooltip": "Open elsewhere. It can be resumed here once it ends.",
+    "hosted": "Running in ClaudeForge",
+    "hostedTooltip": "Running in ClaudeForge, in its own tab.",
     "folderMissing": "Its folder no longer exists, so it cannot be resumed here: {{folder}}",
     "activity": {
       "now": "now",
