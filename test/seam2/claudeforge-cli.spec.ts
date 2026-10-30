@@ -27,7 +27,7 @@ async function openFolder(): Promise<Page> {
   await window.getByRole('switch', { name: 'GPU rendering' }).click()
   await window.keyboard.press('Escape')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
-  await window.getByRole('button', { name: 'Open folder' }).click()
+  await window.getByRole('main', { name: 'Terminal' }).getByRole('button', { name: 'Open folder' }).click()
   await expect(terminalOf(window)).toContainText('Fake Claude Code')
   return window
 }

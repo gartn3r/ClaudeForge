@@ -56,7 +56,7 @@ test('starts a Hosted session in its own ConPTY and takes what the user types', 
   await window.keyboard.press('Escape')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
 
-  await window.getByRole('button', { name: 'Open folder' }).click()
+  await window.getByRole('main', { name: 'Terminal' }).getByRole('button', { name: 'Open folder' }).click()
   const terminal = window.getByRole('main', { name: 'Terminal' })
   await expect(terminal).toContainText('Fake Claude Code')
   await window.keyboard.type('hello')
@@ -75,7 +75,7 @@ test('ships the claudeforge command, which ClaudeForge.exe runs as Node for a Ho
   await window.getByRole('switch', { name: 'GPU rendering' }).click()
   await window.keyboard.press('Escape')
   await pickFolderInDialogs(app, env.projects['harbor-api'])
-  await window.getByRole('button', { name: 'Open folder' }).click()
+  await window.getByRole('main', { name: 'Terminal' }).getByRole('button', { name: 'Open folder' }).click()
   const terminal = window.getByRole('main', { name: 'Terminal' })
   await expect(terminal).toContainText('Fake Claude Code')
 

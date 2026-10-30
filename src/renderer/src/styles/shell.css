@@ -302,6 +302,10 @@ body {
   background: var(--tile);
   overflow: hidden;
 }
+/* The heading takes the room, so Open a folder sits beside Collapse. */
+.explorer__tile .cf-panel-head > .cf-eyebrow {
+  flex: 1;
+}
 .explorer__tree {
   flex: 1;
   min-height: 0;

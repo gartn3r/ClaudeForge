@@ -83,6 +83,11 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
     webbing.web.deselect()
     hosted.sessions.start(folder, state.gpuRendering, launch)
   }
+  /** Asks for a folder and starts a new Session in it, beside the Hosted sessions already running. */
+  const openFolder = async (): Promise<void> => {
+    const folder = await api.sessionHost.chooseProject()
+    if (folder) startHostedSession(folder)
+  }
   const selectHostedSession = (key: string): void => {
     setDisplayedSessionId(null)
     editing.editors.deselect()
@@ -244,7 +249,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           label={t('explorer.label')}
           resizeLabel={t('explorer.resize')}
           rail={
-            <ExplorerRail onExpand={collapseHandler('explorer', false)}>
+            <ExplorerRail onExpand={collapseHandler('explorer', false)} onOpenFolder={() => void openFolder()}>
               {isShown(elements.own('shortcuts')) && <ShortcutsRail {...shortcutsProps} />}
             </ExplorerRail>
           }
@@ -269,6 +274,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
                 displayedSessionId={displayedSessionId}
                 onDisplaySession={displaySession}
                 onStartSession={startHostedSession}
+                onOpenFolder={() => void openFolder()}
                 onCollapse={collapseHandler('explorer', true)}
                 frame={frame}
               />
@@ -291,7 +297,7 @@ export function App({ initialState, initialClaudeCode, project: startProject }: 
           webTabs={webTabs}
           activeKey={shownKey}
           gpuRendering={state.gpuRendering}
-          onStart={startHostedSession}
+          onOpenFolder={() => void openFolder()}
           onClose={(key) => hosted.sessions.close(key)}
           onEditorDirtyChange={(key, dirty) => editing.editors.setDirty(key, dirty)}
           onEditorRename={(key, name) => editing.editors.rename(key, name)}
