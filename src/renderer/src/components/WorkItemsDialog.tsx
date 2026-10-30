@@ -21,7 +21,7 @@ import {
 import { api } from '../api'
 import { folderName, useExtensions } from './ExtensionsMenu'
 import { skillChoices, skillCommandName } from './Shortcuts'
-import { actionStyle, shortDay } from './WorkItems'
+import { actionStyle, backlogFailure, shortDay } from './WorkItems'
 
 /** How long the form waits after the organisation is typed before asking `az` for its projects. */
 const TYPING_PAUSE_MS = 600
@@ -43,7 +43,7 @@ function useChoices(kind: 'projects' | 'areas' | 'iterationRoots', organization:
     if (!needed) return
     let current = true
     const asked = kind === 'projects' ? api.backlog.projects(organization) : api.backlog[kind](organization, project)
-    void asked.then((value) => current && setChoices({ key, value }))
+    void asked.catch(backlogFailure).then((value) => current && setChoices({ key, value }))
     return () => {
       current = false
     }
@@ -105,7 +105,10 @@ export function WorkItemsDialog({ config, actions: savedActions, project, sample
   const test = tested?.key === draftKey ? tested.value : null
   const runTest = (): void => {
     setTested({ key: draftKey, value: 'testing' })
-    void api.backlog.workItems(draft).then((value) => setTested((each) => (each?.key === draftKey ? { key: draftKey, value } : each)))
+    void api.backlog
+      .workItems(draft)
+      .catch(backlogFailure)
+      .then((value) => setTested((each) => (each?.key === draftKey ? { key: draftKey, value } : each)))
   }
 
   const { listing } = useExtensions(project)
@@ -173,7 +176,15 @@ export function WorkItemsDialog({ config, actions: savedActions, project, sample
                   spellCheck={false}
                   autoFocus
                   aria-invalid={(tried && incomplete && !/^https?:[/][/]\S+$/i.test(draft.organization)) || undefined}
-                  onChange={(event) => setOrganization(event.target.value)}
+                  onChange={(event) => {
+                    // Another organisation has projects, areas and iterations of its own.
+                    if (organizationUrl(event.target.value) !== organizationUrl(organization)) {
+                      setAzProject('')
+                      setAreaPath('')
+                      setIterationRoot('')
+                    }
+                    setOrganization(event.target.value)
+                  }}
                   onBlur={(event) => setOrganization(organizationUrl(event.target.value))}
                 />
                 <span className="extdialog__hint">{t('workItems.dialog.organizationHint')}</span>

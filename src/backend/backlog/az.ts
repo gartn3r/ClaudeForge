@@ -2,10 +2,10 @@
 // reads the backlog through it.
 
 import { execFile } from 'node:child_process'
-import { delimiter, dirname, extname, join } from 'node:path'
+import { dirname, extname, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { BacklogProblem } from '../../shared/api'
-import { batchCommandLine, envVar, isFile, type Environment } from '../claude-code'
+import { batchCommandLine, findOnPath, isFile, type Environment } from '../claude-code'
 
 const run = promisify(execFile)
 
@@ -36,20 +36,8 @@ export class AzError extends Error {
 /** Runs `az` with these arguments; resolves with what it printed, read as UTF-8, rejects with an AzError. */
 export type Az = (args: string[]) => Promise<string>
 
-/** The first `az` on PATH, in the order Windows would pick it. */
-async function findAz(env: Environment): Promise<string | undefined> {
-  const extensions = (envVar(env, 'PATHEXT') ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
-  for (const dir of (envVar(env, 'PATH') ?? '').split(delimiter).filter(Boolean)) {
-    for (const extension of extensions) {
-      const path = join(dir, `az${extension.toLowerCase()}`)
-      if (await isFile(path)) return path
-    }
-  }
-  return undefined
-}
-
-/** How to run `az`: a program and its first arguments, or a batch file cmd.exe runs. */
-export type AzCommand = { kind: 'program'; file: string; args: string[] } | { kind: 'batch'; file: string }
+/** How to run `az`: a program, its first arguments and the variables it needs, or a batch file cmd.exe runs. */
+export type AzCommand = { kind: 'program'; file: string; args: string[]; env: Record<string, string> } | { kind: 'batch'; file: string }
 
 /**
  * How to run the `az` found at a path. The Windows installer's `wbin\az.cmd` runs its own Python
@@ -60,9 +48,10 @@ export type AzCommand = { kind: 'program'; file: string; args: string[] } | { ki
 export async function azCommand(path: string): Promise<AzCommand> {
   const python = join(dirname(path), '..', 'python.exe')
   if (/^\.(cmd|bat)$/i.test(extname(path)) && (await isFile(python))) {
-    return { kind: 'program', file: python, args: ['-X', 'utf8', '-IBm', 'azure.cli'] }
+    // As az.cmd sets it, so az knows how it was installed.
+    return { kind: 'program', file: python, args: ['-X', 'utf8', '-IBm', 'azure.cli'], env: { AZ_INSTALLER: 'MSI' } }
   }
-  return /^\.(cmd|bat)$/i.test(extname(path)) ? { kind: 'batch', file: path } : { kind: 'program', file: path, args: [] }
+  return /^\.(cmd|bat)$/i.test(extname(path)) ? { kind: 'batch', file: path } : { kind: 'program', file: path, args: [], env: {} }
 }
 
 /** What `az` says when it lacks the `azure-devops` extension, or when no one signed in. */
@@ -78,7 +67,7 @@ export function azProblem(stderr: string): BacklogProblem {
 
 export function createAz(env: Environment): Az {
   return async (args) => {
-    const path = await findAz(env)
+    const path = await findOnPath(env, 'az')
     if (!path) throw new AzError('az-missing', 'The Azure CLI is not on PATH')
     const command = await azCommand(path)
     const options = {
@@ -92,7 +81,7 @@ export function createAz(env: Environment): Az {
       const { stdout } =
         command.kind === 'batch'
           ? await run(batchCommandLine(command.file, args), { ...options, shell: true })
-          : await run(command.file, [...command.args, ...args], options)
+          : await run(command.file, [...command.args, ...args], { ...options, env: { ...options.env, ...command.env } })
       return stdout
     } catch (error) {
       const { code, stderr } = error as { code?: number | string; stderr?: string }

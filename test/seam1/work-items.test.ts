@@ -227,6 +227,13 @@ describe('Work item actions', () => {
     expect(actionCommand(action({ text: '' }), workItem, url)).toBe('/analyze-ticket')
   })
 
+  it('write the address decoded, so a project name with a space survives the percent signs going', () => {
+    const spaced = workItemUrl({ ...config, project: 'My Project' }, 12)
+    expect(actionCommand(action({ text: '{url}' }), workItem, spaced)).toBe(
+      '/analyze-ticket https://devops.example.test/acme/My Project/_workitems/edit/12'
+    )
+  })
+
   it('fill each placeholder once, so a title naming one stays as it is', () => {
     expect(actionCommand(action({ text: '{title}' }), { ...workItem, title: 'Show {id}' }, url)).toBe('/analyze-ticket Show {id}')
   })

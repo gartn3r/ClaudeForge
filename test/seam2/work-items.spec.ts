@@ -174,7 +174,7 @@ test.describe('the Work items card', () => {
     const window = await launch()
 
     await expect(card(window).getByRole('alert')).toContainText('The Azure CLI is not installed.')
-    await expect(card(window).locator('code')).toHaveText('winget install -e --id Microsoft.AzureCLI')
+    await expect(card(window).locator('code')).toHaveText('winget install -e --id Microsoft.AzureCLI --accept-source-agreements --accept-package-agreements')
   })
 
   test('shows the next sprint between two, no sprint when none is to come, and an empty sprint', async () => {

@@ -214,7 +214,8 @@ describe('running az', () => {
     expect(await azCommand(join(dir, 'wbin', 'az.cmd'))).toEqual({
       kind: 'program',
       file: join(dir, 'python.exe'),
-      args: ['-X', 'utf8', '-IBm', 'azure.cli']
+      args: ['-X', 'utf8', '-IBm', 'azure.cli'],
+      env: { AZ_INSTALLER: 'MSI' }
     })
   })
 
@@ -222,7 +223,7 @@ describe('running az', () => {
     await writeFile(join(dir, 'az.cmd'), '')
 
     expect(await azCommand(join(dir, 'az.cmd'))).toEqual({ kind: 'batch', file: join(dir, 'az.cmd') })
-    expect(await azCommand('/usr/bin/az')).toEqual({ kind: 'program', file: '/usr/bin/az', args: [] })
+    expect(await azCommand('/usr/bin/az')).toEqual({ kind: 'program', file: '/usr/bin/az', args: [], env: {} })
   })
 
   it('tells a missing extension and a missing sign-in apart from any other failure', () => {

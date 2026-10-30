@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { BacklogConfig, BacklogProblem, Sprint, WorkItem, WorkItemAction, WorkItemListing } from '../../../shared/api'
+import type { BacklogConfig, BacklogFailure, BacklogProblem, Sprint, WorkItem, WorkItemAction, WorkItemListing } from '../../../shared/api'
 import { actionColour, backlogConfigured, textOn, workItemKind, workItemStarted, type WorkItemKind } from '../../../shared/work-items'
 import { api } from '../api'
 import type { ElementFrame } from '../elements/interface-elements'
@@ -33,7 +33,8 @@ const GLYPHS: Record<WorkItemKind['glyph'], LucideIcon> = {
 
 /** The command that puts right what keeps `az` from reading the backlog, which the user can type into a terminal. */
 export const FIX_COMMANDS: Partial<Record<BacklogProblem, string>> = {
-  'az-missing': 'winget install -e --id Microsoft.AzureCLI',
+  // Claude Code's shell mode cannot answer winget's agreement prompts.
+  'az-missing': 'winget install -e --id Microsoft.AzureCLI --accept-source-agreements --accept-package-agreements',
   'extension-missing': 'az extension add --name azure-devops',
   'signed-out': 'az login'
 }
@@ -61,7 +62,10 @@ export function useWorkItems(config: BacklogConfig | null, project: string): Wor
   useEffect(() => {
     if (!key || !request) return
     let current = true
-    void api.backlog.workItems(JSON.parse(key) as BacklogConfig).then((value) => current && setRead({ key, request, value }))
+    void api.backlog
+      .workItems(JSON.parse(key) as BacklogConfig)
+      .catch(backlogFailure)
+      .then((value) => current && setRead({ key, request, value }))
     return () => {
       current = false
     }
@@ -71,6 +75,13 @@ export function useWorkItems(config: BacklogConfig | null, project: string): Wor
   // A listing read for another configuration is not shown; one for this configuration stays while the next is read.
   return { listing: key && read?.key === key ? read.value : null, reading: !!request && read?.request !== request, refresh }
 }
+
+/** A call to the backend that failed outright, as the failure of `az` the card shows. */
+export const backlogFailure = (error: unknown): BacklogFailure => ({
+  ok: false,
+  problem: 'az-failed',
+  detail: error instanceof Error ? error.message : String(error)
+})
 
 /** A `YYYY-MM-DD` day as the card writes it: `13/11`. */
 export const shortDay = (day: string): string => `${day.slice(8, 10)}/${day.slice(5, 7)}`
@@ -237,8 +248,9 @@ function SprintList({ sprint, upcoming, workItems, ...props }: SprintListProps):
   const { t, i18n } = useTranslation()
   const mine = workItems.filter((workItem) => workItem.assignedToMe)
   const unassigned = workItems.filter((workItem) => !workItem.assignedToMe)
-  // The unassigned can be many: while the user has Work items of their own, they start folded.
-  const [open, setOpen] = useState({ mine: true, unassigned: mine.length === 0 })
+  // The unassigned can be many: while the user has Work items of their own, they are folded until the user opens them.
+  const [toggled, setToggled] = useState<{ mine?: boolean; unassigned?: boolean }>({})
+  const open = { mine: toggled.mine ?? true, unassigned: toggled.unassigned ?? mine.length === 0 }
   const [year, month, date] = sprint.start.split('-').map(Number) as [number, number, number]
   const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'long' }).format(new Date(year, month - 1, date))
 
@@ -272,7 +284,7 @@ function SprintList({ sprint, upcoming, workItems, ...props }: SprintListProps):
                 key={group}
                 label={t(`workItems.${group}`, { count: list.length })}
                 open={open[group]}
-                onToggle={() => setOpen((each) => ({ ...each, [group]: !each[group] }))}
+                onToggle={() => setToggled((each) => ({ ...each, [group]: !open[group] }))}
               >
                 {list.map((workItem) => (
                   <WorkItemBox key={workItem.id} workItem={workItem} {...props} />

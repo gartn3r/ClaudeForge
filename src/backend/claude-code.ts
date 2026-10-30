@@ -25,6 +25,18 @@ export async function isFile(path: string): Promise<boolean> {
   }
 }
 
+/** The first program of this name on PATH, in the order Windows would pick it (`gh`, `az`). */
+export async function findOnPath(env: Environment, name: string): Promise<string | undefined> {
+  const extensions = (envVar(env, 'PATHEXT') ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
+  for (const dir of (envVar(env, 'PATH') ?? '').split(delimiter).filter(Boolean)) {
+    for (const extension of extensions) {
+      const path = join(dir, `${name}${extension.toLowerCase()}`)
+      if (await isFile(path)) return path
+    }
+  }
+  return undefined
+}
+
 interface Place {
   /** How the first-run screen names it. */
   label: string

@@ -101,9 +101,17 @@ export function sprintsIn(tree: unknown): Sprint[] {
 
 /** The paths of a tree's nodes: every one (areas), or only those holding a sprint beneath them (iteration roots). */
 export function pathsIn(tree: unknown, which: 'all' | 'folders'): string[] {
-  return nodesOf(tree)
-    .filter((node) => which === 'all' || nodesOf(node).slice(1).some((below) => dayOf(below.attributes?.startDate)))
-    .map((node) => itemPath(node.path as string))
+  if (which === 'all') return nodesOf(tree).map((node) => itemPath(node.path as string))
+  /** The folders of a subtree, its root first, and whether it holds a sprint at all; one walk. */
+  const walk = (root: unknown): { paths: string[]; sprint: boolean } => {
+    const [node] = nodesOf(root)
+    if (!node) return { paths: [], sprint: false }
+    const below = (Array.isArray(node.children) ? node.children : []).map(walk)
+    const holds = below.some((child) => child.sprint)
+    const paths = below.flatMap((child) => child.paths)
+    return { paths: holds ? [itemPath(node.path as string), ...paths] : paths, sprint: holds || !!dayOf(node.attributes?.startDate) }
+  }
+  return walk(tree).paths
 }
 
 // The query and its answer
@@ -190,13 +198,23 @@ export const tidyBacklogConfig = (config: BacklogConfig): BacklogConfig => ({
 
 // Work item actions
 
+/** An address with its percent-escapes decoded, or as it is when it holds a malformed one. */
+const decoded = (url: string): string => {
+  try {
+    return decodeURI(url)
+  } catch {
+    return url
+  }
+}
+
 /**
  * The command an action types for a Work item: its skill, then its text with each placeholder filled
  * once. What `--prefill` cannot type is changed: a double quote becomes a single one, a percent sign
- * goes, a line break becomes a space.
+ * goes, a line break becomes a space. The address is written decoded (`My Project`, not `My%20Project`),
+ * which no dropped percent sign can break.
  */
 export function actionCommand(action: WorkItemAction, workItem: WorkItem, url: string): string {
-  const values: Record<string, string> = { id: String(workItem.id), title: workItem.title, type: workItem.type, url }
+  const values: Record<string, string> = { id: String(workItem.id), title: workItem.title, type: workItem.type, url: decoded(url) }
   const text = action.text.replace(/\{(id|title|type|url)\}/g, (_, name: string) => values[name]!)
   const typeable = text.replaceAll('"', "'").replaceAll('%', '').replace(/\r\n|[\r\n]/g, ' ').trim()
   return `/${action.skill.trim()}${typeable ? ` ${typeable}` : ''}`
