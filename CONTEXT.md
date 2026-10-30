@@ -79,6 +79,24 @@ The column on the right of the Hosted sessions, holding Panel tabs in its header
 A tab of the Right panel. One is the Map Panel tab, first until the user moves it; the others are Created Elements. Each moves among the others by drag and drop.
 _Avoid_: tab alone (a Web tab or a Hosted session's tab is something else)
 
+### Backlog
+
+**Work item**:
+An item of the user's Azure DevOps backlog, of any type (user story, bug, task…), identified by its number.
+_Avoid_: ticket (a Wayfinder Ticket is something else), issue
+
+**Current sprint**:
+The iteration, under the configured iteration root, whose dates contain today; between two sprints, the next one to start.
+_Avoid_: iteration alone, current iteration
+
+**Work items card**:
+A card in the explorer, above the Sessions, listing the Work items of the configured area in the Current sprint that are unassigned or assigned to the user and neither done nor removed; the same for every Project. It refreshes when a Project is displayed and when the user asks, never on its own otherwise. A Work item's title opens it in a Web tab.
+_Avoid_: backlog card, tickets card
+
+**Work item action**:
+A button beside each Work item in the Work items card, with the label the user gave it: it types a command, never sent, into a new Session of the displayed Project. The command is a skill chosen among the Extensions followed by a fixed text that can name the Work item (its number, title, type, address). There is always at least one, empty until the user sets it, and at most three; they are the same for every Project. The first is always lime; each of the others has a colour the user picks.
+_Avoid_: ticket button, Skill shortcut (which types into the Hosted session on show)
+
 ### Wayfinder
 
 **Map**:
