@@ -78,6 +78,88 @@ export type Shortcut =
   | { id: string; name: string; kind: 'web'; address: string }
   | { id: string; name: string; kind: 'skill'; command: ShortcutCommand }
 
+/**
+ * Where the Work items card reads the Azure DevOps backlog, through the user's `az` (ADR 0008): one
+ * configuration for every Project.
+ */
+export interface BacklogConfig {
+  /** The organisation's address, `https://devops.example.test/<organisation>`. */
+  organization: string
+  project: string
+  /** The area the Work items are in, sub-areas included, as a Work item names it: `Acme\Acquisition`. */
+  areaPath: string
+  /** The iteration the sprints sit under, at any depth, as a Work item names it: `Acme\Retail\Team`. */
+  iterationRoot: string
+}
+
+/**
+ * A button beside each Work item in the Work items card: it types `/<skill> <text>`, never sent, into
+ * a new Session of the displayed Project, the text's `{id}`, `{title}`, `{type}` and `{url}` filled.
+ */
+export interface WorkItemAction {
+  id: string
+  label: string
+  /** A skill among the Extensions, as Claude Code names it (`<plugin>:<skill>` for a plugin's). */
+  skill: string
+  text: string
+  /** `outline` or a `#rrggbb` colour; the first action is always lime whatever it holds. */
+  colour: string
+}
+
+/** A sprint under the iteration root; its days as `YYYY-MM-DD`, both included. */
+export interface Sprint {
+  name: string
+  /** As a Work item names its iteration. */
+  path: string
+  start: string
+  finish: string
+}
+
+/** A Work item of the Current sprint, as the Work items card shows it. */
+export interface WorkItem {
+  id: number
+  /** Azure DevOps' own name for it: `Product Backlog Item`, `Bug`, `BugInnovation`… */
+  type: string
+  state: string
+  title: string
+  /** Assigned to the user; otherwise it is unassigned. */
+  assignedToMe: boolean
+}
+
+/** Why the backlog cannot be read through `az`. */
+export type BacklogProblem =
+  /** The Azure CLI is not installed. */
+  | 'az-missing'
+  /** `az` lacks its `azure-devops` extension. */
+  | 'extension-missing'
+  /** No one signed in to `az`. */
+  | 'signed-out'
+  /** Any other failure, such as an unknown organisation or Azure DevOps being unreachable. */
+  | 'az-failed'
+
+export type BacklogFailure = { ok: false; problem: BacklogProblem; detail: string }
+
+/**
+ * The Work items of the Current sprint, in backlog order: `sprint` is null when no sprint under the
+ * iteration root is running or to come; `upcoming` when it is the next one, between two sprints.
+ */
+export type WorkItemListing = { ok: true; sprint: Sprint | null; upcoming: boolean; workItems: WorkItem[] } | BacklogFailure
+
+/** What the configuration form offers to choose from, as a Work item names it. */
+export type BacklogChoices = { ok: true; values: string[] } | BacklogFailure
+
+/** The Azure DevOps backlog, read through the user's `az` with their own sign-in (ADR 0008); never written. */
+export interface BacklogApi {
+  /** The Current sprint under the iteration root and its Work items; the card asks only when a Project is displayed or the user refreshes. */
+  workItems(config: BacklogConfig): Promise<WorkItemListing>
+  /** The organisation's projects, by name. */
+  projects(organization: string): Promise<BacklogChoices>
+  /** The project's areas, its own root first. */
+  areas(organization: string, project: string): Promise<BacklogChoices>
+  /** The project's iterations that hold sprints beneath them, which can be the iteration root. */
+  iterationRoots(organization: string, project: string): Promise<BacklogChoices>
+}
+
 /** Where every Web tab keeps its pages' storage, apart from the interface's: sign-ins survive a restart. */
 export const WEB_TAB_PARTITION = 'persist:web-tabs'
 
@@ -108,6 +190,10 @@ export interface AppState {
   shortcuts: Shortcut[]
   /** The Web tabs open when ClaudeForge last ran, in tab order, by their Web shortcut's id. */
   webTabs: string[]
+  /** Where the Work items card reads the backlog; null until the user connects Azure DevOps. */
+  backlog: BacklogConfig | null
+  /** The Work item actions, in order: three at most, none until the user sets the first. */
+  workItemActions: WorkItemAction[]
 }
 
 /** A partial update of the app state; nested objects merge. */
@@ -128,6 +214,10 @@ export interface AppStatePatch {
   shortcuts?: Shortcut[]
   /** Replaces the open Web tabs; ids naming no Web shortcut are left out. */
   webTabs?: string[]
+  /** Replaces the configuration; null, or one missing a field, forgets it. */
+  backlog?: BacklogConfig | null
+  /** Replaces every Work item action, in order; those the form would refuse, and blank ones, are left out. */
+  workItemActions?: WorkItemAction[]
 }
 
 export interface SystemInfo {
@@ -638,6 +728,7 @@ export interface BackendApi {
   system: {
     info(): Promise<SystemInfo>
   }
+  backlog: BacklogApi
   web: {
     /** Opens a Web tab's address in the default browser; refused for anything but an http or https address or a local `.html` file. */
     openInBrowser(address: string): Promise<void>

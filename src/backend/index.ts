@@ -18,6 +18,8 @@ import type {
 import type { Asker } from '../shared/elements'
 import { opensInBrowser } from '../shared/shortcuts'
 import { AppStateStore } from './app-state'
+import { createBacklogService } from './backlog'
+import { createAz } from './backlog/az'
 import { CliChannel, type CliPlace } from './cli-channel'
 import { locateClaudeCode, type Environment } from './claude-code'
 import { BackendEventEmitter, type Listener } from './events'
@@ -68,7 +70,7 @@ export interface BackendOptions {
   claudeHome: string
   /** Windows display languages in order of preference, e.g. `['fr-FR', 'en-US']`. */
   systemLanguages: readonly string[]
-  /** The environment `claude` and `gh` are looked up and run in. */
+  /** The environment `claude`, `gh` and `az` are looked up and run in. */
   env: Environment
   /** The folder ClaudeForge was started in; defaults to the current directory. */
   startFolder?: string
@@ -134,6 +136,7 @@ export function createBackend(options: BackendOptions): Backend {
   const appState = new AppStateStore(options.stateDir)
   const sessionIds = new SessionIdStore(options.stateDir)
   const maps = createMapService(options.env)
+  const backlog = createBacklogService(createAz(options.env))
   const sessions = new SessionCatalog(
     options.claudeHome,
     (projects) => events.emit('sessions.changed', projects),
@@ -328,6 +331,7 @@ export function createBackend(options: BackendOptions): Backend {
     system: {
       info: async () => ({ language, startFolder })
     },
+    backlog,
     web: {
       openInBrowser: async (address) => {
         // Only a web page, so the interface cannot have the desktop run a program.

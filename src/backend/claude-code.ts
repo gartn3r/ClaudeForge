@@ -71,7 +71,7 @@ const quoteArgument = (arg: string): string => `"${arg.replace(/(\\*)"/g, '$1$1\
  * shim's, or the fake environment's) again, so each argument is escaped twice: nothing in it,
  * not even a quote or a `%`, means anything to cmd.exe.
  */
-const batchCommandLine = (path: string, args: string[]): string =>
+export const batchCommandLine = (path: string, args: string[]): string =>
   [caretEscape(path), ...args.map((arg) => caretEscape(caretEscape(quoteArgument(arg))))].join(' ')
 
 /** Runs `claude` and returns what it printed; rejects when it fails, exits non-zero or outlasts the timeout. */

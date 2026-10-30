@@ -1,0 +1,38 @@
+{
+  "attributes": null,
+  "children": [
+    {
+      "attributes": null,
+      "children": [
+        {
+          "attributes": null,
+          "children": null,
+          "hasChildren": false,
+          "id": 709,
+          "name": "Gateway",
+          "path": "\\Harbor\\Area\\Platform & Ops\\Gateway",
+          "structureType": "area"
+        }
+      ],
+      "hasChildren": true,
+      "id": 710,
+      "name": "Platform & Ops",
+      "path": "\\Harbor\\Area\\Platform & Ops",
+      "structureType": "area"
+    },
+    {
+      "attributes": null,
+      "children": null,
+      "hasChildren": false,
+      "id": 711,
+      "name": "Mobile",
+      "path": "\\Harbor\\Area\\Mobile",
+      "structureType": "area"
+    }
+  ],
+  "hasChildren": true,
+  "id": 712,
+  "name": "Area",
+  "path": "\\Harbor\\Area",
+  "structureType": "area"
+}
