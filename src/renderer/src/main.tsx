@@ -13,6 +13,7 @@ import './styles/components.css'
 import './styles/shell.css'
 import './styles/first-run.css'
 import './styles/shortcuts.css'
+import './styles/work-items.css'
 import './styles/elements.css'
 import './styles/right-panel.css'
 

@@ -1,9 +1,10 @@
 name: CI
 
+# Runs only by hand, from the Actions tab (Run workflow), to keep within the Actions budget: pushes
+# to main and pull requests no longer start it. Run the checks locally with `npm run typecheck`,
+# `npm run lint`, `npm run check:locales` and `npm test`.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

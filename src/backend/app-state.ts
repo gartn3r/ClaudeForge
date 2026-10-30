@@ -6,15 +6,18 @@ import {
   tidyAppTitle,
   type AppState,
   type AppStatePatch,
+  type BacklogConfig,
   type MapPreferences,
   type ProjectMapPreferences,
   type PanelId,
   type PanelLayout,
   type SavedTab,
   type SessionPreferences,
-  type Shortcut
+  type Shortcut,
+  type WorkItemAction
 } from '../shared/api'
 import { shortcutProblems, tidyShortcut } from '../shared/shortcuts'
+import { backlogConfigured, tidyBacklogConfig, tidyWorkItemActions } from '../shared/work-items'
 
 export const STATE_FILE = 'state.json'
 
@@ -36,7 +39,9 @@ export function defaultAppState(): AppState {
     maps: {},
     tabs: [],
     shortcuts: [],
-    webTabs: []
+    webTabs: [],
+    backlog: null,
+    workItemActions: []
   }
 }
 
@@ -159,9 +164,27 @@ function openWebTabs(ids: unknown[], shortcuts: Shortcut[]): string[] {
   return [...new Set(ids.filter((id): id is string => isText(id) && web.has(id)))]
 }
 
+/** The configuration of a patch, tidied; null when a field is missing or not text. */
+function savedBacklog(entry: object): BacklogConfig | null {
+  const { organization, project, areaPath, iterationRoot } = entry as Record<string, unknown>
+  if (![organization, project, areaPath, iterationRoot].every(isText)) return null
+  const config = tidyBacklogConfig({ organization, project, areaPath, iterationRoot } as BacklogConfig)
+  return backlogConfigured(config) ? config : null
+}
+
+/** The Work item actions of a patch, those with every field as text, as the app state keeps them. */
+function savedActions(entries: unknown[]): WorkItemAction[] {
+  const actions = entries.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null) return []
+    const { id, label, skill, text, colour } = entry as Record<string, unknown>
+    return [id, label, skill, text, colour].every(isText) ? [{ id, label, skill, text, colour } as WorkItemAction] : []
+  })
+  return tidyWorkItemActions(actions)
+}
+
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { appTitle, layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs } =
+  const { appTitle, layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs, backlog, workItemActions } =
     (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof appTitle === 'string') next = { ...next, appTitle: tidyAppTitle(appTitle) }
@@ -188,6 +211,9 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   if (Array.isArray(webTabs) || Array.isArray(shortcuts)) {
     next = { ...next, webTabs: openWebTabs(Array.isArray(webTabs) ? webTabs : next.webTabs, next.shortcuts) }
   }
+  if (backlog === null) next = { ...next, backlog }
+  else if (typeof backlog === 'object') next = { ...next, backlog: savedBacklog(backlog) }
+  if (Array.isArray(workItemActions)) next = { ...next, workItemActions: savedActions(workItemActions) }
   return next
 }
 

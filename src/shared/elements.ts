@@ -12,6 +12,7 @@ export const OWN_ELEMENTS = [
   'title-bar',
   'explorer',
   'shortcuts',
+  'work-items',
   'sessions',
   'extensions',
   'terminal-area',
@@ -62,6 +63,7 @@ export const PROPERTIES_TAKEN: Record<OwnElementId | CreatedElementKind, readonl
   'title-bar': COLOURS,
   explorer: ['visible', 'collapsed', 'width', ...COLOURS],
   shortcuts: ['visible', 'collapsed', 'order', 'title', ...COLOURS],
+  'work-items': ['visible', 'collapsed', 'order', 'title', ...COLOURS],
   sessions: ['visible', 'collapsed', 'order', 'title', ...COLOURS],
   extensions: ['visible', 'collapsed', 'order', 'title', ...COLOURS],
   // The terminal stays on show: a Session's terminal is never an Element's content.
@@ -80,6 +82,7 @@ export const COLUMN_PANELS: Partial<Record<OwnElementId, PanelId>> = { explorer:
 /** Where each own Element sits, when it sits in a container. */
 export const OWN_CONTAINERS: Partial<Record<OwnElementId, Container>> = {
   shortcuts: 'explorer',
+  'work-items': 'explorer',
   sessions: 'explorer',
   extensions: 'explorer',
   'panel-tab:map': 'right-panel'
@@ -99,7 +102,7 @@ export function defaultOwnProperties(id: OwnElementId): ElementProperties {
   const panel = COLUMN_PANELS[id]
   if (panel) all.width = PANEL_BOUNDS[panel].default
   // The explorer's cards in the order they have always had, the Map Panel tab first (0); one created later goes after them.
-  all.order = { shortcuts: 1, sessions: 2, extensions: 3 }[id as string] ?? 0
+  all.order = { shortcuts: 1, 'work-items': 2, sessions: 3, extensions: 4 }[id as string] ?? 0
   return pick(all, PROPERTIES_TAKEN[id])
 }
 

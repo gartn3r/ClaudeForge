@@ -1,0 +1,94 @@
+{
+  "attributes": null,
+  "children": [
+    {
+      "attributes": null,
+      "children": [
+        {
+          "attributes": null,
+          "children": [
+            {
+              "attributes": {
+                "finishDate": "{{today-12}}T00:00:00Z",
+                "startDate": "{{today-24}}T00:00:00Z"
+              },
+              "children": null,
+              "hasChildren": false,
+              "id": 700,
+              "name": "Sprint 41",
+              "path": "\\Harbor\\Iteration\\Team Rocket\\2026\\Sprint 41",
+              "structureType": "iteration"
+            },
+            {
+              "attributes": {
+                "finishDate": "{{today+4}}T00:00:00Z",
+                "startDate": "{{today-10}}T00:00:00Z"
+              },
+              "children": null,
+              "hasChildren": false,
+              "id": 701,
+              "name": "Sprint 42",
+              "path": "\\Harbor\\Iteration\\Team Rocket\\2026\\Sprint 42",
+              "structureType": "iteration"
+            },
+            {
+              "attributes": {
+                "finishDate": "{{today+21}}T00:00:00Z",
+                "startDate": "{{today+7}}T00:00:00Z"
+              },
+              "children": null,
+              "hasChildren": false,
+              "id": 702,
+              "name": "Sprint 43",
+              "path": "\\Harbor\\Iteration\\Team Rocket\\2026\\Sprint 43",
+              "structureType": "iteration"
+            },
+            {
+              "attributes": null,
+              "children": null,
+              "hasChildren": false,
+              "id": 703,
+              "name": "Sprint 44",
+              "path": "\\Harbor\\Iteration\\Team Rocket\\2026\\Sprint 44",
+              "structureType": "iteration"
+            }
+          ],
+          "hasChildren": true,
+          "id": 704,
+          "name": "2026",
+          "path": "\\Harbor\\Iteration\\Team Rocket\\2026",
+          "structureType": "iteration"
+        }
+      ],
+      "hasChildren": true,
+      "id": 705,
+      "name": "Team Rocket",
+      "path": "\\Harbor\\Iteration\\Team Rocket",
+      "structureType": "iteration"
+    },
+    {
+      "attributes": null,
+      "children": [
+        {
+          "attributes": null,
+          "children": null,
+          "hasChildren": false,
+          "id": 706,
+          "name": "HighSeverity",
+          "path": "\\Harbor\\Iteration\\OPS\\HighSeverity",
+          "structureType": "iteration"
+        }
+      ],
+      "hasChildren": true,
+      "id": 707,
+      "name": "OPS",
+      "path": "\\Harbor\\Iteration\\OPS",
+      "structureType": "iteration"
+    }
+  ],
+  "hasChildren": true,
+  "id": 708,
+  "name": "Iteration",
+  "path": "\\Harbor\\Iteration",
+  "structureType": "iteration"
+}

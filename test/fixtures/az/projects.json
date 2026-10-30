@@ -1,0 +1,7 @@
+{
+  "continuationToken": null,
+  "value": [
+    { "id": "8a4c0e5d-1b7f-4d0e-9f53-2c6e1d0a7b11", "name": "Harbor", "state": "wellFormed", "visibility": "private" },
+    { "id": "2f9b6c3a-5e8d-4c1f-a0b7-7d3e9f4a2c22", "name": "Maintenance", "state": "wellFormed", "visibility": "private" }
+  ]
+}

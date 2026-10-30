@@ -1,6 +1,6 @@
 // The shared fake environment behind both test seams: a temporary folder
 // holding a Claude Code home, fixture Projects, ClaudeForge's data folder (its
-// list of Session ids holding the fixture Sessions) and fake `claude` and `gh`
+// list of Session ids holding the fixture Sessions) and fake `claude`, `gh` and `az`
 // executables first on PATH.
 
 import { spawnSync } from 'node:child_process'
@@ -17,7 +17,7 @@ const BIN_SOURCES = resolve(__dirname, 'bin')
 export const FIXTURE_PROJECTS = ['harbor-api', 'recipe-box', 'dotfiles'] as const
 export type FixtureProject = (typeof FIXTURE_PROJECTS)[number]
 
-export type FakeTool = 'claude' | 'gh'
+export type FakeTool = 'claude' | 'gh' | 'az'
 
 /** What the fake `claude` answers to `--version` unless told otherwise. */
 export const FAKE_CLAUDE_VERSION = '2.1.300'
@@ -71,7 +71,15 @@ export interface FakeEnvironmentOptions {
   claude?: FakeClaudeOptions | false
   /** The fake `gh`: signed in (the default), signed out, or `false` for no GitHub CLI at all. */
   gh?: 'signed-in' | 'signed-out' | false
+  /**
+   * The fake `az`: signed in with its `azure-devops` extension (the default), signed out, without the
+   * extension, or `false` for no Azure CLI at all.
+   */
+  az?: AzMode | false
 }
+
+/** How the fake `az` answers; a test can change it with `setAzMode`. */
+export type AzMode = 'signed-in' | 'signed-out' | 'no-extension'
 
 export interface FakeEnvironment {
   root: string
@@ -82,6 +90,10 @@ export interface FakeEnvironment {
   projects: Record<FixtureProject, string>
   /** The fake `gh`'s copy of `test/fixtures/gh`, which a test may change as GitHub would. */
   ghRecordings: string
+  /** The fake `az`'s copy of `test/fixtures/az`, which a test may change as Azure DevOps would. */
+  azRecordings: string
+  /** Makes the fake `az` answer as signed in, signed out or without its extension from now on. */
+  setAzMode(mode: AzMode): Promise<void>
   /** Where the fake `claude` is, when there is one. */
   readonly claudePath: string | undefined
   /** Git worktrees of the fixture Projects, by `<project>@<worktree>`. */
@@ -191,12 +203,12 @@ async function seedClaudeHome(
 const holds = (dir: string, tool: FakeTool): boolean =>
   ['.exe', '.cmd', '.bat', ''].some((extension) => existsSync(join(dir, `${tool}${extension}`)))
 
-/** This machine's PATH without the folders of any real Claude Code or GitHub CLI, so only the fakes are found. */
+/** This machine's PATH without the folders of any real Claude Code, GitHub CLI or Azure CLI, so only the fakes are found. */
 function inheritedPath(): string {
   const path = process.env.PATH ?? process.env.Path ?? ''
   return path
     .split(delimiter)
-    .filter((dir) => dir && !holds(dir, 'claude') && !holds(dir, 'gh'))
+    .filter((dir) => dir && !holds(dir, 'claude') && !holds(dir, 'gh') && !holds(dir, 'az'))
     .join(delimiter)
 }
 
@@ -220,6 +232,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   const recycleBin = join(root, 'recycle-bin')
   const claudeState = join(root, 'claude-cli')
   const ghRecordings = join(root, 'gh')
+  const azRecordings = join(root, 'az')
   const systemLanguages = options.systemLanguages ?? ['en-US']
 
   await Promise.all([mkdir(binDir, { recursive: true }), mkdir(logDir), mkdir(userDataDir), mkdir(recycleBin)])
@@ -230,6 +243,8 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
   await cp(join(FIXTURES, 'claude'), claudeState, { recursive: true })
   // A copy too, so a test can change an issue as GitHub would.
   await cp(join(FIXTURES, 'gh'), ghRecordings, { recursive: true })
+  await cp(join(FIXTURES, 'az'), azRecordings, { recursive: true })
+  const setAzMode = (mode: AzMode): Promise<void> => writeFile(join(azRecordings, 'mode'), mode)
   const projects = Object.fromEntries(
     FIXTURE_PROJECTS.map((name) => [name, join(projectsDir, name)])
   ) as Record<FixtureProject, string>
@@ -238,6 +253,10 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     await writeExecutable(join(binDir, 'gh.cmd'), join(BIN_SOURCES, 'fake-gh.mjs'), {
       FAKE_GH_SIGNED_OUT: options.gh === 'signed-out' ? '1' : '0'
     })
+  }
+  if (options.az !== false) {
+    await writeExecutable(join(binDir, 'az.cmd'), join(BIN_SOURCES, 'fake-az.mjs'))
+    await setAzMode(options.az ?? 'signed-in')
   }
 
   const processEnv: Record<string, string> = {
@@ -255,6 +274,7 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     CLAUDEFORGE_UPDATE_FEED: 'none',
     FAKE_ENV_LOG_DIR: logDir,
     FAKE_GH_RECORDINGS: ghRecordings,
+    FAKE_AZ_RECORDINGS: azRecordings,
     FAKE_CLAUDE_STATE: claudeState,
     FAKE_PROJECTS_DIR: projectsDir
   }
@@ -288,6 +308,8 @@ export async function createFakeEnvironment(options: FakeEnvironmentOptions = {}
     userDataDir,
     projects,
     ghRecordings,
+    azRecordings,
+    setAzMode,
     get claudePath() {
       return claudePath
     },

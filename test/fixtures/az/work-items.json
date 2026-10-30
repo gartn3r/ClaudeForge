@@ -1,0 +1,103 @@
+[
+  {
+    "fields": {
+      "System.Id": 1101,
+      "System.State": "To Do",
+      "System.Title": "Catalogue - Amélioration de l’indexation des références",
+      "System.WorkItemType": "Product Backlog Item"
+    },
+    "id": 1101,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1101"
+  },
+  {
+    "fields": {
+      "System.AssignedTo": {
+        "displayName": "Fixture User",
+        "uniqueName": "fixture.user@example.com",
+        "id": "00000000-0000-4000-8000-000000000001"
+      },
+      "System.Id": 1102,
+      "System.State": "In Progress",
+      "System.Title": "Sauvegarde des exports hors du serveur",
+      "System.WorkItemType": "Product Backlog Item"
+    },
+    "id": 1102,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1102"
+  },
+  {
+    "fields": {
+      "System.AssignedTo": {
+        "displayName": "Fixture User",
+        "uniqueName": "fixture.user@example.com",
+        "id": "00000000-0000-4000-8000-000000000001"
+      },
+      "System.Id": 1103,
+      "System.State": "In Code Review",
+      "System.Title": "Accueil connecté : le carrousel reste figé",
+      "System.WorkItemType": "BugInnovation"
+    },
+    "id": 1103,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1103"
+  },
+  {
+    "fields": {
+      "System.Id": 1104,
+      "System.State": "To Do",
+      "System.Title": "Pas de fond sous la fenêtre \"Cookies\"",
+      "System.WorkItemType": "Task"
+    },
+    "id": 1104,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1104"
+  },
+  {
+    "fields": {
+      "System.Id": 1105,
+      "System.State": "To Refine",
+      "System.Title": "Tester la variante B sur 50% des visites",
+      "System.WorkItemType": "Product Backlog Item"
+    },
+    "id": 1105,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1105"
+  },
+  {
+    "fields": {
+      "System.Id": 1106,
+      "System.State": "To Do",
+      "System.Title": "Livraison : remise non appliquée",
+      "System.WorkItemType": "Bug"
+    },
+    "id": 1106,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/1106"
+  },
+  {
+    "fields": {
+      "System.Id": 40100,
+      "System.State": "New",
+      "System.Title": "Refonte de la recherche",
+      "System.WorkItemType": "Epic"
+    },
+    "id": 40100,
+    "multilineFieldsFormat": {},
+    "relations": null,
+    "rev": 3,
+    "url": "https://devops.example.test/fixture-org/_apis/wit/workItems/40100"
+  }
+]

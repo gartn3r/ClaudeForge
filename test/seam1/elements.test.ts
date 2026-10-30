@@ -86,8 +86,9 @@ describe('Elements', () => {
       })
       expect(byId['right-panel']!.properties.width).toBe(PANEL_BOUNDS.map.default)
       expect(byId.shortcuts).toMatchObject({ container: 'explorer', properties: { order: 1, title: null, collapsed: false } })
-      expect(byId.sessions!.properties.order).toBe(2)
-      expect(byId.extensions!.properties.order).toBe(3)
+      expect(byId['work-items']).toMatchObject({ container: 'explorer', properties: { order: 2, title: null, collapsed: false } })
+      expect(byId.sessions!.properties.order).toBe(3)
+      expect(byId.extensions!.properties.order).toBe(4)
       expect(byId['panel-tab:map']).toMatchObject({
         container: 'right-panel',
         takes: ['visible', 'order', 'title', 'textColor', 'backgroundColor'],

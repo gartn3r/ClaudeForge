@@ -1,12 +1,17 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { api } from '../api'
 
-/** One Web tab, showing its Web shortcut's page beside the Hosted sessions (ADR 0006). */
+/**
+ * One Web tab, showing its Web shortcut's page beside the Hosted sessions (ADR 0006), or a page
+ * opened from elsewhere, a Work item's from the Work items card.
+ */
 export interface WebTab {
   /** Unlike any Hosted session's or editor's key, so tab and panel ids built from either never collide. */
   key: string
-  /** The Web shortcut it shows, which names it. */
-  shortcutId: string
+  /** The Web shortcut it shows, which names it; null for a page opened from elsewhere. */
+  shortcutId: string | null
+  /** A page opened from elsewhere, with the name its tab shows; it does not come back on the next start. */
+  page?: { address: string; title: string }
   /** Restored from the last time ClaudeForge ran and not selected since: its page has not loaded. */
   dormant: boolean
 }
@@ -44,6 +49,13 @@ export class WebTabs {
     this.update([...this.state.tabs, { key, shortcutId, dormant: false }], key)
   }
 
+  /** Shows a page opened from elsewhere, under its own id: in its Web tab if one is open, else in a new one after the others. */
+  openPage(id: string, address: string, title: string): void {
+    const key = `web-page-${id}`
+    if (this.state.tabs.some((tab) => tab.key === key)) return this.select(key)
+    this.update([...this.state.tabs, { key, shortcutId: null, page: { address, title }, dormant: false }], key)
+  }
+
   /** Shows the tab; a dormant one loads its page. */
   select(key: string): void {
     if (!this.state.tabs.some((tab) => tab.key === key)) return
@@ -69,7 +81,7 @@ export class WebTabs {
 
   /** Closes the tabs whose Web shortcut is gone, or is no longer a Web shortcut. */
   keepOnly(shortcutIds: ReadonlySet<string>): void {
-    for (const tab of this.state.tabs) if (!shortcutIds.has(tab.shortcutId)) this.close(tab.key)
+    for (const tab of this.state.tabs) if (tab.shortcutId !== null && !shortcutIds.has(tab.shortcutId)) this.close(tab.key)
   }
 
   private update(tabs: WebTab[], activeKey = this.state.activeKey): void {
@@ -90,7 +102,7 @@ export function useWebTabs(saved: readonly string[]): WebTabsState & { web: WebT
   })
   const state = useSyncExternalStore(web.subscribe, web.snapshot)
   // Compared as text, so a state pushed back with the same tabs writes nothing.
-  const open = JSON.stringify(state.tabs.map((tab) => tab.shortcutId))
+  const open = JSON.stringify(state.tabs.flatMap((tab) => (tab.shortcutId === null ? [] : [tab.shortcutId])))
   const kept = JSON.stringify(saved)
   useEffect(() => {
     if (open !== kept) void api.appState.write({ webTabs: JSON.parse(open) as string[] })

@@ -1,10 +1,10 @@
 // Runs the user's GitHub CLI. ClaudeForge only ever reads through it (ADR 0002).
 
 import { execFile } from 'node:child_process'
-import { delimiter, extname, join } from 'node:path'
+import { extname } from 'node:path'
 import { promisify } from 'node:util'
 import type { TrackerProblem } from '../../shared/api'
-import { envVar, isFile, type Environment } from '../claude-code'
+import { findOnPath, type Environment } from '../claude-code'
 
 const run = promisify(execFile)
 
@@ -26,24 +26,12 @@ export class GhError extends Error {
   }
 }
 
-/** The first `gh` on PATH, in the order Windows would pick it. */
-async function findGh(env: Environment): Promise<string | undefined> {
-  const extensions = (envVar(env, 'PATHEXT') ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
-  for (const dir of (envVar(env, 'PATH') ?? '').split(delimiter).filter(Boolean)) {
-    for (const extension of extensions) {
-      const path = join(dir, `gh${extension.toLowerCase()}`)
-      if (await isFile(path)) return path
-    }
-  }
-  return undefined
-}
-
 /** Runs `gh` in a folder; resolves with its standard output, rejects with a GhError. */
 export type Gh = (args: string[], cwd: string) => Promise<string>
 
 export function createGh(env: Environment): Gh {
   return async (args, cwd) => {
-    const path = await findGh(env)
+    const path = await findOnPath(env, 'gh')
     if (!path) throw new GhError('gh-missing', 'The GitHub CLI is not on PATH')
     const options = { cwd, env, timeout: GH_TIMEOUT_MS, maxBuffer: MAX_OUTPUT, windowsHide: true }
     // Batch files only run through cmd.exe, as one command line, where quotes and percent signs are not literal.

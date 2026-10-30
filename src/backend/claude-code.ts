@@ -25,6 +25,18 @@ export async function isFile(path: string): Promise<boolean> {
   }
 }
 
+/** The first program of this name on PATH, in the order Windows would pick it (`gh`, `az`). */
+export async function findOnPath(env: Environment, name: string): Promise<string | undefined> {
+  const extensions = (envVar(env, 'PATHEXT') ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
+  for (const dir of (envVar(env, 'PATH') ?? '').split(delimiter).filter(Boolean)) {
+    for (const extension of extensions) {
+      const path = join(dir, `${name}${extension.toLowerCase()}`)
+      if (await isFile(path)) return path
+    }
+  }
+  return undefined
+}
+
 interface Place {
   /** How the first-run screen names it. */
   label: string
@@ -71,7 +83,7 @@ const quoteArgument = (arg: string): string => `"${arg.replace(/(\\*)"/g, '$1$1\
  * shim's, or the fake environment's) again, so each argument is escaped twice: nothing in it,
  * not even a quote or a `%`, means anything to cmd.exe.
  */
-const batchCommandLine = (path: string, args: string[]): string =>
+export const batchCommandLine = (path: string, args: string[]): string =>
   [caretEscape(path), ...args.map((arg) => caretEscape(caretEscape(quoteArgument(arg))))].join(' ')
 
 /** Runs `claude` and returns what it printed; rejects when it fails, exits non-zero or outlasts the timeout. */
