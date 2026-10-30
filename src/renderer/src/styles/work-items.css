@@ -69,8 +69,11 @@
 }
 .work-items__lead {
   margin: 0;
-  font-size: 16px;
-  line-height: 22px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.work-items__connect {
+  font-size: 14px;
 }
 .work-items__note,
 .work-items__problem {
@@ -174,10 +177,10 @@
   padding: 8px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
-  background: #f8f5ea;
+  background: var(--work-item);
 }
 .work-item:hover {
-  background: #f2edda;
+  background: var(--work-item-hover);
 }
 .work-item__meta {
   display: flex;

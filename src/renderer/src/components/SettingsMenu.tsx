@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppState } from '../../../shared/api'
+import { THEMES, type AppState } from '../../../shared/api'
 import { api } from '../api'
 
 interface SettingsMenuProps {
@@ -84,6 +84,31 @@ export function SettingsMenu({ state }: SettingsMenuProps): ReactNode {
               aria-describedby={`${idPrefix}-notifications-hint`}
               onClick={() => void api.appState.write({ notifications: !state.notifications })}
             />
+          </div>
+          <div className="settings__row settings__row--stacked">
+            <div>
+              <div id={`${idPrefix}-theme`}>{t('settings.theme')}</div>
+              <div id={`${idPrefix}-theme-hint`} className="settings__hint">
+                {t('settings.themeHint')}
+              </div>
+            </div>
+            <div
+              className="cf-seg settings__themes"
+              role="group"
+              aria-labelledby={`${idPrefix}-theme`}
+              aria-describedby={`${idPrefix}-theme-hint`}
+            >
+              {THEMES.map((theme) => (
+                <button
+                  key={theme}
+                  type="button"
+                  aria-pressed={state.theme === theme}
+                  onClick={() => void api.appState.write({ theme })}
+                >
+                  {t(`settings.themes.${theme}`)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

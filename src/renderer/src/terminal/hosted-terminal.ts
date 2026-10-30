@@ -4,6 +4,7 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { missingFolderOf, type HostedSession, type HostedSessionStatus, type TerminalSize } from '../../../shared/api'
 import { api, onEvent } from '../api'
+import { onThemeChange } from '../theme'
 
 /** How long the terminal's area must keep its size before the terminal refits, so a drag resizes `claude` once. */
 const REFIT_DELAY_MS = 50
@@ -146,7 +147,11 @@ export class HostedTerminal {
           this.currentStatus = status
           this.changed()
         })
-      )
+      ),
+      // A Theme picked meanwhile repaints the terminal in its colours.
+      onThemeChange(() => {
+        this.terminal.options.theme = terminalTheme()
+      })
     ]
   }
 

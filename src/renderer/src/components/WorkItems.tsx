@@ -17,7 +17,16 @@ import {
 import { useCallback, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { BacklogConfig, BacklogFailure, BacklogProblem, Sprint, WorkItem, WorkItemAction, WorkItemListing } from '../../../shared/api'
-import { actionColour, backlogConfigured, textOn, workItemKind, workItemStarted, type WorkItemKind } from '../../../shared/work-items'
+import {
+  ACTION_COLOURS,
+  LIME,
+  actionColour,
+  backlogConfigured,
+  textOn,
+  workItemKind,
+  workItemStarted,
+  type WorkItemKind
+} from '../../../shared/work-items'
 import { api } from '../api'
 import type { ElementFrame } from '../elements/interface-elements'
 import { folderName } from './ExtensionsMenu'
@@ -161,7 +170,7 @@ export function WorkItemsCard(props: WorkItemsCardProps): ReactNode {
         (!configured ? (
           <div className="work-items__state">
             <p className="work-items__lead">{t('workItems.notConfigured')}</p>
-            <button type="button" className="cf-btn cf-btn--primary" onClick={onConfigure}>
+            <button type="button" className="cf-btn cf-btn--primary work-items__connect" onClick={onConfigure}>
               {t('workItems.connect')}
             </button>
           </div>
@@ -375,5 +384,10 @@ function WorkItemBox({ workItem, actions, project, skills, onAction, onOpen }: W
 export function actionStyle(action: WorkItemAction, index: number): CSSProperties {
   const colour = actionColour(action, index)
   if (colour === 'outline') return {}
+  // Lime and Slate are the Theme's own, so they turn over with it; any other stays as the user chose it.
+  if (colour === LIME) return { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' }
+  if (colour === ACTION_COLOURS.slate) {
+    return { background: 'var(--action-slate)', borderColor: 'var(--action-slate)', color: 'var(--action-slate-text)' }
+  }
   return { background: colour, borderColor: colour, color: textOn(colour) }
 }

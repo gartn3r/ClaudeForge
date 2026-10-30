@@ -28,7 +28,7 @@ body {
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 999px;
-  background: rgba(47, 53, 63, 0.25) padding-box;
+  background: var(--scrollbar) padding-box;
 }
 .cf-on-slate ::-webkit-scrollbar-thumb,
 .terminal-area ::-webkit-scrollbar-thumb {
@@ -50,7 +50,8 @@ body {
   height: var(--size-titlebar);
   flex: none;
   padding-left: 20px;
-  background: var(--ground);
+  /* The window's ground, or the colour the window Element was given, shows through. */
+  background: transparent;
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -388,14 +389,15 @@ body {
   margin: 0;
   max-width: 420px;
   font-family: var(--font-display);
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 22px;
+  line-height: 30px;
   font-weight: 500;
   color: var(--text);
 }
 .terminal-empty .cf-btn {
   height: 48px;
   padding: 0 22px;
+  font-size: 14px;
 }
 .terminal-ended {
   display: flex;
@@ -437,9 +439,9 @@ body {
   background: var(--card);
 }
 .settings__button[aria-expanded='true'] {
-  border-color: var(--slate);
-  background: var(--slate);
-  color: var(--on-slate);
+  border-color: var(--pressed);
+  background: var(--pressed);
+  color: var(--on-pressed);
 }
 .settings__button:focus-visible {
   outline: 2px solid var(--focus);
@@ -471,6 +473,16 @@ body {
   line-height: 22px;
   font-weight: 400;
   color: var(--text-muted);
+}
+/* The Theme: its words above, the three choices across the popover under them. */
+.settings__row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.settings__themes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* Map panel: the title on its own row with the view and the actions, the Map's name under it. */
@@ -635,7 +647,7 @@ body {
   text-align: left;
 }
 .map-section-head:hover {
-  background: #e3dcc3;
+  background: var(--section-hover);
 }
 .map-section-head .cf-eyebrow {
   color: var(--text);
@@ -1024,8 +1036,8 @@ dialog.cf-dialog::backdrop {
 .extbar__button > .cf-eyebrow {
   flex: 1 0 100%;
   font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 26px;
+  font-size: 17px;
+  line-height: 24px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -1436,13 +1448,17 @@ dialog.cf-dialog::backdrop {
   padding: 12px 10px 12px 16px;
   border-radius: 16px;
   background: var(--accent-soft);
-  color: var(--slate);
+  color: var(--on-accent-soft);
   line-height: 24px;
-  --text: var(--slate);
-  --text-muted: #4a5320;
-  --focus: var(--slate);
+  --text: var(--on-accent-soft);
+  --text-muted: var(--on-accent-soft-muted);
+  --focus: var(--on-accent-soft);
   --surface-raised: rgba(47, 53, 63, 0.08);
   --line-strong: rgba(47, 53, 63, 0.2);
+}
+:root[data-theme='dark'] .terminal-typed {
+  --surface-raised: rgba(236, 230, 214, 0.1);
+  --line-strong: rgba(236, 230, 214, 0.25);
 }
 .terminal-typed__chip {
   flex: none;

@@ -498,7 +498,7 @@ function ActionEditor(props: ActionEditorProps): ReactNode {
                 key={name}
                 type="button"
                 className="work-items-dialog__swatch"
-                style={{ background: hex }}
+                style={{ background: name === 'slate' ? 'var(--action-slate)' : hex }}
                 aria-label={t(`workItems.dialog.colours.${name}`)}
                 title={t(`workItems.dialog.colours.${name}`)}
                 aria-pressed={action.colour === hex}

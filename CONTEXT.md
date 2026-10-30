@@ -32,6 +32,10 @@ _Avoid_: capability, tool, add-on
 The name at the top left of the title bar, set as the wordmark: "ClaudeForge" until the user renames it in place. It is the same for every Project and lasts across restarts; a blank one gives back "ClaudeForge". It is always words only, never an icon, and it is not an Element's title: restoring the Default layout keeps it.
 _Avoid_: logo, brand, window title
 
+**Theme**:
+How ClaudeForge looks, the same for every Project: light, dark, or System, which follows Windows. A colour the user or Claude gives an Element stays the same in every Theme.
+_Avoid_: skin, mode, appearance
+
 ### Shortcuts
 
 **Shortcut**:
@@ -59,7 +63,7 @@ The command through which a Hosted session's Claude drives ClaudeForge's interfa
 _Avoid_: headless mode, API, bridge
 
 **Element**:
-A container of the interface with an identifier (a panel, a Panel tab, a card, a menu), so that the user, by hand or through Claude and the ClaudeForge CLI, can name it, change its properties and add Content items to it. Its properties are a closed list: visible or hidden, collapsed or expanded, width, order, title, text colour and background colour (any colour). What a Session's terminal or a Map shows is never an Element's content. ClaudeForge's own Elements have fixed identifiers and one set of properties for the whole of ClaudeForge. A Panel tab takes every kind of Content item; a card takes texts, links, files (as links) and actions; a menu takes links and actions only. An Element that is created comes to the front; one whose content changes only shows a mark, unless the change asks for it to be shown.
+A container of the interface with an identifier (the window, a panel, a Panel tab, a card, a menu), so that the user, by hand or through Claude and the ClaudeForge CLI, can name it, change its properties and add Content items to it. Its properties are a closed list: visible or hidden, collapsed or expanded, width, order, title, text colour and background colour (any colour). What a Session's terminal or a Map shows is never an Element's content. ClaudeForge's own Elements have fixed identifiers and one set of properties for the whole of ClaudeForge. A Panel tab takes every kind of Content item; a card takes texts, links, files (as links) and actions; a menu takes links and actions only. An Element that is created comes to the front; one whose content changes only shows a mark, unless the change asks for it to be shown.
 _Avoid_: widget, component
 
 **Created Element**:
@@ -94,7 +98,7 @@ A card in the explorer, above the Sessions, listing the Work items of the config
 _Avoid_: backlog card, tickets card
 
 **Work item action**:
-A button beside each Work item in the Work items card, with the label the user gave it: it types a command, never sent, into a new Session of the displayed Project. The command is a skill chosen among the Extensions followed by a fixed text that can name the Work item (its number, title, type, address). There is always at least one, empty until the user sets it, and at most three; they are the same for every Project. The first is always lime; each of the others has a colour the user picks.
+A button beside each Work item in the Work items card, with the label the user gave it: it types a command, never sent, into a new Session of the displayed Project. The command is a skill chosen among the Extensions followed by a fixed text that can name the Work item (its number, title, type, address). There is always at least one, empty until the user sets it, and at most three; they are the same for every Project. The first is always lime; each of the others has a colour the user picks, of which only Slate follows the Theme.
 _Avoid_: ticket button, Skill shortcut (which types into the Hosted session on show)
 
 ### Wayfinder

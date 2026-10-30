@@ -18,7 +18,14 @@
     "gpuRendering": "GPU rendering",
     "gpuRenderingHint": "Turn it off if the terminal shows garbled text.",
     "notifications": "Notifications",
-    "notificationsHint": "When a Session in the background waits for you or finishes."
+    "notificationsHint": "When a Session in the background waits for you or finishes.",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "themeHint": "System follows Windows."
   },
   "shortcuts": {
     "heading": "Shortcuts",
@@ -564,6 +571,7 @@
       "action": "Action"
     },
     "own": {
+      "window": "Window",
       "titleBar": "Title bar",
       "explorer": "Explorer",
       "shortcuts": "Shortcuts",

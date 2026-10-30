@@ -59,6 +59,7 @@ type Translate = ReturnType<typeof useTranslation>['t']
 
 /** ClaudeForge's own word for each of its own Elements. */
 const OWN_NAMES = {
+  window: 'elements.own.window',
   'title-bar': 'elements.own.titleBar',
   explorer: 'elements.own.explorer',
   shortcuts: 'elements.own.shortcuts',

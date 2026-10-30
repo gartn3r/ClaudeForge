@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   PANEL_BOUNDS,
+  THEMES,
   clampPanelWidth,
   tidyAppTitle,
   type AppState,
@@ -35,6 +36,7 @@ export function defaultAppState(): AppState {
     claudePath: null,
     gpuRendering: true,
     notifications: true,
+    theme: 'system',
     sessions: {},
     maps: {},
     tabs: [],
@@ -184,7 +186,7 @@ function savedActions(entries: unknown[]): WorkItemAction[] {
 
 /** Applies a patch to a state, ignoring unknown or malformed fields and clamping widths. */
 export function applyPatch(state: AppState, patch: AppStatePatch | unknown): AppState {
-  const { appTitle, layout, claudePath, gpuRendering, notifications, sessions, maps, tabs, shortcuts, webTabs, backlog, workItemActions } =
+  const { appTitle, layout, claudePath, gpuRendering, notifications, theme, sessions, maps, tabs, shortcuts, webTabs, backlog, workItemActions } =
     (patch ?? {}) as AppStatePatch
   let next = state
   if (typeof appTitle === 'string') next = { ...next, appTitle: tidyAppTitle(appTitle) }
@@ -201,6 +203,7 @@ export function applyPatch(state: AppState, patch: AppStatePatch | unknown): App
   if (typeof claudePath === 'string' || claudePath === null) next = { ...next, claudePath }
   if (typeof gpuRendering === 'boolean') next = { ...next, gpuRendering }
   if (typeof notifications === 'boolean') next = { ...next, notifications }
+  if (theme !== undefined && THEMES.includes(theme)) next = { ...next, theme }
   if (typeof sessions === 'object' && sessions !== null) {
     next = { ...next, sessions: mergeSessions(state.sessions, sessions) }
   }

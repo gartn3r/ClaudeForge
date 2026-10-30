@@ -221,6 +221,10 @@
 .side-panel[data-colored='true'] {
   border-radius: var(--radius-tile);
 }
+/* The Right panel's colour is the card's that holds its Panel tabs, not only its rail's. */
+.side-panel--right[data-colored='true'] .side-panel__body {
+  background: transparent;
+}
 
 /* The title bar's Created menus, their + and Restore default layout. */
 .titlebar__menus {
@@ -241,6 +245,7 @@
 .titlebar__restore {
   flex: none;
   height: var(--size-tab);
+  font-size: 14px;
 }
 /* The wordmark answers a right-click with the title bar's menu, so it is not a drag handle. */
 .brand {

@@ -96,6 +96,7 @@ describe('Elements', () => {
       })
       expect(byId['title-bar']!.takes).toEqual(['textColor', 'backgroundColor'])
       expect(byId['terminal-area']!.takes).toEqual(['textColor', 'backgroundColor'])
+      expect(byId.window).toMatchObject({ container: null, takes: ['textColor', 'backgroundColor'] })
     })
 
     it('keep one set of properties for the whole of ClaudeForge, across a restart', async () => {
