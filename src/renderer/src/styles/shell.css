@@ -122,6 +122,10 @@ body {
   min-width: 84px;
   -webkit-app-region: no-drag;
 }
+.titlebar .cf-tab__title {
+  font-size: 14px;
+  line-height: 20px;
+}
 /* The close button shows on hover and on the active tab; it stays clickable, so a pointer finds it. */
 .cf-tab .cf-btn--icon {
   flex: none;
@@ -681,8 +685,8 @@ body {
 .explorer__tree > .empty {
   min-height: 160px;
   font-family: var(--font-display);
-  font-size: 19px;
-  line-height: 26px;
+  font-size: 17px;
+  line-height: 24px;
   color: var(--text);
 }
 
@@ -1016,8 +1020,8 @@ dialog.cf-dialog::backdrop {
 .extbar__button > .cf-eyebrow {
   flex: 1 0 100%;
   font-family: var(--font-display);
-  font-size: 21px;
-  line-height: 28px;
+  font-size: 19px;
+  line-height: 26px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;

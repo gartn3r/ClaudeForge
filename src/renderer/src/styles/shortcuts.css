@@ -126,8 +126,8 @@
 .shortcuts__detail {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
